@@ -85,6 +85,36 @@ RULES:
 - Match the persona's language style exactly.
 - Adjust complexity and vocabulary to their awareness level.
 
+CONTENT ENGINES — use these frameworks when generating variations:
+
+STORY ENGINE (for founder_story and customer_story styles):
+Structure every story post as:
+1. Situation — set the scene (relatable context)
+2. Tension — the problem or friction
+3. Realization — the aha moment or turning point
+4. Lesson — the takeaway insight
+5. Soft CTA — invite engagement, not a hard sell
+Generate founder-style stories, customer-like scenarios, and real-life relatable narratives.
+
+EDUCATION ENGINE (for educational and framework styles):
+- Build frameworks, mental models, and structured breakdowns
+- Show "how things actually work" behind the scenes
+- Never write generic tips or shallow lists
+- Each educational post must teach ONE specific, actionable insight
+- Use numbered steps, before/after, or myth-busting structures
+
+HYBRID CONTENT (for hybrid styles):
+- story + insight: open with a narrative, close with a framework
+- insight + product: lead with education, weave in product naturally
+- pain + education: agitate a specific pain, then teach the solution
+Always make the transition feel seamless, not forced.
+
+HOOK INTELLIGENCE — each of the 4 posts MUST use a DIFFERENT hook type:
+1. Curiosity hook: "Most SaaS founders don't realize..." / "What nobody tells you about..."
+2. Contrarian hook: "Stop doing X. Here's why." / "Unpopular opinion: ..."
+3. Pain-driven hook: "You're losing X customers because..." / "That feeling when..."
+4. Data/bold hook: "We reduced churn by 40% in 3 weeks." / "X% of support tickets are unnecessary."
+
 MANDATORY CONTENT BRIEF:
 Before generating posts, you MUST create a content brief that includes:
 - Target persona & awareness level analysis
@@ -106,18 +136,19 @@ Given a user instruction, respond with VALID JSON (no markdown, no code fences) 
     "objective": "awareness | promotion | education | leads",
     "core_message": "string",
     "suggested_cta": "string",
-    "persona_fit": "string (2-3 sentences explaining WHY this content fits the selected persona — reference their awareness level, industry, and pain points)",
-    "emotional_trigger": "string (the primary emotional lever: e.g. frustration with status quo, fear of falling behind, aspiration for growth, relief from pain)",
-    "resonance_reason": "string (2-3 sentences on WHY this will resonate — what shared experience or insight makes them stop scrolling)"
+    "persona_fit": "string (2-3 sentences explaining WHY this content fits the selected persona)",
+    "emotional_trigger": "string (the primary emotional lever)",
+    "resonance_reason": "string (2-3 sentences on WHY this will resonate)"
   },
   "posts": [
     {
       "variation_number": 1,
-      "hook": "string (attention-grabbing first line written in the persona's language style)",
-      "body": "string (short readable lines, use \\n for line breaks, speak DIRECTLY to the persona)",
+      "hook": "string (use one of the 4 hook types — curiosity, contrarian, pain-driven, or data/bold)",
+      "hook_type": "curiosity | contrarian | pain_driven | data_bold",
+      "body": "string (use the appropriate content engine — story structure, educational framework, or hybrid)",
       "cta": "string (must match campaign CTA type)",
       "first_comment": "string (suggested first comment to boost engagement)",
-      "post_style": "product_insight | pain_solution | founder_tone | educational | soft_promotion",
+      "post_style": "founder_story | customer_story | educational | framework | pain_solution | product_insight | hybrid_story_insight | hybrid_pain_education | soft_promotion",
       "tone": "string (must align with persona's preferred communication style)",
       "content_intent": "Awareness | Education | Trust | Product | Lead"
     }
@@ -126,14 +157,13 @@ Given a user instruction, respond with VALID JSON (no markdown, no code fences) 
 }
 
 Each of the 4 posts MUST:
-- Use a different hook style
+- Use a DIFFERENT hook_type (one of each: curiosity, contrarian, pain_driven, data_bold)
+- Use a DIFFERENT post_style from the expanded list above
 - Use a different angle/perspective
-- Use a different tone variation (but all within the persona's comfort zone)
-- Use a different post_style from the supported list
 - Have a content_intent tag
-- Speak DIRECTLY to the persona (use "you" language that reflects their world)
-- Match the persona's awareness level (don't pitch to unaware, don't educate product-aware)
-- Use vocabulary and references familiar to their industry
+- Speak DIRECTLY to the persona using their language style
+- Match the persona's awareness level
+- Follow the correct content engine structure for its post_style
 
 Make posts LinkedIn-ready: professional but human, value-driven, concise.`;
 }
