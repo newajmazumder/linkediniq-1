@@ -14,6 +14,121 @@ export type Database = {
   }
   public: {
     Tables: {
+      competitor_insights: {
+        Row: {
+          competitor_id: string | null
+          created_at: string
+          gaps: Json | null
+          id: string
+          overused_themes: Json | null
+          patterns: Json | null
+          suggested_angles: Json | null
+          user_id: string
+        }
+        Insert: {
+          competitor_id?: string | null
+          created_at?: string
+          gaps?: Json | null
+          id?: string
+          overused_themes?: Json | null
+          patterns?: Json | null
+          suggested_angles?: Json | null
+          user_id: string
+        }
+        Update: {
+          competitor_id?: string | null
+          created_at?: string
+          gaps?: Json | null
+          id?: string
+          overused_themes?: Json | null
+          patterns?: Json | null
+          suggested_angles?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_insights_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitor_posts: {
+        Row: {
+          competitor_id: string
+          content: string
+          created_at: string
+          cta_type: string | null
+          hook_style: string | null
+          id: string
+          tone: string | null
+          topic: string | null
+          user_id: string
+        }
+        Insert: {
+          competitor_id: string
+          content: string
+          created_at?: string
+          cta_type?: string | null
+          hook_style?: string | null
+          id?: string
+          tone?: string | null
+          topic?: string | null
+          user_id: string
+        }
+        Update: {
+          competitor_id?: string
+          content?: string
+          created_at?: string
+          cta_type?: string | null
+          hook_style?: string | null
+          id?: string
+          tone?: string | null
+          topic?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "competitor_posts_competitor_id_fkey"
+            columns: ["competitor_id"]
+            isOneToOne: false
+            referencedRelation: "competitors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      competitors: {
+        Row: {
+          created_at: string
+          id: string
+          linkedin_url: string | null
+          name: string
+          tags: string[] | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          linkedin_url?: string | null
+          name: string
+          tags?: string[] | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          linkedin_url?: string | null
+          name?: string
+          tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       drafts: {
         Row: {
           created_at: string
