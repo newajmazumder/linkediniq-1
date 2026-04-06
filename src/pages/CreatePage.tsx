@@ -62,7 +62,15 @@ const CreatePage = () => {
   }, [user]);
 
   const handleGenerate = async () => {
-    if (!instruction.trim() || !user) return;
+    if (!user) return;
+    if (!selectedPersonaId || selectedPersonaId === "none") {
+      toast.error("Please select a target persona");
+      return;
+    }
+    if (!selectedCampaignId || selectedCampaignId === "none") {
+      toast.error("Please select a campaign");
+      return;
+    }
     setLoading(true);
     setIdea(null);
     setPosts([]);
