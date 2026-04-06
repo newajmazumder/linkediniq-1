@@ -7,6 +7,77 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+function extractJsonFromResponse(response: string): unknown {
+  let cleaned = response
+    .replace(/```json\s*/gi, "")
+    .replace(/```\s*/g, "")
+    .trim();
+
+  const jsonStart = cleaned.search(/[\{\[]/);
+  const jsonEnd = cleaned.lastIndexOf(jsonStart !== -1 && cleaned[jsonStart] === '[' ? ']' : '}');
+
+  if (jsonStart === -1 || jsonEnd === -1) {
+    throw new Error("No JSON object found in response");
+  }
+
+  cleaned = cleaned.substring(jsonStart, jsonEnd + 1);
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (_e) {
+    cleaned = cleaned
+      .replace(/,\s*}/g, "}")
+      .replace(/,\s*]/g, "]")
+      .replace(/[\x00-\x1F\x7F]/g, "");
+
+    try {
+      return JSON.parse(cleaned);
+    } catch (_e2) {
+      let braces = 0, brackets = 0;
+      for (const char of cleaned) {
+        if (char === '{') braces++;
+        if (char === '}') braces--;
+        if (char === '[') brackets++;
+        if (char === ']') brackets--;
+      }
+
+      let repaired = cleaned;
+      while (brackets > 0) { repaired += ']'; brackets--; }
+      while (braces > 0) { repaired += '}'; braces--; }
+
+      return JSON.parse(repaired);
+    }
+  }
+}
+
+async function callAI(LOVABLE_API_KEY: string, messages: Array<{role: string; content: string}>) {
+  const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-3-flash-preview",
+      messages,
+    }),
+  });
+
+  if (!aiResponse.ok) {
+    if (aiResponse.status === 429) {
+      throw { status: 429, message: "Rate limited. Please try again in a moment." };
+    }
+    if (aiResponse.status === 402) {
+      throw { status: 402, message: "AI credits exhausted. Please add funds." };
+    }
+    throw new Error("AI gateway error");
+  }
+
+  const aiData = await aiResponse.json();
+  const content = aiData.choices?.[0]?.message?.content || "";
+  return extractJsonFromResponse(content);
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -29,25 +100,16 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     if (action === "analyze_posts") {
-      // Analyze pasted competitor posts
       if (!posts || !Array.isArray(posts) || posts.length === 0) {
         throw new Error("Posts array is required");
       }
 
       const postsText = posts.map((p: string, i: number) => `Post ${i + 1}:\n${p}`).join("\n\n---\n\n");
 
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            {
-              role: "system",
-              content: `You are a LinkedIn content strategist specializing in B2B SaaS competitive analysis.
+      const analysis = await callAI(LOVABLE_API_KEY, [
+        {
+          role: "system",
+          content: `You are a LinkedIn content strategist specializing in B2B SaaS competitive analysis.
 
 Analyze the provided competitor LinkedIn posts and return a JSON object with these fields:
 
@@ -63,38 +125,13 @@ Analyze the provided competitor LinkedIn posts and return a JSON object with the
 5. "suggested_angles": array of strings - unique angles a SaaS product (AI chatbot for customer support) could use to differentiate
 
 Return ONLY valid JSON, no markdown fences.`,
-            },
-            {
-              role: "user",
-              content: postsText,
-            },
-          ],
-        }),
-      });
+        },
+        { role: "user", content: postsText },
+      ]) as Record<string, unknown>;
 
-      if (!aiResponse.ok) {
-        if (aiResponse.status === 429) {
-          return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), {
-            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        if (aiResponse.status === 402) {
-          return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
-            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        throw new Error("AI gateway error");
-      }
-
-      const aiData = await aiResponse.json();
-      let content = aiData.choices?.[0]?.message?.content || "";
-      content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const analysis = JSON.parse(content);
-
-      // Save post analyses to competitor_posts
-      if (competitor_id && analysis.post_analyses) {
+      if (competitor_id && Array.isArray((analysis as any).post_analyses)) {
         for (let i = 0; i < posts.length; i++) {
-          const pa = analysis.post_analyses[i];
+          const pa = (analysis as any).post_analyses[i];
           if (pa) {
             await supabase.from("competitor_posts").insert({
               user_id: user.id,
@@ -109,15 +146,14 @@ Return ONLY valid JSON, no markdown fences.`,
         }
       }
 
-      // Save insights
       if (competitor_id) {
         await supabase.from("competitor_insights").insert({
           user_id: user.id,
           competitor_id,
-          patterns: analysis.patterns || [],
-          overused_themes: analysis.overused_themes || [],
-          gaps: analysis.gaps || [],
-          suggested_angles: analysis.suggested_angles || [],
+          patterns: (analysis as any).patterns || [],
+          overused_themes: (analysis as any).overused_themes || [],
+          gaps: (analysis as any).gaps || [],
+          suggested_angles: (analysis as any).suggested_angles || [],
         });
       }
 
@@ -126,10 +162,8 @@ Return ONLY valid JSON, no markdown fences.`,
       });
 
     } else if (action === "generate_from_gaps") {
-      // Generate content ideas from competitor gaps
       if (!competitor_id) throw new Error("competitor_id is required");
 
-      // Fetch latest insights for this competitor
       const { data: insights } = await supabase
         .from("competitor_insights")
         .select("*")
@@ -144,18 +178,10 @@ Return ONLY valid JSON, no markdown fences.`,
         ? `\n\nProduct context:\n- Product: ${knowledge.productDescription || "AI chatbot for customer support"}\n- Features: ${knowledge.features || ""}\n- Target audience: ${knowledge.targetAudience || ""}`
         : "";
 
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          messages: [
-            {
-              role: "system",
-              content: `You are a B2B SaaS content strategist. Based on competitor analysis data, generate LinkedIn content ideas that exploit gaps and differentiate.${knowledgeBlock}
+      const result = await callAI(LOVABLE_API_KEY, [
+        {
+          role: "system",
+          content: `You are a B2B SaaS content strategist. Based on competitor analysis data, generate LinkedIn content ideas that exploit gaps and differentiate.${knowledgeBlock}
 
 Return a JSON object with:
 "ideas": array of 4-6 objects, each with:
@@ -166,36 +192,15 @@ Return a JSON object with:
   - "post_style": one of "product_insight", "pain_solution", "founder_tone", "educational", "soft_promotion"
 
 Return ONLY valid JSON, no markdown fences.`,
-            },
-            {
-              role: "user",
-              content: `Competitor gaps: ${JSON.stringify(insights.gaps)}
+        },
+        {
+          role: "user",
+          content: `Competitor gaps: ${JSON.stringify(insights.gaps)}
 Overused themes to avoid: ${JSON.stringify(insights.overused_themes)}
 Suggested angles: ${JSON.stringify(insights.suggested_angles)}
 Patterns they use: ${JSON.stringify(insights.patterns)}`,
-            },
-          ],
-        }),
-      });
-
-      if (!aiResponse.ok) {
-        if (aiResponse.status === 429) {
-          return new Response(JSON.stringify({ error: "Rate limited. Please try again." }), {
-            status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        if (aiResponse.status === 402) {
-          return new Response(JSON.stringify({ error: "AI credits exhausted." }), {
-            status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-        throw new Error("AI gateway error");
-      }
-
-      const aiData = await aiResponse.json();
-      let content = aiData.choices?.[0]?.message?.content || "";
-      content = content.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-      const result = JSON.parse(content);
+        },
+      ]);
 
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -205,8 +210,10 @@ Patterns they use: ${JSON.stringify(insights.patterns)}`,
     throw new Error("Invalid action");
   } catch (err) {
     console.error("analyze-competitor error:", err);
-    return new Response(JSON.stringify({ error: err.message || "Unknown error" }), {
-      status: 500,
+    const status = (err as any).status || 500;
+    const message = (err as any).message || "Unknown error";
+    return new Response(JSON.stringify({ error: message }), {
+      status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
