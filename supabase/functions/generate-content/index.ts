@@ -108,7 +108,7 @@ Make posts LinkedIn-ready: professional but human, value-driven, concise.`;
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: instruction },
+          { role: "user", content: instruction + knowledgeBlock },
         ],
       }),
     });
