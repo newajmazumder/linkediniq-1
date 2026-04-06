@@ -24,6 +24,9 @@ type Idea = {
   objective: string | null;
   core_message: string | null;
   suggested_cta: string | null;
+  persona_fit: string | null;
+  emotional_trigger: string | null;
+  resonance_reason: string | null;
 };
 
 type PersonaOption = { id: string; name: string };
@@ -59,7 +62,15 @@ const CreatePage = () => {
   }, [user]);
 
   const handleGenerate = async () => {
-    if (!instruction.trim() || !user) return;
+    if (!user) return;
+    if (!selectedPersonaId || selectedPersonaId === "none") {
+      toast.error("Please select a target persona");
+      return;
+    }
+    if (!selectedCampaignId || selectedCampaignId === "none") {
+      toast.error("Please select a campaign");
+      return;
+    }
     setLoading(true);
     setIdea(null);
     setPosts([]);
@@ -123,39 +134,43 @@ const CreatePage = () => {
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Create</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Describe what you want to promote — get 4 LinkedIn posts instantly.
+          Select a persona and campaign, then describe what you want to promote.
         </p>
       </div>
 
-      {/* Strategy Selectors */}
-      {(personas.length > 0 || campaigns.length > 0) && (
-        <div className="flex gap-3">
-          {personas.length > 0 && (
-            <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-foreground">Target Persona</label>
-              <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId}>
-                <SelectTrigger className="text-sm"><SelectValue placeholder="Select persona (optional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No persona</SelectItem>
-                  {personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {campaigns.length > 0 && (
-            <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-foreground">Campaign</label>
-              <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
-                <SelectTrigger className="text-sm"><SelectValue placeholder="Select campaign (optional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No campaign</SelectItem>
-                  {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+      {/* Strategy Selectors - Always visible, required */}
+      <div className="flex gap-3">
+        <div className="flex-1 space-y-1">
+          <label className="text-xs font-medium text-foreground">Target Persona <span className="text-destructive">*</span></label>
+          <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId}>
+            <SelectTrigger className={`text-sm ${!selectedPersonaId || selectedPersonaId === "none" ? "border-destructive/50" : ""}`}>
+              <SelectValue placeholder="Select persona" />
+            </SelectTrigger>
+            <SelectContent>
+              {personas.length === 0 ? (
+                <SelectItem value="none" disabled>No personas — create one in Audience</SelectItem>
+              ) : (
+                personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)
+              )}
+            </SelectContent>
+          </Select>
         </div>
-      )}
+        <div className="flex-1 space-y-1">
+          <label className="text-xs font-medium text-foreground">Campaign <span className="text-destructive">*</span></label>
+          <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
+            <SelectTrigger className={`text-sm ${!selectedCampaignId || selectedCampaignId === "none" ? "border-destructive/50" : ""}`}>
+              <SelectValue placeholder="Select campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              {campaigns.length === 0 ? (
+                <SelectItem value="none" disabled>No campaigns — create one in Strategy</SelectItem>
+              ) : (
+                campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Knowledge Input */}
       <KnowledgeInput value={knowledge} onChange={setKnowledge} />
@@ -163,7 +178,7 @@ const CreatePage = () => {
       {/* Instruction Input */}
       <div className="rounded-lg border border-border bg-card p-4">
         <Textarea
-          placeholder='e.g. "Promote Chattrn chatbot for ecommerce"'
+          placeholder='Optional: add specific instructions (e.g. "Focus on reducing support tickets")'
           value={instruction}
           onChange={(e) => setInstruction(e.target.value)}
           rows={3}
@@ -171,7 +186,7 @@ const CreatePage = () => {
         />
         <div className="mt-3 flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{instruction.length}/600</span>
-          <Button onClick={handleGenerate} disabled={loading || !instruction.trim()} size="sm">
+          <Button onClick={handleGenerate} disabled={loading || !selectedPersonaId || selectedPersonaId === "none" || !selectedCampaignId || selectedCampaignId === "none"} size="sm">
             {loading ? (
               <>
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
