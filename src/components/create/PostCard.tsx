@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import {
   Copy, BookmarkPlus, RefreshCw, ChevronDown,
   Minus, User, Zap, Package, Loader2,
+  BookOpen, MessageSquare, Shuffle, Eye, AlertTriangle, BarChart3, Bold,
 } from "lucide-react";
 import {
   DropdownMenu,
