@@ -1,10 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Sparkles, LayoutGrid, List, BarChart3 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import KnowledgeInput, { KnowledgeContext } from "@/components/create/KnowledgeInput";
 import IdeaBrief from "@/components/create/IdeaBrief";
 import PostCard, { Post, PostScore } from "@/components/create/PostCard";
@@ -18,6 +25,9 @@ type Idea = {
   core_message: string | null;
   suggested_cta: string | null;
 };
+
+type PersonaOption = { id: string; name: string };
+type CampaignOption = { id: string; name: string };
 
 const CreatePage = () => {
   const { user } = useAuth();
@@ -35,6 +45,19 @@ const CreatePage = () => {
     targetAudience: "",
   });
 
+  // Strategy selectors
+  const [personas, setPersonas] = useState<PersonaOption[]>([]);
+  const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
+
+  useEffect(() => {
+    if (user) {
+      supabase.from("audience_personas").select("id, name").order("name").then(({ data }) => setPersonas((data || []) as PersonaOption[]));
+      supabase.from("campaigns").select("id, name").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
+    }
+  }, [user]);
+
   const handleGenerate = async () => {
     if (!instruction.trim() || !user) return;
     setLoading(true);
@@ -50,6 +73,8 @@ const CreatePage = () => {
           knowledge: knowledge.productDescription || knowledge.features || knowledge.targetAudience
             ? knowledge
             : undefined,
+          persona_id: selectedPersonaId || undefined,
+          campaign_id: selectedCampaignId || undefined,
         },
       });
 
@@ -102,6 +127,36 @@ const CreatePage = () => {
         </p>
       </div>
 
+      {/* Strategy Selectors */}
+      {(personas.length > 0 || campaigns.length > 0) && (
+        <div className="flex gap-3">
+          {personas.length > 0 && (
+            <div className="flex-1 space-y-1">
+              <label className="text-xs font-medium text-foreground">Target Persona</label>
+              <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId}>
+                <SelectTrigger className="text-sm"><SelectValue placeholder="Select persona (optional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No persona</SelectItem>
+                  {personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {campaigns.length > 0 && (
+            <div className="flex-1 space-y-1">
+              <label className="text-xs font-medium text-foreground">Campaign</label>
+              <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
+                <SelectTrigger className="text-sm"><SelectValue placeholder="Select campaign (optional)" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No campaign</SelectItem>
+                  {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Knowledge Input */}
       <KnowledgeInput value={knowledge} onChange={setKnowledge} />
 
@@ -141,67 +196,26 @@ const CreatePage = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-medium text-foreground">4 Variations</h2>
             <div className="flex items-center gap-1">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleScore}
-                disabled={scoring}
-                className="h-8 text-xs"
-              >
-                {scoring ? (
-                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <BarChart3 className="mr-1 h-3.5 w-3.5" />
-                )}
+              <Button variant="ghost" size="sm" onClick={handleScore} disabled={scoring} className="h-8 text-xs">
+                {scoring ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <BarChart3 className="mr-1 h-3.5 w-3.5" />}
                 Score
               </Button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`rounded-md p-1.5 transition-colors ${
-                  viewMode === "list"
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
+              <button onClick={() => setViewMode("list")} className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                 <List className="h-4 w-4" />
               </button>
-              <button
-                onClick={() => setViewMode("compare")}
-                className={`rounded-md p-1.5 transition-colors ${
-                  viewMode === "compare"
-                    ? "bg-secondary text-foreground"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
+              <button onClick={() => setViewMode("compare")} className={`rounded-md p-1.5 transition-colors ${viewMode === "compare" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                 <LayoutGrid className="h-4 w-4" />
               </button>
             </div>
           </div>
 
           {viewMode === "compare" && idea ? (
-            <ComparisonView
-              posts={posts}
-              ideaId={idea.id}
-              userId={user!.id}
-              scores={scores}
-              selectedId={selectedPostId}
-              onSelect={setSelectedPostId}
-              onPostUpdate={handlePostUpdate}
-            />
+            <ComparisonView posts={posts} ideaId={idea.id} userId={user!.id} scores={scores} selectedId={selectedPostId} onSelect={setSelectedPostId} onPostUpdate={handlePostUpdate} />
           ) : (
             <div className="space-y-4">
-              {posts
-                .sort((a, b) => a.variation_number - b.variation_number)
-                .map((post) => (
-                  <PostCard
-                    key={post.id}
-                    post={post}
-                    ideaId={idea!.id}
-                    userId={user!.id}
-                    score={scores[post.id]}
-                    onPostUpdate={handlePostUpdate}
-                  />
-                ))}
+              {posts.sort((a, b) => a.variation_number - b.variation_number).map((post) => (
+                <PostCard key={post.id} post={post} ideaId={idea!.id} userId={user!.id} score={scores[post.id]} onPostUpdate={handlePostUpdate} />
+              ))}
             </div>
           )}
         </div>
