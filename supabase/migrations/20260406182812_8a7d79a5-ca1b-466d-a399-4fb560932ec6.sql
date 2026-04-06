@@ -1,0 +1,1 @@
+ALTER TABLE public.drafts ADD COLUMN scheduled_at timestamp with time zone DEFAULT null;
