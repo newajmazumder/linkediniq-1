@@ -3,8 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Trash2, Save, Copy, X } from "lucide-react";
+import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 type Draft = {
   id: string;
@@ -12,18 +16,21 @@ type Draft = {
   selected_post_id: string | null;
   custom_content: string | null;
   status: string;
+  scheduled_at: string | null;
   created_at: string;
   updated_at: string;
   ideas?: { idea_title: string | null; instruction: string } | null;
 };
 
-const statusOptions = ["draft", "selected", "ready"] as const;
+const statusOptions = ["idea", "draft", "approved", "scheduled", "posted"] as const;
 type Status = (typeof statusOptions)[number];
 
 const statusColors: Record<Status, string> = {
+  idea: "bg-muted text-muted-foreground",
   draft: "bg-secondary text-secondary-foreground",
-  selected: "bg-accent text-accent-foreground",
-  ready: "bg-primary text-primary-foreground",
+  approved: "bg-primary/20 text-primary",
+  scheduled: "bg-accent text-accent-foreground",
+  posted: "bg-primary text-primary-foreground",
 };
 
 const DraftsPage = () => {
@@ -33,6 +40,7 @@ const DraftsPage = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
   const [filter, setFilter] = useState<Status | "all">("all");
+  const [scheduleId, setScheduleId] = useState<string | null>(null);
 
   const fetchDrafts = async () => {
     if (!user) return;
@@ -86,6 +94,24 @@ const DraftsPage = () => {
     }
   };
 
+  const scheduleDraft = async (id: string, date: Date) => {
+    const { error } = await supabase
+      .from("drafts")
+      .update({ scheduled_at: date.toISOString(), status: "scheduled" })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Failed to schedule");
+    } else {
+      toast.success(`Scheduled for ${format(date, "PPP")}`);
+      setScheduleId(null);
+      fetchDrafts();
+    }
+  };
+
+  const approveDraft = (id: string) => updateStatus(id, "approved");
+  const rejectDraft = (id: string) => updateStatus(id, "draft");
+
   const deleteDraft = async (id: string) => {
     const { error } = await supabase.from("drafts").delete().eq("id", id);
     if (error) {
@@ -115,23 +141,24 @@ const DraftsPage = () => {
   return (
     <div className="content-fade-in space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Drafts</h1>
+        <h1 className="text-2xl font-semibold text-foreground">Drafts & Workflow</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           {drafts.length} saved {drafts.length === 1 ? "draft" : "drafts"}
         </p>
       </div>
 
       {/* Status filter */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 flex-wrap">
         {(["all", ...statusOptions] as const).map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors capitalize ${
+            className={cn(
+              "rounded-md px-3 py-1.5 text-xs font-medium transition-colors capitalize",
               filter === s
                 ? "bg-secondary text-foreground"
                 : "text-muted-foreground hover:text-foreground"
-            }`}
+            )}
           >
             {s}
             {s !== "all" && (
@@ -158,7 +185,7 @@ const DraftsPage = () => {
                   <p className="text-xs text-muted-foreground truncate">
                     {(draft.ideas as any)?.idea_title || (draft.ideas as any)?.instruction || "Untitled"}
                   </p>
-                  <div className="mt-1 flex items-center gap-2">
+                  <div className="mt-1 flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-muted-foreground">
                       {new Date(draft.created_at).toLocaleDateString()}
                     </span>
@@ -168,19 +195,64 @@ const DraftsPage = () => {
                         <button
                           key={s}
                           onClick={() => updateStatus(draft.id, s)}
-                          className={`rounded px-2 py-0.5 text-[10px] font-medium capitalize transition-colors ${
+                          className={cn(
+                            "rounded px-2 py-0.5 text-[10px] font-medium capitalize transition-colors",
                             draft.status === s
                               ? statusColors[s]
                               : "bg-transparent text-muted-foreground hover:bg-secondary"
-                          }`}
+                          )}
                         >
                           {s}
                         </button>
                       ))}
                     </div>
+                    {draft.scheduled_at && (
+                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <CalendarIcon className="h-3 w-3" />
+                        {format(new Date(draft.scheduled_at), "MMM d, yyyy")}
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
+                  {/* Review actions */}
+                  {draft.status === "draft" && (
+                    <button
+                      onClick={() => approveDraft(draft.id)}
+                      title="Approve"
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                    >
+                      <Check className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {draft.status === "approved" && (
+                    <button
+                      onClick={() => rejectDraft(draft.id)}
+                      title="Send back to draft"
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    >
+                      <XCircle className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                  {/* Schedule */}
+                  {(draft.status === "approved" || draft.status === "draft") && (
+                    <Popover open={scheduleId === draft.id} onOpenChange={(o) => setScheduleId(o ? draft.id : null)}>
+                      <PopoverTrigger asChild>
+                        <button className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors" title="Schedule">
+                          <CalendarIcon className="h-3.5 w-3.5" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                        <Calendar
+                          mode="single"
+                          selected={draft.scheduled_at ? new Date(draft.scheduled_at) : undefined}
+                          onSelect={(date) => date && scheduleDraft(draft.id, date)}
+                          disabled={(date) => date < new Date()}
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  )}
                   <button
                     onClick={() => copyDraft(draft.custom_content)}
                     className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"

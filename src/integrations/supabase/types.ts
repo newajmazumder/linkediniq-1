@@ -135,6 +135,7 @@ export type Database = {
           custom_content: string | null
           id: string
           idea_id: string
+          scheduled_at: string | null
           selected_post_id: string | null
           status: string
           updated_at: string
@@ -145,6 +146,7 @@ export type Database = {
           custom_content?: string | null
           id?: string
           idea_id: string
+          scheduled_at?: string | null
           selected_post_id?: string | null
           status?: string
           updated_at?: string
@@ -155,6 +157,7 @@ export type Database = {
           custom_content?: string | null
           id?: string
           idea_id?: string
+          scheduled_at?: string | null
           selected_post_id?: string | null
           status?: string
           updated_at?: string
