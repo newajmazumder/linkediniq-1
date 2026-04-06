@@ -219,6 +219,47 @@ export type Database = {
         }
         Relationships: []
       }
+      post_performance: {
+        Row: {
+          comments: number
+          created_at: string
+          draft_id: string
+          id: string
+          impressions: number
+          likes: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comments?: number
+          created_at?: string
+          draft_id: string
+          id?: string
+          impressions?: number
+          likes?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comments?: number
+          created_at?: string
+          draft_id?: string
+          id?: string
+          impressions?: number
+          likes?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_performance_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: true
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           body: string
