@@ -132,6 +132,9 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
           <span className="text-xs text-muted-foreground">
             {styleLabels[post.post_style] || post.post_style}
           </span>
+          {post.hook_type && (
+            <span className="text-xs text-muted-foreground">· {post.hook_type.replace("_", " ")}</span>
+          )}
           {post.tone && (
             <span className="text-xs text-muted-foreground">· {post.tone}</span>
           )}
