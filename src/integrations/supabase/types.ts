@@ -313,10 +313,13 @@ export type Database = {
         Row: {
           core_message: string | null
           created_at: string
+          emotional_trigger: string | null
           id: string
           idea_title: string | null
           instruction: string
           objective: string | null
+          persona_fit: string | null
+          resonance_reason: string | null
           suggested_cta: string | null
           target_audience: string | null
           updated_at: string
@@ -325,10 +328,13 @@ export type Database = {
         Insert: {
           core_message?: string | null
           created_at?: string
+          emotional_trigger?: string | null
           id?: string
           idea_title?: string | null
           instruction: string
           objective?: string | null
+          persona_fit?: string | null
+          resonance_reason?: string | null
           suggested_cta?: string | null
           target_audience?: string | null
           updated_at?: string
@@ -337,10 +343,13 @@ export type Database = {
         Update: {
           core_message?: string | null
           created_at?: string
+          emotional_trigger?: string | null
           id?: string
           idea_title?: string | null
           instruction?: string
           objective?: string | null
+          persona_fit?: string | null
+          resonance_reason?: string | null
           suggested_cta?: string | null
           target_audience?: string | null
           updated_at?: string
