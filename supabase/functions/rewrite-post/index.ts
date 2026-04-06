@@ -37,14 +37,18 @@ serve(async (req) => {
       });
     }
 
-    const validActions = ["regenerate_hook", "regenerate_cta", "rewrite_shorter", "rewrite_human", "rewrite_bold", "rewrite_product"];
+    const validActions = [
+      "regenerate_hook", "regenerate_cta",
+      "rewrite_shorter", "rewrite_human", "rewrite_bold", "rewrite_product",
+      "rewrite_story", "rewrite_educational", "rewrite_hybrid",
+      "hook_curiosity", "hook_contrarian", "hook_pain", "hook_data",
+    ];
     if (!validActions.includes(action)) {
       return new Response(JSON.stringify({ error: `Invalid action. Must be one of: ${validActions.join(", ")}` }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fetch existing post
     const { data: post, error: postError } = await supabase
       .from("posts")
       .select("*")
@@ -62,14 +66,36 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const currentPost = `Hook: ${post.hook}\n\nBody: ${post.body}\n\nCTA: ${post.cta}`;
+    const jsonInstruction = `\n\nRespond with VALID JSON (no markdown fences): {"hook": "...", "body": "...", "cta": "..."}`;
 
     const prompts: Record<string, string> = {
-      regenerate_hook: `Rewrite ONLY the hook (first line) of this LinkedIn post. Keep body and CTA exactly the same. Make the new hook more attention-grabbing and different from the original.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new hook text", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
-      regenerate_cta: `Rewrite ONLY the CTA (call to action) of this LinkedIn post. Keep hook and body exactly the same. Make the new CTA more compelling.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "${post.hook.replace(/"/g, '\\"')}", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "new cta text"}`,
-      rewrite_shorter: `Rewrite this LinkedIn post to be significantly shorter and more concise. Cut the fluff. Keep the same message but in fewer words.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "...", "body": "...", "cta": "..."}`,
-      rewrite_human: `Rewrite this LinkedIn post to sound more human, conversational, and authentic. Remove any corporate or AI-sounding language.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "...", "body": "...", "cta": "..."}`,
-      rewrite_bold: `Rewrite this LinkedIn post to be more bold, provocative, and attention-grabbing. Take a stronger stance. Be opinionated.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "...", "body": "...", "cta": "..."}`,
-      rewrite_product: `Rewrite this LinkedIn post to be more product-focused. Highlight specific features, benefits, and real use cases of the product.\n\nContext: ${context || "B2B SaaS customer support platform"}\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "...", "body": "...", "cta": "..."}`,
+      regenerate_hook: `Rewrite ONLY the hook (first line) of this LinkedIn post. Keep body and CTA exactly the same. Make the new hook more attention-grabbing.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new hook text", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
+      regenerate_cta: `Rewrite ONLY the CTA of this LinkedIn post. Keep hook and body exactly the same. Make the new CTA more compelling.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "${post.hook.replace(/"/g, '\\"')}", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "new cta text"}`,
+      rewrite_shorter: `Rewrite this LinkedIn post to be significantly shorter and more concise. Cut the fluff.\n\nCurrent post:\n${currentPost}${jsonInstruction}`,
+      rewrite_human: `Rewrite this LinkedIn post to sound more human, conversational, and authentic. Remove any AI-sounding language.\n\nCurrent post:\n${currentPost}${jsonInstruction}`,
+      rewrite_bold: `Rewrite this LinkedIn post to be more bold, provocative, and attention-grabbing. Take a stronger stance.\n\nCurrent post:\n${currentPost}${jsonInstruction}`,
+      rewrite_product: `Rewrite this LinkedIn post to be more product-focused. Highlight specific features, benefits, and real use cases.\n\nContext: ${context || "B2B SaaS customer support platform"}\n\nCurrent post:\n${currentPost}${jsonInstruction}`,
+      rewrite_story: `Rewrite this LinkedIn post as a STORY using this structure:
+1. Situation — set the scene (relatable context the reader lives in)
+2. Tension — the problem or friction they face
+3. Realization — the aha moment or turning point
+4. Lesson — the takeaway insight
+5. Soft CTA — invite engagement naturally
+Make it feel like a real founder or customer telling their story. No corporate speak.\n\nCurrent post:\n${currentPost}${jsonInstruction}`,
+      rewrite_educational: `Rewrite this LinkedIn post as an EDUCATIONAL framework or breakdown:
+- Teach ONE specific, actionable insight
+- Use a structured format (numbered steps, before/after, or myth-busting)
+- Show "how things actually work" — no generic tips or shallow lists
+- Make the reader feel smarter after reading\n\nCurrent post:\n${currentPost}${jsonInstruction}`,
+      rewrite_hybrid: `Rewrite this LinkedIn post as a HYBRID (story + insight):
+- Open with a short, relatable narrative (2-3 lines)
+- Transition into a framework or structured insight
+- Close with a takeaway + CTA
+The transition between story and insight must feel seamless.\n\nCurrent post:\n${currentPost}${jsonInstruction}`,
+      hook_curiosity: `Rewrite ONLY the hook of this LinkedIn post using a CURIOSITY style. Examples: "Most SaaS founders don't realize...", "What nobody tells you about...", "I was wrong about X for 3 years." Keep body and CTA exactly the same.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new curiosity hook", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
+      hook_contrarian: `Rewrite ONLY the hook of this LinkedIn post using a CONTRARIAN style. Examples: "Stop doing X. Here's why.", "Unpopular opinion: ...", "Everyone says X. They're wrong." Keep body and CTA exactly the same.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new contrarian hook", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
+      hook_pain: `Rewrite ONLY the hook of this LinkedIn post using a PAIN-DRIVEN style. Examples: "You're losing X customers because...", "That feeling when your support queue hits 200...", "Your team is drowning and you know it." Keep body and CTA exactly the same.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new pain hook", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
+      hook_data: `Rewrite ONLY the hook of this LinkedIn post using a DATA/BOLD STATEMENT style. Examples: "We reduced churn by 40% in 3 weeks.", "87% of support tickets are unnecessary.", "One change. 3x faster response time." Keep body and CTA exactly the same.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new data hook", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
     };
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -93,6 +119,11 @@ serve(async (req) => {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "AI credits exhausted. Please add funds." }), {
+          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error("AI gateway error");
     }
 
@@ -107,14 +138,9 @@ serve(async (req) => {
 
     const parsed = JSON.parse(cleanContent);
 
-    // Update post in DB
     const { data: updated, error: updateError } = await supabase
       .from("posts")
-      .update({
-        hook: parsed.hook,
-        body: parsed.body,
-        cta: parsed.cta,
-      })
+      .update({ hook: parsed.hook, body: parsed.body, cta: parsed.cta })
       .eq("id", post_id)
       .select()
       .single();
