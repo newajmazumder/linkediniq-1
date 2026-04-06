@@ -319,6 +319,7 @@ serve(async (req) => {
       content_intent: p.content_intent || null,
       persona_id: persona_id,
       campaign_id: campaign_id,
+      hook_type: p.hook_type || null,
     }));
 
     const { data: posts, error: postsError } = await supabase

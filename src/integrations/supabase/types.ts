@@ -407,6 +407,7 @@ export type Database = {
           cta: string
           first_comment: string | null
           hook: string
+          hook_type: string | null
           id: string
           idea_id: string
           persona_id: string | null
@@ -424,6 +425,7 @@ export type Database = {
           cta: string
           first_comment?: string | null
           hook: string
+          hook_type?: string | null
           id?: string
           idea_id: string
           persona_id?: string | null
@@ -441,6 +443,7 @@ export type Database = {
           cta?: string
           first_comment?: string | null
           hook?: string
+          hook_type?: string | null
           id?: string
           idea_id?: string
           persona_id?: string | null
