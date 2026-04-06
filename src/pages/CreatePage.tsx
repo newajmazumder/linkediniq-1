@@ -138,35 +138,39 @@ const CreatePage = () => {
         </p>
       </div>
 
-      {/* Strategy Selectors */}
-      {(personas.length > 0 || campaigns.length > 0) && (
-        <div className="flex gap-3">
-          {personas.length > 0 && (
-            <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-foreground">Target Persona</label>
-              <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId}>
-                <SelectTrigger className="text-sm"><SelectValue placeholder="Select persona (optional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No persona</SelectItem>
-                  {personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-          {campaigns.length > 0 && (
-            <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-foreground">Campaign</label>
-              <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
-                <SelectTrigger className="text-sm"><SelectValue placeholder="Select campaign (optional)" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No campaign</SelectItem>
-                  {campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+      {/* Strategy Selectors - Always visible, required */}
+      <div className="flex gap-3">
+        <div className="flex-1 space-y-1">
+          <label className="text-xs font-medium text-foreground">Target Persona <span className="text-destructive">*</span></label>
+          <Select value={selectedPersonaId} onValueChange={setSelectedPersonaId}>
+            <SelectTrigger className={`text-sm ${!selectedPersonaId || selectedPersonaId === "none" ? "border-destructive/50" : ""}`}>
+              <SelectValue placeholder="Select persona" />
+            </SelectTrigger>
+            <SelectContent>
+              {personas.length === 0 ? (
+                <SelectItem value="none" disabled>No personas — create one in Audience</SelectItem>
+              ) : (
+                personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)
+              )}
+            </SelectContent>
+          </Select>
         </div>
-      )}
+        <div className="flex-1 space-y-1">
+          <label className="text-xs font-medium text-foreground">Campaign <span className="text-destructive">*</span></label>
+          <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
+            <SelectTrigger className={`text-sm ${!selectedCampaignId || selectedCampaignId === "none" ? "border-destructive/50" : ""}`}>
+              <SelectValue placeholder="Select campaign" />
+            </SelectTrigger>
+            <SelectContent>
+              {campaigns.length === 0 ? (
+                <SelectItem value="none" disabled>No campaigns — create one in Strategy</SelectItem>
+              ) : (
+                campaigns.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
       {/* Knowledge Input */}
       <KnowledgeInput value={knowledge} onChange={setKnowledge} />
