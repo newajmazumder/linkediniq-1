@@ -1,11 +1,12 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, PenLine, FileText, LogOut, Zap } from "lucide-react";
+import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/create", icon: PenLine, label: "Create" },
   { to: "/drafts", icon: FileText, label: "Drafts" },
+  { to: "/competitors", icon: Users, label: "Competitors" },
 ];
 
 const AppSidebar = () => {

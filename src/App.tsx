@@ -8,6 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import CreatePage from "@/pages/CreatePage";
 import DraftsPage from "@/pages/DraftsPage";
+import CompetitorsPage from "@/pages/CompetitorsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const AppRoutes = () => {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/create" element={<CreatePage />} />
         <Route path="/drafts" element={<DraftsPage />} />
+        <Route path="/competitors" element={<CompetitorsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
