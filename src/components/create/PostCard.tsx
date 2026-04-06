@@ -18,6 +18,7 @@ export type Post = {
   id: string;
   variation_number: number;
   hook: string;
+  hook_type?: string | null;
   body: string;
   cta: string;
   first_comment: string | null;
