@@ -24,6 +24,9 @@ type Idea = {
   objective: string | null;
   core_message: string | null;
   suggested_cta: string | null;
+  persona_fit: string | null;
+  emotional_trigger: string | null;
+  resonance_reason: string | null;
 };
 
 type PersonaOption = { id: string; name: string };
