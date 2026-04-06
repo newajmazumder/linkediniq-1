@@ -14,7 +14,146 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      drafts: {
+        Row: {
+          created_at: string
+          custom_content: string | null
+          id: string
+          idea_id: string
+          selected_post_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          custom_content?: string | null
+          id?: string
+          idea_id: string
+          selected_post_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          custom_content?: string | null
+          id?: string
+          idea_id?: string
+          selected_post_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "drafts_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "drafts_selected_post_id_fkey"
+            columns: ["selected_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ideas: {
+        Row: {
+          core_message: string | null
+          created_at: string
+          id: string
+          idea_title: string | null
+          instruction: string
+          objective: string | null
+          suggested_cta: string | null
+          target_audience: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          core_message?: string | null
+          created_at?: string
+          id?: string
+          idea_title?: string | null
+          instruction: string
+          objective?: string | null
+          suggested_cta?: string | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          core_message?: string | null
+          created_at?: string
+          id?: string
+          idea_title?: string | null
+          instruction?: string
+          objective?: string | null
+          suggested_cta?: string | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      posts: {
+        Row: {
+          body: string
+          created_at: string
+          cta: string
+          first_comment: string | null
+          hook: string
+          id: string
+          idea_id: string
+          post_style: string
+          tone: string | null
+          updated_at: string
+          user_id: string
+          variation_number: number
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          cta: string
+          first_comment?: string | null
+          hook: string
+          id?: string
+          idea_id: string
+          post_style: string
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+          variation_number: number
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          cta?: string
+          first_comment?: string | null
+          hook?: string
+          id?: string
+          idea_id?: string
+          post_style?: string
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
+          variation_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
