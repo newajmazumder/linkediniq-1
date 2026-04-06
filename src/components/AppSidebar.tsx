@@ -6,6 +6,7 @@ const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/create", icon: PenLine, label: "Create" },
   { to: "/drafts", icon: FileText, label: "Drafts" },
+  { to: "/competitors", icon: Users, label: "Competitors" },
 ];
 
 const AppSidebar = () => {
