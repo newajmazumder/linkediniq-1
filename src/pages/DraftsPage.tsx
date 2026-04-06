@@ -17,12 +17,22 @@ type Draft = {
   ideas?: { idea_title: string | null; instruction: string } | null;
 };
 
+const statusOptions = ["draft", "selected", "ready"] as const;
+type Status = (typeof statusOptions)[number];
+
+const statusColors: Record<Status, string> = {
+  draft: "bg-secondary text-secondary-foreground",
+  selected: "bg-accent text-accent-foreground",
+  ready: "bg-primary text-primary-foreground",
+};
+
 const DraftsPage = () => {
   const { user } = useAuth();
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
+  const [filter, setFilter] = useState<Status | "all">("all");
 
   const fetchDrafts = async () => {
     if (!user) return;
@@ -60,6 +70,22 @@ const DraftsPage = () => {
     }
   };
 
+  const updateStatus = async (id: string, status: Status) => {
+    const { error } = await supabase
+      .from("drafts")
+      .update({ status })
+      .eq("id", id);
+
+    if (error) {
+      toast.error("Failed to update status");
+    } else {
+      setDrafts((prev) =>
+        prev.map((d) => (d.id === id ? { ...d, status } : d))
+      );
+      toast.success(`Marked as ${status}`);
+    }
+  };
+
   const deleteDraft = async (id: string) => {
     const { error } = await supabase.from("drafts").delete().eq("id", id);
     if (error) {
@@ -75,6 +101,8 @@ const DraftsPage = () => {
     navigator.clipboard.writeText(content);
     toast.success("Copied");
   };
+
+  const filtered = filter === "all" ? drafts : drafts.filter((d) => d.status === filter);
 
   if (loading) {
     return (
@@ -93,23 +121,64 @@ const DraftsPage = () => {
         </p>
       </div>
 
-      {drafts.length === 0 ? (
+      {/* Status filter */}
+      <div className="flex gap-1.5">
+        {(["all", ...statusOptions] as const).map((s) => (
+          <button
+            key={s}
+            onClick={() => setFilter(s)}
+            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors capitalize ${
+              filter === s
+                ? "bg-secondary text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {s}
+            {s !== "all" && (
+              <span className="ml-1 text-muted-foreground">
+                {drafts.filter((d) => d.status === s).length}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-16 text-center">
-          <p className="text-sm text-muted-foreground">No drafts saved yet.</p>
+          <p className="text-sm text-muted-foreground">
+            {filter === "all" ? "No drafts saved yet." : `No ${filter} drafts.`}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
-          {drafts.map((draft) => (
+          {filtered.map((draft) => (
             <div key={draft.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="text-xs text-muted-foreground truncate">
                     {(draft.ideas as any)?.idea_title || (draft.ideas as any)?.instruction || "Untitled"}
                   </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {new Date(draft.created_at).toLocaleDateString()} ·{" "}
-                    <span className="capitalize">{draft.status}</span>
-                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(draft.created_at).toLocaleDateString()}
+                    </span>
+                    {/* Status pills */}
+                    <div className="flex gap-1">
+                      {statusOptions.map((s) => (
+                        <button
+                          key={s}
+                          onClick={() => updateStatus(draft.id, s)}
+                          className={`rounded px-2 py-0.5 text-[10px] font-medium capitalize transition-colors ${
+                            draft.status === s
+                              ? statusColors[s]
+                              : "bg-transparent text-muted-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          {s}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
                   <button

@@ -32,12 +32,24 @@ serve(async (req) => {
       });
     }
 
-    const { instruction } = await req.json();
+    const { instruction, knowledge } = await req.json();
     if (!instruction || typeof instruction !== "string" || instruction.trim().length === 0) {
       return new Response(JSON.stringify({ error: "instruction is required" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Build knowledge context string if provided
+    let knowledgeBlock = "";
+    if (knowledge) {
+      const parts: string[] = [];
+      if (knowledge.productDescription) parts.push(`Product: ${knowledge.productDescription}`);
+      if (knowledge.features) parts.push(`Key features: ${knowledge.features}`);
+      if (knowledge.targetAudience) parts.push(`Target audience: ${knowledge.targetAudience}`);
+      if (parts.length > 0) {
+        knowledgeBlock = `\n\nPRODUCT CONTEXT (use this to make posts more specific and relevant):\n${parts.join("\n")}`;
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -96,7 +108,7 @@ Make posts LinkedIn-ready: professional but human, value-driven, concise.`;
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: instruction },
+          { role: "user", content: instruction + knowledgeBlock },
         ],
       }),
     });

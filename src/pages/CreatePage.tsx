@@ -4,18 +4,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, Copy, BookmarkPlus, ChevronDown, ChevronUp } from "lucide-react";
-
-type Post = {
-  id: string;
-  variation_number: number;
-  hook: string;
-  body: string;
-  cta: string;
-  first_comment: string | null;
-  post_style: string;
-  tone: string | null;
-};
+import { Loader2, Sparkles, LayoutGrid, List, BarChart3 } from "lucide-react";
+import KnowledgeInput, { KnowledgeContext } from "@/components/create/KnowledgeInput";
+import IdeaBrief from "@/components/create/IdeaBrief";
+import PostCard, { Post, PostScore } from "@/components/create/PostCard";
+import ComparisonView from "@/components/create/ComparisonView";
 
 type Idea = {
   id: string;
@@ -26,32 +19,38 @@ type Idea = {
   suggested_cta: string | null;
 };
 
-const styleLabels: Record<string, string> = {
-  product_insight: "Product Insight",
-  pain_solution: "Pain → Solution",
-  founder_tone: "Founder Tone",
-  educational: "Educational",
-  soft_promotion: "Soft Promotion",
-};
-
 const CreatePage = () => {
   const { user } = useAuth();
   const [instruction, setInstruction] = useState("");
   const [loading, setLoading] = useState(false);
   const [idea, setIdea] = useState<Idea | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [expandedIdea, setExpandedIdea] = useState(true);
-  const [savingDraft, setSavingDraft] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "compare">("list");
+  const [scores, setScores] = useState<Record<string, PostScore>>({});
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [scoring, setScoring] = useState(false);
+  const [knowledge, setKnowledge] = useState<KnowledgeContext>({
+    productDescription: "",
+    features: "",
+    targetAudience: "",
+  });
 
   const handleGenerate = async () => {
     if (!instruction.trim() || !user) return;
     setLoading(true);
     setIdea(null);
     setPosts([]);
+    setScores({});
+    setSelectedPostId(null);
 
     try {
       const { data, error } = await supabase.functions.invoke("generate-content", {
-        body: { instruction: instruction.trim() },
+        body: {
+          instruction: instruction.trim(),
+          knowledge: knowledge.productDescription || knowledge.features || knowledge.targetAudience
+            ? knowledge
+            : undefined,
+        },
       });
 
       if (error) throw error;
@@ -67,31 +66,31 @@ const CreatePage = () => {
     }
   };
 
-  const copyPost = (post: Post) => {
-    const text = `${post.hook}\n\n${post.body}\n\n${post.cta}`;
-    navigator.clipboard.writeText(text);
-    toast.success("Copied to clipboard");
-  };
-
-  const saveDraft = async (post: Post) => {
-    if (!user || !idea) return;
-    setSavingDraft(post.id);
+  const handleScore = async () => {
+    if (posts.length === 0) return;
+    setScoring(true);
     try {
-      const fullContent = `${post.hook}\n\n${post.body}\n\n${post.cta}`;
-      const { error } = await supabase.from("drafts").insert({
-        user_id: user.id,
-        idea_id: idea.id,
-        selected_post_id: post.id,
-        custom_content: fullContent,
-        status: "draft",
+      const { data, error } = await supabase.functions.invoke("score-posts", {
+        body: { posts },
       });
       if (error) throw error;
-      toast.success("Saved to drafts");
+      if (data?.error) throw new Error(data.error);
+
+      const scoreMap: Record<string, PostScore> = {};
+      data.scores?.forEach((s: PostScore) => {
+        scoreMap[s.post_id] = s;
+      });
+      setScores(scoreMap);
+      toast.success("Posts scored!");
     } catch (err: any) {
-      toast.error(err.message || "Failed to save draft");
+      toast.error(err.message || "Scoring failed");
     } finally {
-      setSavingDraft(null);
+      setScoring(false);
     }
+  };
+
+  const handlePostUpdate = (updated: Post) => {
+    setPosts((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   };
 
   return (
@@ -103,7 +102,10 @@ const CreatePage = () => {
         </p>
       </div>
 
-      {/* Input */}
+      {/* Knowledge Input */}
+      <KnowledgeInput value={knowledge} onChange={setKnowledge} />
+
+      {/* Instruction Input */}
       <div className="rounded-lg border border-border bg-card p-4">
         <Textarea
           placeholder='e.g. "Promote Chattrn chatbot for ecommerce"'
@@ -114,11 +116,7 @@ const CreatePage = () => {
         />
         <div className="mt-3 flex items-center justify-between">
           <span className="text-xs text-muted-foreground">{instruction.length}/600</span>
-          <Button
-            onClick={handleGenerate}
-            disabled={loading || !instruction.trim()}
-            size="sm"
-          >
+          <Button onClick={handleGenerate} disabled={loading || !instruction.trim()} size="sm">
             {loading ? (
               <>
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -135,96 +133,77 @@ const CreatePage = () => {
       </div>
 
       {/* Idea Brief */}
-      {idea && (
-        <div className="rounded-lg border border-border bg-card">
-          <button
-            onClick={() => setExpandedIdea(!expandedIdea)}
-            className="flex w-full items-center justify-between p-4 text-left"
-          >
-            <div>
-              <p className="text-sm font-medium text-foreground">{idea.idea_title}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground capitalize">{idea.objective}</p>
-            </div>
-            {expandedIdea ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
-          </button>
-          {expandedIdea && (
-            <div className="border-t border-border px-4 py-3 space-y-2">
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
-                  <span className="text-muted-foreground">Audience</span>
-                  <p className="text-foreground mt-0.5">{idea.target_audience}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">CTA</span>
-                  <p className="text-foreground mt-0.5">{idea.suggested_cta}</p>
-                </div>
-              </div>
-              <div className="text-xs">
-                <span className="text-muted-foreground">Core message</span>
-                <p className="text-foreground mt-0.5">{idea.core_message}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+      {idea && <IdeaBrief idea={idea} />}
 
       {/* Posts */}
       {posts.length > 0 && (
         <div className="space-y-4">
-          <h2 className="text-sm font-medium text-foreground">4 Variations</h2>
-          {posts
-            .sort((a, b) => a.variation_number - b.variation_number)
-            .map((post) => (
-              <div key={post.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-secondary text-xs font-medium text-secondary-foreground">
-                      {post.variation_number}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {styleLabels[post.post_style] || post.post_style}
-                    </span>
-                    {post.tone && (
-                      <span className="text-xs text-muted-foreground">· {post.tone}</span>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => copyPost(post)}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                      title="Copy"
-                    >
-                      <Copy className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => saveDraft(post)}
-                      disabled={savingDraft === post.id}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
-                      title="Save to drafts"
-                    >
-                      <BookmarkPlus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2 text-sm text-foreground">
-                  <p className="font-medium">{post.hook}</p>
-                  <p className="whitespace-pre-line leading-relaxed">{post.body}</p>
-                  <p className="font-medium">{post.cta}</p>
-                </div>
-
-                {post.first_comment && (
-                  <div className="rounded-md bg-secondary p-3">
-                    <p className="text-xs text-muted-foreground mb-1">Suggested first comment</p>
-                    <p className="text-xs text-secondary-foreground">{post.first_comment}</p>
-                  </div>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-foreground">4 Variations</h2>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleScore}
+                disabled={scoring}
+                className="h-8 text-xs"
+              >
+                {scoring ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <BarChart3 className="mr-1 h-3.5 w-3.5" />
                 )}
-              </div>
-            ))}
+                Score
+              </Button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`rounded-md p-1.5 transition-colors ${
+                  viewMode === "list"
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <List className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setViewMode("compare")}
+                className={`rounded-md p-1.5 transition-colors ${
+                  viewMode === "compare"
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+
+          {viewMode === "compare" && idea ? (
+            <ComparisonView
+              posts={posts}
+              ideaId={idea.id}
+              userId={user!.id}
+              scores={scores}
+              selectedId={selectedPostId}
+              onSelect={setSelectedPostId}
+              onPostUpdate={handlePostUpdate}
+            />
+          ) : (
+            <div className="space-y-4">
+              {posts
+                .sort((a, b) => a.variation_number - b.variation_number)
+                .map((post) => (
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    ideaId={idea!.id}
+                    userId={user!.id}
+                    score={scores[post.id]}
+                    onPostUpdate={handlePostUpdate}
+                  />
+                ))}
+            </div>
+          )}
         </div>
       )}
     </div>
