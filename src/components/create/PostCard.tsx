@@ -39,7 +39,12 @@ const styleLabels: Record<string, string> = {
   product_insight: "Product Insight",
   pain_solution: "Pain → Solution",
   founder_tone: "Founder Tone",
+  founder_story: "Founder Story",
+  customer_story: "Customer Story",
   educational: "Educational",
+  framework: "Framework",
+  hybrid_story_insight: "Story + Insight",
+  hybrid_pain_education: "Pain + Education",
   soft_promotion: "Soft Promotion",
 };
 
