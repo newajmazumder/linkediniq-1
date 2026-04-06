@@ -45,15 +45,16 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    // Fetch all posted drafts with performance data
+    // Fetch all posted drafts
     const { data: drafts, error: draftErr } = await supabase
       .from("drafts")
-      .select("id, custom_content, status, ideas(idea_title, instruction)")
+      .select("id, custom_content, status, selected_post_id, ideas(idea_title, instruction)")
       .eq("status", "posted")
       .eq("user_id", user.id);
 
     if (draftErr) throw draftErr;
 
+    // Fetch performance data
     const { data: performances, error: perfErr } = await supabase
       .from("post_performance")
       .select("*")
@@ -61,9 +62,29 @@ serve(async (req) => {
 
     if (perfErr) throw perfErr;
 
-    // Build enriched dataset
+    // Fetch all posts with metadata (persona, tone, hook_type, post_style, content_intent)
+    const { data: allPosts, error: postsErr } = await supabase
+      .from("posts")
+      .select("id, post_style, tone, hook_type, content_intent, persona_id, campaign_id")
+      .eq("user_id", user.id);
+
+    if (postsErr) throw postsErr;
+
+    // Fetch personas for name mapping
+    const { data: personas } = await supabase
+      .from("audience_personas")
+      .select("id, name, industry, awareness_level, language_style")
+      .eq("user_id", user.id);
+
+    const personaMap: Record<string, any> = {};
+    (personas || []).forEach((p: any) => { personaMap[p.id] = p; });
+
+    // Build enriched dataset with full post metadata
     const enriched = (drafts || []).map((d: any) => {
       const perf = (performances || []).find((p: any) => p.draft_id === d.id);
+      const post = (allPosts || []).find((p: any) => p.id === d.selected_post_id);
+      const persona = post?.persona_id ? personaMap[post.persona_id] : null;
+
       return {
         title: d.ideas?.idea_title || "Untitled",
         content_preview: (d.custom_content || "").slice(0, 200),
@@ -73,6 +94,16 @@ serve(async (req) => {
         engagement_rate: perf && perf.impressions > 0
           ? ((perf.likes + perf.comments) / perf.impressions * 100).toFixed(2) + "%"
           : "0%",
+        // Post metadata for feedback loop
+        post_style: post?.post_style || "unknown",
+        tone: post?.tone || "unknown",
+        hook_type: post?.hook_type || "unknown",
+        content_intent: post?.content_intent || "unknown",
+        // Persona metadata
+        persona_name: persona?.name || "Unknown",
+        persona_industry: persona?.industry || "Unknown",
+        persona_awareness: persona?.awareness_level || "unknown",
+        persona_language: persona?.language_style || "english",
       };
     });
 
@@ -89,12 +120,13 @@ serve(async (req) => {
             post_next: ["Create and publish more content to build your analytics dataset."],
             avoid: [],
           },
+          persona_insights: [],
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const prompt = `You are a LinkedIn content strategist. Analyze these post performance metrics and provide actionable insights.
+    const prompt = `You are a LinkedIn content strategist. Analyze these post performance metrics WITH full metadata (persona, tone, hook type, content style, content intent) and provide deep, persona-specific insights.
 
 Posts data:
 ${JSON.stringify(enriched, null, 2)}
@@ -110,10 +142,42 @@ Return a JSON object with this exact structure:
   "suggestions": {
     "post_next": ["3-5 specific actionable suggestions for next posts based on what works"],
     "avoid": ["2-3 things to avoid based on low performance patterns"]
+  },
+  "persona_insights": [
+    {
+      "persona_name": "string (exact persona name from the data)",
+      "best_hook_type": "string (which hook type performs best for this persona)",
+      "best_content_style": "string (which post_style works best)",
+      "best_tone": "string (which tone resonates most)",
+      "best_content_intent": "string (which intent drives most engagement)",
+      "engagement_pattern": "string (1-2 sentence insight, e.g. 'Bangladeshi ecommerce founders respond better to pain-driven storytelling than feature posts')",
+      "recommendation": "string (specific actionable recommendation for this persona)"
+    }
+  ],
+  "content_learnings": {
+    "hook_performance": {
+      "curiosity": "string (how curiosity hooks performed overall)",
+      "contrarian": "string (how contrarian hooks performed)",
+      "pain_driven": "string (how pain-driven hooks performed)",
+      "data_bold": "string (how data/bold hooks performed)"
+    },
+    "style_performance": {
+      "storytelling": "string (how story-based posts performed)",
+      "educational": "string (how educational posts performed)",
+      "hybrid": "string (how hybrid posts performed)",
+      "product_led": "string (how product-led posts performed)"
+    },
+    "tone_performance": "string (which tones convert best and why)"
   }
 }
 
-Be specific and reference the actual data. If there's limited data, still provide your best analysis. Return ONLY valid JSON.`;
+IMPORTANT:
+- Group insights BY PERSONA. Show what works for each specific audience.
+- Generate learning statements like: "[Persona] responds better to [X] than [Y]"
+- Be specific about which hook types, tones, and content styles work for which personas.
+- If there's limited data for a persona, still provide your best analysis.
+- Reference actual numbers from the data.
+Return ONLY valid JSON.`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

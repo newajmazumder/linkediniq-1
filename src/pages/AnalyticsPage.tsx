@@ -15,6 +15,10 @@ import {
   Loader2,
   Save,
   Sparkles,
+  Users,
+  Zap,
+  BookOpen,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +47,32 @@ type Suggestions = {
   avoid: string[];
 };
 
+type PersonaInsight = {
+  persona_name: string;
+  best_hook_type: string;
+  best_content_style: string;
+  best_tone: string;
+  best_content_intent: string;
+  engagement_pattern: string;
+  recommendation: string;
+};
+
+type ContentLearnings = {
+  hook_performance: {
+    curiosity: string;
+    contrarian: string;
+    pain_driven: string;
+    data_bold: string;
+  };
+  style_performance: {
+    storytelling: string;
+    educational: string;
+    hybrid: string;
+    product_led: string;
+  };
+  tone_performance: string;
+};
+
 const AnalyticsPage = () => {
   const { user } = useAuth();
   const [drafts, setDrafts] = useState<PostedDraft[]>([]);
@@ -51,6 +81,8 @@ const AnalyticsPage = () => {
   const [analyzing, setAnalyzing] = useState(false);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null);
+  const [personaInsights, setPersonaInsights] = useState<PersonaInsight[]>([]);
+  const [contentLearnings, setContentLearnings] = useState<ContentLearnings | null>(null);
   const [perfInputs, setPerfInputs] = useState<
     Record<string, { impressions: string; likes: string; comments: string }>
   >({});
@@ -138,6 +170,8 @@ const AnalyticsPage = () => {
 
       setInsights(data.insights || null);
       setSuggestions(data.suggestions || null);
+      setPersonaInsights(data.persona_insights || []);
+      setContentLearnings(data.content_learnings || null);
       toast.success("Insights generated!");
     } catch (err: any) {
       toast.error(err.message || "Failed to generate insights");
@@ -187,7 +221,7 @@ const AnalyticsPage = () => {
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Analytics</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Track performance and get AI-powered content suggestions.
+          Track performance, get persona-specific insights, and let the system learn what works.
         </p>
       </div>
 
@@ -346,15 +380,15 @@ const AnalyticsPage = () => {
 
           <div className="grid gap-3 sm:grid-cols-3">
             {[
-              { title: "Best Hooks", items: insights.best_hooks, color: "text-primary" },
-              { title: "Best Themes", items: insights.best_themes, color: "text-primary" },
-              { title: "Best Post Types", items: insights.best_post_types, color: "text-primary" },
-            ].map(({ title, items, color }) => (
+              { title: "Best Hooks", items: insights.best_hooks },
+              { title: "Best Themes", items: insights.best_themes },
+              { title: "Best Post Types", items: insights.best_post_types },
+            ].map(({ title, items }) => (
               <div
                 key={title}
                 className="rounded-lg border border-border bg-card p-4 space-y-2"
               >
-                <h3 className={cn("text-xs font-medium", color)}>{title}</h3>
+                <h3 className="text-xs font-medium text-primary">{title}</h3>
                 {items && items.length > 0 ? (
                   <ul className="space-y-1">
                     {items.map((item, i) => (
@@ -375,6 +409,102 @@ const AnalyticsPage = () => {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Persona-Specific Insights */}
+      {personaInsights.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <Users className="h-4 w-4 text-primary" />
+            Persona Learnings
+          </h2>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {personaInsights.map((pi, i) => (
+              <div
+                key={i}
+                className="rounded-lg border border-border bg-card p-4 space-y-3"
+              >
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary shrink-0" />
+                  <h3 className="text-sm font-medium text-foreground">{pi.persona_name}</h3>
+                </div>
+
+                <p className="text-xs text-primary font-medium italic">
+                  "{pi.engagement_pattern}"
+                </p>
+
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: "Best Hook", value: pi.best_hook_type },
+                    { label: "Best Style", value: pi.best_content_style },
+                    { label: "Best Tone", value: pi.best_tone },
+                    { label: "Best Intent", value: pi.best_content_intent },
+                  ].map(({ label, value }) => (
+                    <div key={label}>
+                      <span className="text-[10px] text-muted-foreground">{label}</span>
+                      <p className="text-xs font-medium text-foreground">{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-border pt-2">
+                  <div className="flex items-start gap-1.5">
+                    <Zap className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                    <p className="text-xs text-foreground">{pi.recommendation}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Content Learnings */}
+      {contentLearnings && (
+        <div className="space-y-3">
+          <h2 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <BookOpen className="h-4 w-4 text-primary" />
+            Content Performance Breakdown
+          </h2>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {/* Hook Performance */}
+            <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+              <h3 className="text-xs font-medium text-primary">Hook Performance</h3>
+              {Object.entries(contentLearnings.hook_performance || {}).map(([key, val]) => (
+                <div key={key} className="flex items-start gap-1.5">
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <div>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase">{key.replace("_", " ")}</span>
+                    <p className="text-xs text-foreground">{val}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Style Performance */}
+            <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+              <h3 className="text-xs font-medium text-primary">Style Performance</h3>
+              {Object.entries(contentLearnings.style_performance || {}).map(([key, val]) => (
+                <div key={key} className="flex items-start gap-1.5">
+                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                  <div>
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase">{key.replace("_", " ")}</span>
+                    <p className="text-xs text-foreground">{val}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {contentLearnings.tone_performance && (
+            <div className="rounded-lg border border-border bg-card p-4">
+              <h3 className="text-xs font-medium text-primary mb-1">Tone Performance</h3>
+              <p className="text-xs text-foreground">{contentLearnings.tone_performance}</p>
+            </div>
+          )}
         </div>
       )}
 
