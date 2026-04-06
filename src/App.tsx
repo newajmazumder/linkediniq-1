@@ -10,6 +10,7 @@ import CreatePage from "@/pages/CreatePage";
 import DraftsPage from "@/pages/DraftsPage";
 import CompetitorsPage from "@/pages/CompetitorsPage";
 import CalendarPage from "@/pages/CalendarPage";
+import AnalyticsPage from "@/pages/AnalyticsPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
