@@ -134,7 +134,7 @@ const CreatePage = () => {
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Create</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Describe what you want to promote — get 4 LinkedIn posts instantly.
+          Select a persona and campaign, then describe what you want to promote.
         </p>
       </div>
 
