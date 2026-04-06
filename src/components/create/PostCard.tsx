@@ -170,7 +170,8 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
                 )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuContent align="end" className="w-52">
+              <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Refine</p>
               <DropdownMenuItem onClick={() => rewritePost("regenerate_hook")}>
                 <RefreshCw className="mr-2 h-3.5 w-3.5" /> Regenerate Hook
               </DropdownMenuItem>
@@ -178,8 +179,9 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
                 <RefreshCw className="mr-2 h-3.5 w-3.5" /> Regenerate CTA
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Tone</p>
               <DropdownMenuItem onClick={() => rewritePost("rewrite_shorter")}>
-                <Minus className="mr-2 h-3.5 w-3.5" /> Rewrite Shorter
+                <Minus className="mr-2 h-3.5 w-3.5" /> Shorter
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => rewritePost("rewrite_human")}>
                 <User className="mr-2 h-3.5 w-3.5" /> More Human
@@ -188,7 +190,32 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
                 <Zap className="mr-2 h-3.5 w-3.5" /> More Bold
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => rewritePost("rewrite_product")}>
-                <Package className="mr-2 h-3.5 w-3.5" /> More Product-Focused
+                <Package className="mr-2 h-3.5 w-3.5" /> Product-Focused
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Content Style</p>
+              <DropdownMenuItem onClick={() => rewritePost("rewrite_story")}>
+                <BookOpen className="mr-2 h-3.5 w-3.5" /> Story Format
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => rewritePost("rewrite_educational")}>
+                <MessageSquare className="mr-2 h-3.5 w-3.5" /> Educational Framework
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => rewritePost("rewrite_hybrid")}>
+                <Shuffle className="mr-2 h-3.5 w-3.5" /> Hybrid (Story + Insight)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Hook Style</p>
+              <DropdownMenuItem onClick={() => rewritePost("hook_curiosity")}>
+                <Eye className="mr-2 h-3.5 w-3.5" /> Curiosity Hook
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => rewritePost("hook_contrarian")}>
+                <Bold className="mr-2 h-3.5 w-3.5" /> Contrarian Hook
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => rewritePost("hook_pain")}>
+                <AlertTriangle className="mr-2 h-3.5 w-3.5" /> Pain-Driven Hook
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => rewritePost("hook_data")}>
+                <BarChart3 className="mr-2 h-3.5 w-3.5" /> Data/Bold Hook
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
