@@ -9,6 +9,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import CreatePage from "@/pages/CreatePage";
 import DraftsPage from "@/pages/DraftsPage";
 import CompetitorsPage from "@/pages/CompetitorsPage";
+import CalendarPage from "@/pages/CalendarPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
