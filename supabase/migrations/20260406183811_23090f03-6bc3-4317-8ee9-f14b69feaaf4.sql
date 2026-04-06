@@ -1,0 +1,2 @@
+ALTER TABLE public.drafts DROP CONSTRAINT drafts_status_check;
+ALTER TABLE public.drafts ADD CONSTRAINT drafts_status_check CHECK (status = ANY (ARRAY['idea'::text, 'draft'::text, 'approved'::text, 'scheduled'::text, 'posted'::text]));
