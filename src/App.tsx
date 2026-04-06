@@ -36,6 +36,7 @@ const AppRoutes = () => {
         <Route path="/drafts" element={<DraftsPage />} />
         <Route path="/competitors" element={<CompetitorsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
