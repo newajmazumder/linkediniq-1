@@ -1,25 +1,51 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import Index from "./pages/Index.tsx";
-import NotFound from "./pages/NotFound.tsx";
+import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import AuthPage from "@/pages/AuthPage";
+import AppLayout from "@/components/AppLayout";
+import DashboardPage from "@/pages/DashboardPage";
+import CreatePage from "@/pages/CreatePage";
+import DraftsPage from "@/pages/DraftsPage";
+import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
+
+const AppRoutes = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p className="text-sm text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (!user) return <AuthPage />;
+
+  return (
+    <Routes>
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/create" element={<CreatePage />} />
+        <Route path="/drafts" element={<DraftsPage />} />
+      </Route>
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
       <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
