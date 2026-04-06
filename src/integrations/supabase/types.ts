@@ -14,6 +14,135 @@ export type Database = {
   }
   public: {
     Tables: {
+      audience_personas: {
+        Row: {
+          awareness_level: string | null
+          business_size: string | null
+          buying_triggers: string | null
+          content_preference: string | null
+          created_at: string
+          geography: string | null
+          goals: Json | null
+          id: string
+          industry: string | null
+          language_style: string | null
+          name: string
+          objections: Json | null
+          pain_points: Json | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          awareness_level?: string | null
+          business_size?: string | null
+          buying_triggers?: string | null
+          content_preference?: string | null
+          created_at?: string
+          geography?: string | null
+          goals?: Json | null
+          id?: string
+          industry?: string | null
+          language_style?: string | null
+          name: string
+          objections?: Json | null
+          pain_points?: Json | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          awareness_level?: string | null
+          business_size?: string | null
+          buying_triggers?: string | null
+          content_preference?: string | null
+          created_at?: string
+          geography?: string | null
+          goals?: Json | null
+          id?: string
+          industry?: string | null
+          language_style?: string | null
+          name?: string
+          objections?: Json | null
+          pain_points?: Json | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      campaigns: {
+        Row: {
+          core_message: string | null
+          created_at: string
+          cta_type: string | null
+          goal: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          offer: string | null
+          primary_persona_id: string | null
+          secondary_persona_id: string | null
+          style_authority: number | null
+          style_educational: number | null
+          style_product_led: number | null
+          style_storytelling: number | null
+          tone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          core_message?: string | null
+          created_at?: string
+          cta_type?: string | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          offer?: string | null
+          primary_persona_id?: string | null
+          secondary_persona_id?: string | null
+          style_authority?: number | null
+          style_educational?: number | null
+          style_product_led?: number | null
+          style_storytelling?: number | null
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          core_message?: string | null
+          created_at?: string
+          cta_type?: string | null
+          goal?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          offer?: string | null
+          primary_persona_id?: string | null
+          secondary_persona_id?: string | null
+          style_authority?: number | null
+          style_educational?: number | null
+          style_product_led?: number | null
+          style_storytelling?: number | null
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaigns_primary_persona_id_fkey"
+            columns: ["primary_persona_id"]
+            isOneToOne: false
+            referencedRelation: "audience_personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaigns_secondary_persona_id_fkey"
+            columns: ["secondary_persona_id"]
+            isOneToOne: false
+            referencedRelation: "audience_personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       competitor_insights: {
         Row: {
           competitor_id: string | null
@@ -263,12 +392,15 @@ export type Database = {
       posts: {
         Row: {
           body: string
+          campaign_id: string | null
+          content_intent: string | null
           created_at: string
           cta: string
           first_comment: string | null
           hook: string
           id: string
           idea_id: string
+          persona_id: string | null
           post_style: string
           tone: string | null
           updated_at: string
@@ -277,12 +409,15 @@ export type Database = {
         }
         Insert: {
           body: string
+          campaign_id?: string | null
+          content_intent?: string | null
           created_at?: string
           cta: string
           first_comment?: string | null
           hook: string
           id?: string
           idea_id: string
+          persona_id?: string | null
           post_style: string
           tone?: string | null
           updated_at?: string
@@ -291,12 +426,15 @@ export type Database = {
         }
         Update: {
           body?: string
+          campaign_id?: string | null
+          content_intent?: string | null
           created_at?: string
           cta?: string
           first_comment?: string | null
           hook?: string
           id?: string
           idea_id?: string
+          persona_id?: string | null
           post_style?: string
           tone?: string | null
           updated_at?: string

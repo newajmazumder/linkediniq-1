@@ -11,6 +11,8 @@ import DraftsPage from "@/pages/DraftsPage";
 import CompetitorsPage from "@/pages/CompetitorsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
+import AudiencePage from "@/pages/AudiencePage";
+import StrategyPage from "@/pages/StrategyPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -37,6 +39,8 @@ const AppRoutes = () => {
         <Route path="/competitors" element={<CompetitorsPage />} />
         <Route path="/calendar" element={<CalendarPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/audience" element={<AudiencePage />} />
+        <Route path="/strategy" element={<StrategyPage />} />
       </Route>
       <Route path="*" element={<NotFound />} />
     </Routes>
