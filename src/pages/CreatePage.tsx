@@ -208,7 +208,7 @@ const CreatePage = () => {
 
       {/* Right column — Output */}
       {hasOutput && (
-        <div className="flex-1 min-w-0 overflow-y-auto space-y-5">
+        <div className="flex-1 min-w-0 overflow-y-auto space-y-5 px-6 py-8">
           {/* Idea Brief */}
           {idea && <IdeaBrief idea={idea} />}
 
