@@ -190,9 +190,9 @@ const CompetitorsPage = () => {
   }
 
   return (
-    <div className="content-fade-in flex h-full gap-6">
+    <div className="content-fade-in flex h-full">
       {/* Left column — Competitors list & paste input */}
-      <div className={`space-y-5 overflow-y-auto pr-2 transition-all duration-300 ${hasOutput ? "w-[380px] min-w-[340px] shrink-0" : "mx-auto w-full max-w-2xl"}`}>
+      <div className={`space-y-5 overflow-y-auto transition-all duration-300 ${hasOutput ? "w-[380px] min-w-[340px] shrink-0 border-r border-border px-6 py-8" : "mx-auto w-full max-w-2xl px-6 py-8"}`}>
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Competitors</h1>
