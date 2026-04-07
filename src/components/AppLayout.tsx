@@ -8,8 +8,8 @@ const AppLayout = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       <AppSidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className={isFullWidth ? "h-full px-6 py-8" : "mx-auto max-w-4xl px-6 py-8"}>
+      <main className={`flex-1 overflow-y-auto ${isFullWidth ? "" : ""}`}>
+        <div className={isFullWidth ? "h-full" : "mx-auto max-w-4xl px-6 py-8"}>
           <Outlet />
         </div>
       </main>

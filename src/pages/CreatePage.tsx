@@ -131,9 +131,9 @@ const CreatePage = () => {
   const hasOutput = idea || posts.length > 0;
 
   return (
-    <div className="content-fade-in flex h-full gap-6">
+    <div className="content-fade-in flex h-full">
       {/* Left column — Input */}
-      <div className={`space-y-5 overflow-y-auto pr-2 transition-all duration-300 ${hasOutput ? "w-[380px] min-w-[340px] shrink-0" : "mx-auto w-full max-w-2xl"}`}>
+      <div className={`space-y-5 overflow-y-auto transition-all duration-300 ${hasOutput ? "w-[380px] min-w-[340px] shrink-0 border-r border-border px-6 py-8" : "mx-auto w-full max-w-2xl px-6 py-8"}`}>
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Create</h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -208,7 +208,7 @@ const CreatePage = () => {
 
       {/* Right column — Output */}
       {hasOutput && (
-        <div className="flex-1 min-w-0 overflow-y-auto space-y-5">
+        <div className="flex-1 min-w-0 overflow-y-auto space-y-5 px-6 py-8">
           {/* Idea Brief */}
           {idea && <IdeaBrief idea={idea} />}
 
