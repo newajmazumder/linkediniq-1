@@ -299,7 +299,7 @@ const CompetitorsPage = () => {
 
       {/* Right column — Analysis results */}
       {hasOutput && (
-        <div className="flex-1 min-w-0 overflow-y-auto space-y-4">
+        <div className="flex-1 min-w-0 overflow-y-auto space-y-4 px-6 py-8">
           {/* Post Analyses */}
           {postAnalyses.length > 0 && (
             <div className="rounded-lg border border-border bg-card">
