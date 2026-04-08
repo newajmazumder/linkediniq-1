@@ -71,7 +71,17 @@ function buildCampaignBlock(data: any): string {
 IMPORTANT: Align all posts with this campaign's goal, tone, CTA type, and style mix. Weight the 4 variations according to the style mix percentages.`;
 }
 
-function buildBusinessContextBlock(profile: any, chunks: any[]): string {
+// Goal-aware chunk prioritization map
+const GOAL_CATEGORY_PRIORITIES: Record<string, string[]> = {
+  awareness: ["pain_points", "audience_notes", "founder_voice", "company_overview"],
+  engagement: ["founder_voice", "company_overview", "case_study", "audience_notes"],
+  conversion: ["product_overview", "feature_docs", "case_study", "cta_guidance", "proof_points"],
+  authority: ["positioning", "proof_points", "release_notes", "case_study", "company_overview"],
+  lead_generation: ["product_overview", "case_study", "proof_points", "cta_guidance", "feature_docs"],
+  education: ["product_overview", "feature_docs", "positioning", "company_overview"],
+};
+
+function buildBusinessContextBlock(profile: any, chunks: any[], campaignGoal?: string): string {
   const parts: string[] = [];
   
   if (profile) {
@@ -103,8 +113,23 @@ function buildBusinessContextBlock(profile: any, chunks: any[]): string {
   }
   
   if (chunks.length > 0) {
+    // Goal-aware filtering: prioritize chunks by source_category matching goal
+    let sortedChunks = chunks;
+    if (campaignGoal) {
+      const priorities = GOAL_CATEGORY_PRIORITIES[campaignGoal] || [];
+      sortedChunks = [...chunks].sort((a, b) => {
+        const catA = a.metadata?.source_category || "";
+        const catB = b.metadata?.source_category || "";
+        const idxA = priorities.indexOf(catA);
+        const idxB = priorities.indexOf(catB);
+        const scoreA = idxA >= 0 ? idxA : 100;
+        const scoreB = idxB >= 0 ? idxB : 100;
+        return scoreA - scoreB;
+      });
+    }
+
     parts.push("\nRELEVANT SOURCE EXCERPTS:");
-    for (const chunk of chunks.slice(0, 8)) {
+    for (const chunk of sortedChunks.slice(0, 8)) {
       parts.push(`[${chunk.metadata?.source_category || "general"}: ${chunk.metadata?.source_title || "source"}]\n${chunk.chunk_text.slice(0, 500)}`);
     }
   }
@@ -119,6 +144,61 @@ IMPORTANT BUSINESS CONTEXT RULES:
 - Prioritize the strongest differentiators and messaging angles found above.
 - Reflect the brand tone and voice described.
 - Each post must include a "context_rationale" explaining which business angle was used.`;
+}
+
+function buildPerformanceIntelligenceBlock(patterns: any[]): string {
+  if (!patterns || patterns.length === 0) return "";
+
+  const parts: string[] = ["\n\nPERFORMANCE INTELLIGENCE (from past content analysis):"];
+  parts.push("The following patterns are learned from the user's ACTUAL published content performance. Use these to make smarter decisions.\n");
+
+  // Group patterns by dimension
+  const byDim: Record<string, any[]> = {};
+  for (const p of patterns) {
+    if (!byDim[p.dimension]) byDim[p.dimension] = [];
+    byDim[p.dimension].push(p);
+  }
+
+  // Sort each dimension group by engagement rate
+  for (const [dim, items] of Object.entries(byDim)) {
+    const sorted = items.sort((a: any, b: any) => (b.avg_engagement_rate || 0) - (a.avg_engagement_rate || 0));
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    
+    const dimLabel = dim.replace(/_/g, " ").toUpperCase();
+    parts.push(`${dimLabel}:`);
+    for (const p of sorted) {
+      parts.push(`  - "${p.dimension_value}": ${p.avg_engagement_rate}% avg engagement, ${p.avg_impressions} avg impressions (${p.sample_count} posts)`);
+    }
+    if (sorted.length > 1) {
+      parts.push(`  → BEST: "${best.dimension_value}" | WORST: "${worst.dimension_value}"`);
+    }
+    if (best.insight) parts.push(`  → Insight: ${best.insight}`);
+    parts.push("");
+  }
+
+  // Build what to repeat / avoid
+  const allSorted = [...patterns].sort((a, b) => (b.avg_engagement_rate || 0) - (a.avg_engagement_rate || 0));
+  const topPatterns = allSorted.slice(0, 3);
+  const bottomPatterns = allSorted.filter(p => p.sample_count >= 2).slice(-3);
+
+  if (topPatterns.length > 0) {
+    parts.push("WHAT WORKS (prioritize these):");
+    for (const p of topPatterns) {
+      parts.push(`  ✓ ${p.dimension.replace(/_/g, " ")}="${p.dimension_value}" — ${p.avg_engagement_rate}% engagement`);
+    }
+  }
+
+  if (bottomPatterns.length > 0) {
+    parts.push("WHAT TO AVOID (these underperform):");
+    for (const p of bottomPatterns) {
+      parts.push(`  ✗ ${p.dimension.replace(/_/g, " ")}="${p.dimension_value}" — only ${p.avg_engagement_rate}% engagement`);
+    }
+  }
+
+  parts.push("\nCRITICAL: Use these learnings to inform your content decisions. Favor high-performing hook types, tones, and styles. Avoid patterns that consistently underperform UNLESS the user's instruction specifically requests them.");
+
+  return parts.join("\n");
 }
 
 function buildSystemPrompt(hasPersona: boolean, hasCampaign: boolean): string {
@@ -245,7 +325,6 @@ serve(async (req) => {
 
     const { instruction, knowledge, persona_id, campaign_id } = await req.json();
 
-    // Persona and campaign are now required
     if (!persona_id || persona_id === "none") {
       return new Response(JSON.stringify({ error: "Please select a target persona" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -257,7 +336,6 @@ serve(async (req) => {
       });
     }
 
-    // Build knowledge context
     let knowledgeBlock = "";
     if (knowledge) {
       const parts: string[] = [];
@@ -269,7 +347,7 @@ serve(async (req) => {
       }
     }
 
-    // Fetch persona
+    // Fetch persona and campaign
     const { data: personaData } = await supabase.from("audience_personas").select("*").eq("id", persona_id).single();
     if (!personaData) {
       return new Response(JSON.stringify({ error: "Selected persona not found" }), {
@@ -278,7 +356,6 @@ serve(async (req) => {
     }
     const personaBlock = buildPersonaBlock(personaData);
 
-    // Fetch campaign
     const { data: campaignData } = await supabase.from("campaigns").select("*").eq("id", campaign_id).single();
     if (!campaignData) {
       return new Response(JSON.stringify({ error: "Selected campaign not found" }), {
@@ -286,37 +363,34 @@ serve(async (req) => {
       });
     }
     const campaignBlock = buildCampaignBlock(campaignData);
+    const campaignGoal = campaignData.goal || "awareness";
 
-    // Fetch business context
-    const [profileRes, chunksRes] = await Promise.all([
+    // Fetch business context, chunks, AND learned patterns in parallel
+    const [profileRes, chunksRes, patternsRes] = await Promise.all([
       supabase.from("business_profiles").select("*").eq("user_id", user.id).maybeSingle(),
       supabase.from("context_chunks")
         .select("chunk_text, metadata")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .limit(20),
+      supabase.from("content_patterns")
+        .select("dimension, dimension_value, sample_count, avg_impressions, avg_engagement_rate, avg_likes, avg_comments, insight")
+        .eq("user_id", user.id)
+        .order("avg_engagement_rate", { ascending: false }),
     ]);
 
-    // Filter chunks by active sources
-    let relevantChunks = chunksRes.data || [];
-    if (relevantChunks.length > 0) {
-      const { data: activeSources } = await supabase
-        .from("context_sources")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true);
-      const activeIds = new Set((activeSources || []).map((s: any) => s.id));
-      // chunks don't have source_id in select, but we fetched from active user — keep all for now
-    }
+    const relevantChunks = chunksRes.data || [];
+    const businessContextBlock = buildBusinessContextBlock(profileRes.data, relevantChunks as any[], campaignGoal);
 
-    const businessContextBlock = buildBusinessContextBlock(profileRes.data, relevantChunks as any[]);
+    // Build performance intelligence block from learned patterns (CLOSED LOOP)
+    const performanceBlock = buildPerformanceIntelligenceBlock(patternsRes.data || []);
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = buildSystemPrompt(true, true);
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
-    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + businessContextBlock;
+    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + businessContextBlock + performanceBlock;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -360,7 +434,6 @@ serve(async (req) => {
 
     const parsed = JSON.parse(cleanContent);
 
-    // Save idea with new persona-aware fields
     const { data: idea, error: ideaError } = await supabase
       .from("ideas")
       .insert({
@@ -380,7 +453,6 @@ serve(async (req) => {
 
     if (ideaError) throw ideaError;
 
-    // Save posts
     const postsToInsert = parsed.posts.map((p: any) => ({
       user_id: user.id,
       idea_id: idea.id,
