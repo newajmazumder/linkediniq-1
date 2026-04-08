@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle } from "lucide-react";
+import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle, Loader2, BarChart3, AlertTriangle, CheckCircle, Lightbulb } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,17 @@ type Draft = {
   ideas?: { idea_title: string | null; instruction: string } | null;
 };
 
+type PredictionResult = {
+  hook_strength: number;
+  persona_relevance: number;
+  clarity: number;
+  goal_alignment: number;
+  predicted_score: number;
+  risk_level: string;
+  suggestions: string[];
+  historical_comparison: string;
+};
+
 const statusOptions = ["idea", "draft", "approved", "scheduled", "posted"] as const;
 type Status = (typeof statusOptions)[number];
 
@@ -33,6 +44,12 @@ const statusColors: Record<Status, string> = {
   posted: "bg-primary text-primary-foreground",
 };
 
+const riskColors: Record<string, string> = {
+  low: "text-green-600",
+  medium: "text-yellow-600",
+  high: "text-destructive",
+};
+
 const DraftsPage = () => {
   const { user } = useAuth();
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -41,6 +58,8 @@ const DraftsPage = () => {
   const [editContent, setEditContent] = useState("");
   const [filter, setFilter] = useState<Status | "all">("all");
   const [scheduleId, setScheduleId] = useState<string | null>(null);
+  const [scoringId, setScoringId] = useState<string | null>(null);
+  const [predictions, setPredictions] = useState<Record<string, PredictionResult>>({});
 
   const fetchDrafts = async () => {
     if (!user) return;
@@ -87,9 +106,7 @@ const DraftsPage = () => {
     if (error) {
       toast.error("Failed to update status");
     } else {
-      setDrafts((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, status } : d))
-      );
+      setDrafts((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d)));
       toast.success(`Marked as ${status}`);
     }
   };
@@ -126,6 +143,23 @@ const DraftsPage = () => {
     if (!content) return;
     navigator.clipboard.writeText(content);
     toast.success("Copied");
+  };
+
+  const predictScore = async (draftId: string) => {
+    setScoringId(draftId);
+    try {
+      const { data, error } = await supabase.functions.invoke("predict-score", {
+        body: { draft_id: draftId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setPredictions((prev) => ({ ...prev, [draftId]: data }));
+      toast.success("Prediction complete!");
+    } catch (err: any) {
+      toast.error(err.message || "Prediction failed");
+    } finally {
+      setScoringId(null);
+    }
   };
 
   const filtered = filter === "all" ? drafts : drafts.filter((d) => d.status === filter);
@@ -178,125 +212,154 @@ const DraftsPage = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {filtered.map((draft) => (
-            <div key={draft.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground truncate">
-                    {(draft.ideas as any)?.idea_title || (draft.ideas as any)?.instruction || "Untitled"}
-                  </p>
-                  <div className="mt-1 flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(draft.created_at).toLocaleDateString()}
-                    </span>
-                    {/* Status pills */}
-                    <div className="flex gap-1">
-                      {statusOptions.map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => updateStatus(draft.id, s)}
-                          className={cn(
-                            "rounded px-2 py-0.5 text-[10px] font-medium capitalize transition-colors",
-                            draft.status === s
-                              ? statusColors[s]
-                              : "bg-transparent text-muted-foreground hover:bg-secondary"
-                          )}
-                        >
-                          {s}
-                        </button>
+          {filtered.map((draft) => {
+            const prediction = predictions[draft.id];
+            return (
+              <div key={draft.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground truncate">
+                      {(draft.ideas as any)?.idea_title || (draft.ideas as any)?.instruction || "Untitled"}
+                    </p>
+                    <div className="mt-1 flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(draft.created_at).toLocaleDateString()}
+                      </span>
+                      <div className="flex gap-1">
+                        {statusOptions.map((s) => (
+                          <button
+                            key={s}
+                            onClick={() => updateStatus(draft.id, s)}
+                            className={cn(
+                              "rounded px-2 py-0.5 text-[10px] font-medium capitalize transition-colors",
+                              draft.status === s
+                                ? statusColors[s]
+                                : "bg-transparent text-muted-foreground hover:bg-secondary"
+                            )}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                      {draft.scheduled_at && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <CalendarIcon className="h-3 w-3" />
+                          {format(new Date(draft.scheduled_at), "MMM d, yyyy")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    {/* Predict button */}
+                    {(draft.status === "draft" || draft.status === "approved") && (
+                      <button
+                        onClick={() => predictScore(draft.id)}
+                        disabled={scoringId === draft.id}
+                        title="Predict performance"
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                      >
+                        {scoringId === draft.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <BarChart3 className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    )}
+                    {draft.status === "draft" && (
+                      <button onClick={() => approveDraft(draft.id)} title="Approve" className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors">
+                        <Check className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {draft.status === "approved" && (
+                      <button onClick={() => rejectDraft(draft.id)} title="Send back to draft" className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                        <XCircle className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                    {(draft.status === "approved" || draft.status === "draft") && (
+                      <Popover open={scheduleId === draft.id} onOpenChange={(o) => setScheduleId(o ? draft.id : null)}>
+                        <PopoverTrigger asChild>
+                          <button className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors" title="Schedule">
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="end">
+                          <Calendar mode="single" selected={draft.scheduled_at ? new Date(draft.scheduled_at) : undefined} onSelect={(date) => date && scheduleDraft(draft.id, date)} disabled={(date) => date < new Date()} className="p-3 pointer-events-auto" />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                    <button onClick={() => copyDraft(draft.custom_content)} className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors">
+                      <Copy className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => deleteDraft(draft.id)} className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {editingId === draft.id ? (
+                  <div className="space-y-2">
+                    <Textarea value={editContent} onChange={(e) => setEditContent(e.target.value)} rows={8} className="text-sm" />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={saveEdit}><Save className="mr-1.5 h-3.5 w-3.5" />Save</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}><X className="mr-1.5 h-3.5 w-3.5" />Cancel</Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div onClick={() => startEdit(draft)} className="cursor-pointer rounded-md bg-secondary/50 p-3 text-sm text-foreground whitespace-pre-line leading-relaxed hover:bg-secondary transition-colors">
+                    {draft.custom_content || "No content"}
+                  </div>
+                )}
+
+                {/* Prediction Score Card */}
+                {prediction && (
+                  <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg font-bold text-foreground">{prediction.predicted_score}</span>
+                        <span className="text-xs text-muted-foreground">/100 predicted</span>
+                      </div>
+                      <span className={cn("text-xs font-medium flex items-center gap-1", riskColors[prediction.risk_level] || "text-muted-foreground")}>
+                        {prediction.risk_level === "high" ? <AlertTriangle className="h-3 w-3" /> : prediction.risk_level === "low" ? <CheckCircle className="h-3 w-3" /> : null}
+                        {prediction.risk_level} risk
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {[
+                        { label: "Hook", value: prediction.hook_strength },
+                        { label: "Persona", value: prediction.persona_relevance },
+                        { label: "Clarity", value: prediction.clarity },
+                        { label: "Goal", value: prediction.goal_alignment },
+                      ].map(({ label, value }) => (
+                        <div key={label} className="text-center">
+                          <p className="text-sm font-semibold text-foreground">{value}</p>
+                          <p className="text-[10px] text-muted-foreground">{label}</p>
+                        </div>
                       ))}
                     </div>
-                    {draft.scheduled_at && (
-                      <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <CalendarIcon className="h-3 w-3" />
-                        {format(new Date(draft.scheduled_at), "MMM d, yyyy")}
-                      </span>
+
+                    {prediction.historical_comparison && (
+                      <p className="text-xs text-muted-foreground italic">{prediction.historical_comparison}</p>
+                    )}
+
+                    {prediction.suggestions && prediction.suggestions.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
+                          <Lightbulb className="h-3 w-3 text-primary" /> Suggestions
+                        </p>
+                        {prediction.suggestions.map((s, i) => (
+                          <p key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <span className="mt-1 h-1 w-1 rounded-full bg-primary shrink-0" />
+                            {s}
+                          </p>
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
-                <div className="flex gap-1 shrink-0">
-                  {/* Review actions */}
-                  {draft.status === "draft" && (
-                    <button
-                      onClick={() => approveDraft(draft.id)}
-                      title="Approve"
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {draft.status === "approved" && (
-                    <button
-                      onClick={() => rejectDraft(draft.id)}
-                      title="Send back to draft"
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    >
-                      <XCircle className="h-3.5 w-3.5" />
-                    </button>
-                  )}
-                  {/* Schedule */}
-                  {(draft.status === "approved" || draft.status === "draft") && (
-                    <Popover open={scheduleId === draft.id} onOpenChange={(o) => setScheduleId(o ? draft.id : null)}>
-                      <PopoverTrigger asChild>
-                        <button className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors" title="Schedule">
-                          <CalendarIcon className="h-3.5 w-3.5" />
-                        </button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="end">
-                        <Calendar
-                          mode="single"
-                          selected={draft.scheduled_at ? new Date(draft.scheduled_at) : undefined}
-                          onSelect={(date) => date && scheduleDraft(draft.id, date)}
-                          disabled={(date) => date < new Date()}
-                          className="p-3 pointer-events-auto"
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  )}
-                  <button
-                    onClick={() => copyDraft(draft.custom_content)}
-                    className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
-                  >
-                    <Copy className="h-3.5 w-3.5" />
-                  </button>
-                  <button
-                    onClick={() => deleteDraft(draft.id)}
-                    className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                </div>
+                )}
               </div>
-
-              {editingId === draft.id ? (
-                <div className="space-y-2">
-                  <Textarea
-                    value={editContent}
-                    onChange={(e) => setEditContent(e.target.value)}
-                    rows={8}
-                    className="text-sm"
-                  />
-                  <div className="flex gap-2">
-                    <Button size="sm" onClick={saveEdit}>
-                      <Save className="mr-1.5 h-3.5 w-3.5" />
-                      Save
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)}>
-                      <X className="mr-1.5 h-3.5 w-3.5" />
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div
-                  onClick={() => startEdit(draft)}
-                  className="cursor-pointer rounded-md bg-secondary/50 p-3 text-sm text-foreground whitespace-pre-line leading-relaxed hover:bg-secondary transition-colors"
-                >
-                  {draft.custom_content || "No content"}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
