@@ -309,6 +309,56 @@ export type Database = {
           },
         ]
       }
+      goal_evaluations: {
+        Row: {
+          created_at: string
+          fulfillment_status: string | null
+          full_analysis: Json | null
+          goal_fulfillment_score: number | null
+          id: string
+          linkedin_post_id: string
+          reason_summary: string | null
+          strongest_factor: string | null
+          updated_at: string
+          user_id: string
+          weakest_factor: string | null
+        }
+        Insert: {
+          created_at?: string
+          fulfillment_status?: string | null
+          full_analysis?: Json | null
+          goal_fulfillment_score?: number | null
+          id?: string
+          linkedin_post_id: string
+          reason_summary?: string | null
+          strongest_factor?: string | null
+          updated_at?: string
+          user_id: string
+          weakest_factor?: string | null
+        }
+        Update: {
+          created_at?: string
+          fulfillment_status?: string | null
+          full_analysis?: Json | null
+          goal_fulfillment_score?: number | null
+          id?: string
+          linkedin_post_id?: string
+          reason_summary?: string | null
+          strongest_factor?: string | null
+          updated_at?: string
+          user_id?: string
+          weakest_factor?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goal_evaluations_linkedin_post_id_fkey"
+            columns: ["linkedin_post_id"]
+            isOneToOne: true
+            referencedRelation: "linkedin_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ideas: {
         Row: {
           core_message: string | null
@@ -357,6 +407,236 @@ export type Database = {
         }
         Relationships: []
       }
+      linkedin_accounts: {
+        Row: {
+          access_token: string | null
+          connection_status: string
+          created_at: string
+          display_name: string | null
+          id: string
+          last_synced_at: string | null
+          linkedin_user_id: string | null
+          profile_url: string | null
+          refresh_token: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          connection_status?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_synced_at?: string | null
+          linkedin_user_id?: string | null
+          profile_url?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          connection_status?: string
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          last_synced_at?: string | null
+          linkedin_user_id?: string | null
+          profile_url?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      linkedin_posts: {
+        Row: {
+          content: string
+          created_at: string
+          has_media: boolean | null
+          id: string
+          imported_at: string
+          linked_draft_id: string | null
+          linkedin_post_id: string | null
+          post_url: string | null
+          publish_date: string | null
+          source_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          has_media?: boolean | null
+          id?: string
+          imported_at?: string
+          linked_draft_id?: string | null
+          linkedin_post_id?: string | null
+          post_url?: string | null
+          publish_date?: string | null
+          source_type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          has_media?: boolean | null
+          id?: string
+          imported_at?: string
+          linked_draft_id?: string | null
+          linkedin_post_id?: string | null
+          post_url?: string | null
+          publish_date?: string | null
+          source_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "linkedin_posts_linked_draft_id_fkey"
+            columns: ["linked_draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_context: {
+        Row: {
+          auto_mapped: boolean | null
+          campaign_id: string | null
+          created_at: string
+          cta_type: string | null
+          goal: string | null
+          hook_type: string | null
+          id: string
+          linkedin_post_id: string
+          persona_id: string | null
+          strategy_type: string | null
+          tone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_mapped?: boolean | null
+          campaign_id?: string | null
+          created_at?: string
+          cta_type?: string | null
+          goal?: string | null
+          hook_type?: string | null
+          id?: string
+          linkedin_post_id: string
+          persona_id?: string | null
+          strategy_type?: string | null
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_mapped?: boolean | null
+          campaign_id?: string | null
+          created_at?: string
+          cta_type?: string | null
+          goal?: string | null
+          hook_type?: string | null
+          id?: string
+          linkedin_post_id?: string
+          persona_id?: string | null
+          strategy_type?: string | null
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_context_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_context_linkedin_post_id_fkey"
+            columns: ["linkedin_post_id"]
+            isOneToOne: true
+            referencedRelation: "linkedin_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_context_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "audience_personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_metrics: {
+        Row: {
+          clicks: number | null
+          comments: number | null
+          created_at: string
+          follower_gain: number | null
+          id: string
+          impressions: number | null
+          last_updated_at: string
+          linkedin_post_id: string
+          manual_notes: string | null
+          profile_visits: number | null
+          reactions: number | null
+          reposts: number | null
+          source: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          clicks?: number | null
+          comments?: number | null
+          created_at?: string
+          follower_gain?: number | null
+          id?: string
+          impressions?: number | null
+          last_updated_at?: string
+          linkedin_post_id: string
+          manual_notes?: string | null
+          profile_visits?: number | null
+          reactions?: number | null
+          reposts?: number | null
+          source?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          clicks?: number | null
+          comments?: number | null
+          created_at?: string
+          follower_gain?: number | null
+          id?: string
+          impressions?: number | null
+          last_updated_at?: string
+          linkedin_post_id?: string
+          manual_notes?: string | null
+          profile_visits?: number | null
+          reactions?: number | null
+          reposts?: number | null
+          source?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_metrics_linkedin_post_id_fkey"
+            columns: ["linkedin_post_id"]
+            isOneToOne: true
+            referencedRelation: "linkedin_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_performance: {
         Row: {
           comments: number
@@ -394,6 +674,56 @@ export type Database = {
             columns: ["draft_id"]
             isOneToOne: true
             referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_recommendations: {
+        Row: {
+          created_at: string
+          id: string
+          improved_angles: string[] | null
+          improved_ctas: string[] | null
+          improved_hooks: string[] | null
+          linkedin_post_id: string
+          strategy_suggestion: string | null
+          updated_at: string
+          user_id: string
+          what_to_avoid: string[] | null
+          what_to_repeat: string[] | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          improved_angles?: string[] | null
+          improved_ctas?: string[] | null
+          improved_hooks?: string[] | null
+          linkedin_post_id: string
+          strategy_suggestion?: string | null
+          updated_at?: string
+          user_id: string
+          what_to_avoid?: string[] | null
+          what_to_repeat?: string[] | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          improved_angles?: string[] | null
+          improved_ctas?: string[] | null
+          improved_hooks?: string[] | null
+          linkedin_post_id?: string
+          strategy_suggestion?: string | null
+          updated_at?: string
+          user_id?: string
+          what_to_avoid?: string[] | null
+          what_to_repeat?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_recommendations_linkedin_post_id_fkey"
+            columns: ["linkedin_post_id"]
+            isOneToOne: true
+            referencedRelation: "linkedin_posts"
             referencedColumns: ["id"]
           },
         ]
@@ -459,6 +789,95 @@ export type Database = {
             columns: ["idea_id"]
             isOneToOne: false
             referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sync_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          posts_synced: number | null
+          started_at: string
+          status: string
+          sync_type: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          posts_synced?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          posts_synced?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      writing_diagnoses: {
+        Row: {
+          content_analysis: Json | null
+          created_at: string
+          cta_analysis: Json | null
+          hook_analysis: Json | null
+          id: string
+          linkedin_post_id: string
+          structure_analysis: Json | null
+          updated_at: string
+          user_id: string
+          what_to_change: string[] | null
+          what_weakened: string[] | null
+          what_worked: string[] | null
+        }
+        Insert: {
+          content_analysis?: Json | null
+          created_at?: string
+          cta_analysis?: Json | null
+          hook_analysis?: Json | null
+          id?: string
+          linkedin_post_id: string
+          structure_analysis?: Json | null
+          updated_at?: string
+          user_id: string
+          what_to_change?: string[] | null
+          what_weakened?: string[] | null
+          what_worked?: string[] | null
+        }
+        Update: {
+          content_analysis?: Json | null
+          created_at?: string
+          cta_analysis?: Json | null
+          hook_analysis?: Json | null
+          id?: string
+          linkedin_post_id?: string
+          structure_analysis?: Json | null
+          updated_at?: string
+          user_id?: string
+          what_to_change?: string[] | null
+          what_weakened?: string[] | null
+          what_worked?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "writing_diagnoses_linkedin_post_id_fkey"
+            columns: ["linkedin_post_id"]
+            isOneToOne: true
+            referencedRelation: "linkedin_posts"
             referencedColumns: ["id"]
           },
         ]
