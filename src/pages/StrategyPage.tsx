@@ -13,7 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Trash2, Target, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, Plus, Trash2, Target, ChevronDown, ChevronUp, Sparkles, ArrowRight, AlertTriangle } from "lucide-react";
+import { Link } from "react-router-dom";
 
 type Persona = { id: string; name: string };
 type Campaign = {
