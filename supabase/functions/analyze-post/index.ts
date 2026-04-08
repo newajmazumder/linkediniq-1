@@ -62,19 +62,16 @@ serve(async (req) => {
 
     if (!context?.goal) throw new Error("Post must have a goal assigned");
 
-    // Fetch persona details if available
-    let personaDetails = null;
-    if (context.persona_id) {
-      const { data } = await supabase.from("audience_personas").select("*").eq("id", context.persona_id).single();
-      personaDetails = data;
-    }
+    // Fetch persona, campaign, and business context in parallel
+    const [personaRes, campaignRes, profileRes] = await Promise.all([
+      context.persona_id ? supabase.from("audience_personas").select("*").eq("id", context.persona_id).single() : Promise.resolve({ data: null }),
+      context.campaign_id ? supabase.from("campaigns").select("*").eq("id", context.campaign_id).single() : Promise.resolve({ data: null }),
+      supabase.from("business_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+    ]);
 
-    // Fetch campaign details if available
-    let campaignDetails = null;
-    if (context.campaign_id) {
-      const { data } = await supabase.from("campaigns").select("*").eq("id", context.campaign_id).single();
-      campaignDetails = data;
-    }
+    const personaDetails = personaRes.data;
+    const campaignDetails = campaignRes.data;
+    const businessProfile = profileRes.data;
 
     const engagementRate = metrics && metrics.impressions > 0
       ? ((metrics.reactions + metrics.comments + metrics.reposts) / metrics.impressions * 100).toFixed(2)
