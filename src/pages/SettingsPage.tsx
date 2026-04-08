@@ -71,8 +71,8 @@ const SettingsPage = () => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      // Redirect to LinkedIn
-      window.location.href = data.auth_url;
+      // Open LinkedIn auth in a new window (preview runs in iframe, can't redirect)
+      window.open(data.auth_url, "_blank");
     } catch (err: any) {
       toast.error(err.message || "Failed to start LinkedIn OAuth");
       setConnecting(false);
