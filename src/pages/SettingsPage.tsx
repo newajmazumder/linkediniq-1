@@ -81,8 +81,16 @@ const SettingsPage = () => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      // Open LinkedIn auth in a new window (preview runs in iframe, can't redirect)
-      window.open(data.auth_url, "_blank");
+      // Open LinkedIn auth in a popup window
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      window.open(
+        data.auth_url,
+        "linkedin_oauth",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+      );
     } catch (err: any) {
       toast.error(err.message || "Failed to start LinkedIn OAuth");
       setConnecting(false);
