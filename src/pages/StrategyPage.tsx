@@ -53,6 +53,23 @@ const emptyForm = {
   tone: "friendly",
 };
 
+type Recommendation = {
+  topic: string;
+  hook_type: string;
+  tone: string;
+  persona_name: string;
+  content_type: string;
+  cta_type: string;
+  reason: string;
+};
+
+type GapAnalysis = {
+  underused_hooks?: string[];
+  underused_personas?: string[];
+  missing_topics?: string[];
+  overused?: string[];
+};
+
 const StrategyPage = () => {
   const { user } = useAuth();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -63,6 +80,10 @@ const StrategyPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [tab, setTab] = useState<"campaigns" | "recommendations">("campaigns");
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
+  const [loadingRecs, setLoadingRecs] = useState(false);
 
   useEffect(() => {
     if (user) {
