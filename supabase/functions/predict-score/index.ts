@@ -60,44 +60,62 @@ serve(async (req) => {
       postMeta = data;
     }
 
-    // Fetch user's learned patterns
-    const { data: patterns } = await supabase
-      .from("content_patterns")
-      .select("*")
-      .eq("user_id", user.id);
+    // Fetch all context in parallel
+    const [patternsRes, profileRes, personaRes, campaignRes] = await Promise.all([
+      supabase.from("content_patterns").select("*").eq("user_id", user.id),
+      supabase.from("business_profiles")
+        .select("company_summary, product_summary, differentiators, current_priorities, brand_tone, restricted_claims, customer_problems, product_features, customer_benefits, industries_served")
+        .eq("user_id", user.id).maybeSingle(),
+      postMeta?.persona_id
+        ? supabase.from("audience_personas")
+            .select("name, pain_points, goals, objections, awareness_level, industry, business_size, geography, language_style, content_preference")
+            .eq("id", postMeta.persona_id).single()
+        : Promise.resolve({ data: null }),
+      postMeta?.campaign_id
+        ? supabase.from("campaigns")
+            .select("name, goal, core_message, cta_type, tone")
+            .eq("id", postMeta.campaign_id).single()
+        : Promise.resolve({ data: null }),
+    ]);
 
-    // Fetch business profile
-    const { data: profile } = await supabase
-      .from("business_profiles")
-      .select("company_summary, product_summary, differentiators, current_priorities, brand_tone, restricted_claims")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    // Fetch persona if available
-    let persona: any = null;
-    if (postMeta?.persona_id) {
-      const { data } = await supabase
-        .from("audience_personas")
-        .select("name, pain_points, goals, objections, awareness_level")
-        .eq("id", postMeta.persona_id)
-        .single();
-      persona = data;
-    }
+    const patterns = patternsRes.data || [];
+    const profile = profileRes.data;
+    const persona = personaRes.data;
+    const campaign = campaignRes.data;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Build context for AI
-    const patternsSummary = (patterns || []).map((p: any) =>
-      `${p.dimension}="${p.dimension_value}": ${p.sample_count} posts, avg ${p.avg_engagement_rate}% engagement, avg ${p.avg_impressions} impressions`
-    ).join("\n") || "No historical patterns yet.";
+    // Build rich pattern summary with comparative data
+    const byDim: Record<string, any[]> = {};
+    for (const p of patterns) {
+      if (!byDim[p.dimension]) byDim[p.dimension] = [];
+      byDim[p.dimension].push(p);
+    }
+
+    let patternsSummary = "";
+    for (const [dim, items] of Object.entries(byDim)) {
+      const sorted = items.sort((a: any, b: any) => (b.avg_engagement_rate || 0) - (a.avg_engagement_rate || 0));
+      patternsSummary += `\n${dim.replace(/_/g, " ").toUpperCase()}:\n`;
+      for (const p of sorted) {
+        patternsSummary += `  "${p.dimension_value}": ${p.avg_engagement_rate}% engagement, ${p.avg_impressions} impressions (${p.sample_count} posts)\n`;
+      }
+      if (sorted.length > 1) {
+        const ratio = sorted[0].avg_engagement_rate && sorted[sorted.length - 1].avg_engagement_rate
+          ? (sorted[0].avg_engagement_rate / sorted[sorted.length - 1].avg_engagement_rate).toFixed(1)
+          : "N/A";
+        patternsSummary += `  → Best "${sorted[0].dimension_value}" outperforms worst "${sorted[sorted.length - 1].dimension_value}" by ${ratio}x\n`;
+      }
+    }
 
     const content = draft.custom_content || "No content";
     const hookType = postMeta?.hook_type || "unknown";
     const tone = postMeta?.tone || "unknown";
     const style = postMeta?.post_style || "unknown";
+    const campaignGoal = campaign?.goal || draft.ideas?.objective || "awareness";
+    const campaignCta = campaign?.cta_type || "soft";
 
-    const prompt = `Score this LinkedIn post draft before publishing.
+    const prompt = `You are a LinkedIn content performance predictor and pre-publish advisor. Score this draft with DEEP causal analysis.
 
 DRAFT CONTENT:
 ${content.slice(0, 2000)}
@@ -107,21 +125,34 @@ POST METADATA:
 - Tone: ${tone}
 - Style: ${style}
 - Content intent: ${postMeta?.content_intent || "unknown"}
+- Campaign goal: ${campaignGoal}
+- Campaign CTA type: ${campaignCta}
 
 ${persona ? `TARGET PERSONA: ${persona.name}
-- Pain points: ${JSON.stringify(persona.pain_points || [])}
+- Industry: ${(persona as any).industry || "General"}
+- Business Size: ${(persona as any).business_size || "Any"}
+- Geography: ${(persona as any).geography || "Global"}
+- Language Style: ${(persona as any).language_style || "english"}
+- Awareness Level: ${persona.awareness_level || "unaware"}
+- Pain Points: ${JSON.stringify(persona.pain_points || [])}
 - Goals: ${JSON.stringify(persona.goals || [])}
-- Awareness: ${persona.awareness_level}` : ""}
+- Objections: ${JSON.stringify(persona.objections || [])}
+- Content Preference: ${(persona as any).content_preference || "educational"}` : "No persona selected."}
 
 ${profile ? `BUSINESS CONTEXT:
 - Company: ${profile.company_summary || "N/A"}
 - Product: ${profile.product_summary || "N/A"}
 - Differentiators: ${JSON.stringify(profile.differentiators || [])}
 - Priorities: ${JSON.stringify(profile.current_priorities || [])}
+- Customer Problems: ${JSON.stringify((profile as any).customer_problems || [])}
+- Product Features: ${JSON.stringify((profile as any).product_features || [])}
 - Brand tone: ${profile.brand_tone || "N/A"}` : ""}
 
 HISTORICAL PERFORMANCE PATTERNS:
-${patternsSummary}
+${patternsSummary || "No historical patterns yet."}
+
+SCORING INSTRUCTIONS:
+Score each dimension 0-100. Be SPECIFIC and CAUSAL in your reasoning — reference the persona's industry, geography, awareness level, and actual pattern data.
 
 Return VALID JSON only (no markdown fences):
 {
@@ -129,10 +160,28 @@ Return VALID JSON only (no markdown fences):
   "persona_relevance": 0-100,
   "clarity": 0-100,
   "goal_alignment": 0-100,
-  "predicted_score": 0-100 (weighted average),
+  "cta_alignment": 0-100,
+  "context_relevance": 0-100,
+  "predicted_score": 0-100,
   "risk_level": "low" | "medium" | "high",
-  "historical_comparison": "one sentence comparing to similar past posts",
-  "suggestions": ["improvement suggestion 1", "suggestion 2", "suggestion 3"]
+  "strongest_element": "2-3 sentence explanation of the strongest aspect, referencing specific persona/context data",
+  "weakest_element": "2-3 sentence explanation of the weakest aspect, referencing specific pattern data or persona mismatch",
+  "failure_reasons": [
+    "specific causal reason why this may underperform, e.g. 'hook uses curiosity framing but pattern data shows pain_driven hooks outperform curiosity by 2.1x for this user'",
+    "another specific reason referencing persona/goal/context mismatch"
+  ],
+  "improved_hooks": [
+    "alternative hook option 1 tailored to persona and best-performing patterns",
+    "alternative hook option 2",
+    "alternative hook option 3"
+  ],
+  "improved_ctas": [
+    "alternative CTA aligned with campaign goal '${campaignGoal}' and persona awareness level",
+    "alternative CTA option 2"
+  ],
+  "publish_recommendation": "publish" | "revise" | "not_recommended",
+  "historical_comparison": "one sentence comparing to similar past posts using pattern data",
+  "suggestions": ["specific actionable improvement 1", "improvement 2", "improvement 3"]
 }`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -144,7 +193,7 @@ Return VALID JSON only (no markdown fences):
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: "You are a LinkedIn content performance predictor. Score drafts based on historical patterns, business context, and content quality. Be specific and actionable." },
+          { role: "system", content: "You are a LinkedIn content performance predictor and pre-publish advisor. Score drafts based on historical patterns, business context, persona alignment, and content quality. Be SPECIFIC, CAUSAL, and ACTIONABLE. Never give generic advice — always reference the specific persona, goal, patterns, and business context." },
           { role: "user", content: prompt },
         ],
       }),
@@ -177,10 +226,18 @@ Return VALID JSON only (no markdown fences):
       persona_relevance: result.persona_relevance || 0,
       clarity: result.clarity || 0,
       goal_alignment: result.goal_alignment || 0,
+      cta_alignment: result.cta_alignment || 0,
+      context_relevance: result.context_relevance || 0,
       predicted_score: result.predicted_score || 0,
       risk_level: result.risk_level || "medium",
       suggestions: result.suggestions || [],
       historical_comparison: result.historical_comparison || null,
+      strongest_element: result.strongest_element || null,
+      weakest_element: result.weakest_element || null,
+      failure_reasons: result.failure_reasons || [],
+      improved_hooks: result.improved_hooks || [],
+      improved_ctas: result.improved_ctas || [],
+      publish_recommendation: result.publish_recommendation || "revise",
     });
 
     return new Response(JSON.stringify(result), {

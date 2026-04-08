@@ -281,7 +281,12 @@ Given a user instruction, respond with VALID JSON (no markdown, no code fences) 
       "post_style": "founder_story | customer_story | educational | framework | pain_solution | product_insight | hybrid_story_insight | hybrid_pain_education | soft_promotion",
       "tone": "string (must align with persona's preferred communication style)",
       "content_intent": "Awareness | Education | Trust | Product | Lead",
-      "context_rationale": "string (1-2 sentences: which business angle, differentiator, or product feature was used and why)"
+      "context_rationale": "string (1-2 sentences: which business angle, differentiator, or product feature was used and why)",
+      "generation_influences": {
+        "what_repeated": "string (what proven pattern was intentionally used based on performance data)",
+        "what_avoided": "string (what underperforming pattern was intentionally avoided)",
+        "what_tested": "string (what new angle or combination is being tested, if any)"
+      }
     }
     // ... 4 total variations
   ]

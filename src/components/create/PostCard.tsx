@@ -25,6 +25,11 @@ export type Post = {
   post_style: string;
   tone: string | null;
   context_rationale?: string | null;
+  generation_influences?: {
+    what_repeated?: string;
+    what_avoided?: string;
+    what_tested?: string;
+  } | null;
 };
 
 export type PostScore = {
@@ -252,6 +257,31 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
         <div className="rounded-md bg-accent/10 border border-accent/20 p-3">
           <p className="text-xs text-muted-foreground mb-1">Business context used</p>
           <p className="text-xs text-foreground">{post.context_rationale}</p>
+        </div>
+      )}
+
+      {/* Generation Influences */}
+      {post.generation_influences && !compact && (
+        <div className="rounded-md bg-primary/5 border border-primary/20 p-3 space-y-1.5">
+          <p className="text-xs text-primary font-medium">🧠 Learning-driven generation</p>
+          {post.generation_influences.what_repeated && (
+            <p className="text-xs text-foreground flex items-start gap-1.5">
+              <span className="mt-1 h-1 w-1 rounded-full bg-green-500 shrink-0" />
+              <span><span className="text-muted-foreground">Repeated: </span>{post.generation_influences.what_repeated}</span>
+            </p>
+          )}
+          {post.generation_influences.what_avoided && (
+            <p className="text-xs text-foreground flex items-start gap-1.5">
+              <span className="mt-1 h-1 w-1 rounded-full bg-destructive shrink-0" />
+              <span><span className="text-muted-foreground">Avoided: </span>{post.generation_influences.what_avoided}</span>
+            </p>
+          )}
+          {post.generation_influences.what_tested && (
+            <p className="text-xs text-foreground flex items-start gap-1.5">
+              <span className="mt-1 h-1 w-1 rounded-full bg-blue-500 shrink-0" />
+              <span><span className="text-muted-foreground">Testing: </span>{post.generation_influences.what_tested}</span>
+            </p>
+          )}
         </div>
       )}
 

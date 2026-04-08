@@ -343,6 +343,8 @@ export type Database = {
           avg_impressions: number | null
           avg_likes: number | null
           best_combination: Json | null
+          comparative_insight: string | null
+          confidence_level: string | null
           dimension: string
           dimension_value: string
           id: string
@@ -357,6 +359,8 @@ export type Database = {
           avg_impressions?: number | null
           avg_likes?: number | null
           best_combination?: Json | null
+          comparative_insight?: string | null
+          confidence_level?: string | null
           dimension: string
           dimension_value: string
           id?: string
@@ -371,6 +375,8 @@ export type Database = {
           avg_impressions?: number | null
           avg_likes?: number | null
           best_combination?: Json | null
+          comparative_insight?: string | null
+          confidence_level?: string | null
           dimension?: string
           dimension_value?: string
           id?: string
@@ -1143,45 +1149,69 @@ export type Database = {
       prediction_scores: {
         Row: {
           clarity: number | null
+          context_relevance: number | null
           created_at: string
+          cta_alignment: number | null
           draft_id: string | null
+          failure_reasons: Json | null
           goal_alignment: number | null
           historical_comparison: string | null
           hook_strength: number | null
           id: string
+          improved_ctas: Json | null
+          improved_hooks: Json | null
           persona_relevance: number | null
           predicted_score: number | null
+          publish_recommendation: string | null
           risk_level: string | null
+          strongest_element: string | null
           suggestions: Json | null
           user_id: string
+          weakest_element: string | null
         }
         Insert: {
           clarity?: number | null
+          context_relevance?: number | null
           created_at?: string
+          cta_alignment?: number | null
           draft_id?: string | null
+          failure_reasons?: Json | null
           goal_alignment?: number | null
           historical_comparison?: string | null
           hook_strength?: number | null
           id?: string
+          improved_ctas?: Json | null
+          improved_hooks?: Json | null
           persona_relevance?: number | null
           predicted_score?: number | null
+          publish_recommendation?: string | null
           risk_level?: string | null
+          strongest_element?: string | null
           suggestions?: Json | null
           user_id: string
+          weakest_element?: string | null
         }
         Update: {
           clarity?: number | null
+          context_relevance?: number | null
           created_at?: string
+          cta_alignment?: number | null
           draft_id?: string | null
+          failure_reasons?: Json | null
           goal_alignment?: number | null
           historical_comparison?: string | null
           hook_strength?: number | null
           id?: string
+          improved_ctas?: Json | null
+          improved_hooks?: Json | null
           persona_relevance?: number | null
           predicted_score?: number | null
+          publish_recommendation?: string | null
           risk_level?: string | null
+          strongest_element?: string | null
           suggestions?: Json | null
           user_id?: string
+          weakest_element?: string | null
         }
         Relationships: [
           {
