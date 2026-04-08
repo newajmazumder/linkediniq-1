@@ -1,13 +1,27 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Lightbulb, FileText, Clock } from "lucide-react";
+import { Lightbulb, FileText, Clock, Sparkles, Loader2, TrendingUp, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
+type Recommendation = {
+  topic: string;
+  hook_type: string;
+  tone: string;
+  persona_name: string;
+  content_type: string;
+  cta_type: string;
+  reason: string;
+};
 
 const DashboardPage = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState({ ideas: 0, drafts: 0 });
   const [recentIdeas, setRecentIdeas] = useState<any[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loadingRecs, setLoadingRecs] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -18,15 +32,42 @@ const DashboardPage = () => {
         supabase.from("drafts").select("id", { count: "exact", head: true }),
         supabase.from("ideas").select("*").order("created_at", { ascending: false }).limit(5),
       ]);
-      setStats({
-        ideas: ideasRes.count ?? 0,
-        drafts: draftsRes.count ?? 0,
-      });
+      setStats({ ideas: ideasRes.count ?? 0, drafts: draftsRes.count ?? 0 });
       setRecentIdeas(recentRes.data ?? []);
     };
 
+    // Load saved recommendations
+    const fetchRecs = async () => {
+      const { data } = await supabase
+        .from("strategy_recommendations")
+        .select("recommendation")
+        .eq("user_id", user.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(3);
+      if (data) {
+        setRecommendations(data.map((r: any) => r.recommendation as Recommendation));
+      }
+    };
+
     fetchStats();
+    fetchRecs();
   }, [user]);
+
+  const generateRecommendations = async () => {
+    setLoadingRecs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("recommend-next");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setRecommendations(data.recommendations || []);
+      toast.success("Recommendations generated!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate recommendations");
+    } finally {
+      setLoadingRecs(false);
+    }
+  };
 
   return (
     <div className="content-fade-in space-y-8">
@@ -60,6 +101,56 @@ const DashboardPage = () => {
         </div>
       </div>
 
+      {/* What to Post Next */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            What to Post Next
+          </h2>
+          <Button size="sm" variant="outline" onClick={generateRecommendations} disabled={loadingRecs}>
+            {loadingRecs ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
+            {recommendations.length > 0 ? "Refresh" : "Generate"}
+          </Button>
+        </div>
+
+        {recommendations.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border py-8 text-center">
+            <Sparkles className="mx-auto h-6 w-6 text-muted-foreground/50" />
+            <p className="mt-2 text-sm text-muted-foreground">
+              Click "Generate" to get AI-powered content recommendations based on your performance data.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {recommendations.map((rec, i) => (
+              <div key={i} className="rounded-lg border border-border bg-card p-4 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium text-foreground">{rec.topic}</p>
+                  <Link
+                    to={`/create`}
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
+                    title="Create this post"
+                  >
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{rec.hook_type}</span>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">{rec.tone}</span>
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-secondary-foreground">{rec.content_type}</span>
+                  {rec.persona_name && (
+                    <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-medium text-accent-foreground">{rec.persona_name}</span>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground">{rec.reason}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recent ideas */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-medium text-foreground">Recent ideas</h2>

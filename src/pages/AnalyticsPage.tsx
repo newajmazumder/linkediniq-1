@@ -73,20 +73,32 @@ type ContentLearnings = {
   tone_performance: string;
 };
 
+type LearnedPattern = {
+  dimension: string;
+  dimension_value: string;
+  sample_count: number;
+  avg_impressions: number;
+  avg_engagement_rate: number;
+  avg_likes: number;
+  avg_comments: number;
+  insight: string | null;
+};
+
 const AnalyticsPage = () => {
   const { user } = useAuth();
   const [drafts, setDrafts] = useState<PostedDraft[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [learning, setLearning] = useState(false);
   const [insights, setInsights] = useState<Insights | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestions | null>(null);
   const [personaInsights, setPersonaInsights] = useState<PersonaInsight[]>([]);
   const [contentLearnings, setContentLearnings] = useState<ContentLearnings | null>(null);
+  const [learnedPatterns, setLearnedPatterns] = useState<LearnedPattern[]>([]);
   const [perfInputs, setPerfInputs] = useState<
     Record<string, { impressions: string; likes: string; comments: string }>
   >({});
-
   const fetchData = async () => {
     if (!user) return;
 
