@@ -71,8 +71,58 @@ function buildCampaignBlock(data: any): string {
 IMPORTANT: Align all posts with this campaign's goal, tone, CTA type, and style mix. Weight the 4 variations according to the style mix percentages.`;
 }
 
+function buildBusinessContextBlock(profile: any, chunks: any[]): string {
+  const parts: string[] = [];
+  
+  if (profile) {
+    parts.push("BUSINESS CONTEXT (from structured knowledge):");
+    if (profile.company_summary) parts.push(`Company: ${profile.company_summary}`);
+    if (profile.product_summary) parts.push(`Product: ${profile.product_summary}`);
+    if (profile.target_audience) parts.push(`Target Audience: ${profile.target_audience}`);
+    
+    const arr = (v: any) => Array.isArray(v) && v.length > 0 ? v.join(", ") : null;
+    const diff = arr(profile.differentiators);
+    if (diff) parts.push(`Key Differentiators: ${diff}`);
+    const probs = arr(profile.customer_problems);
+    if (probs) parts.push(`Customer Problems: ${probs}`);
+    const feats = arr(profile.product_features);
+    if (feats) parts.push(`Product Features: ${feats}`);
+    const bens = arr(profile.customer_benefits);
+    if (bens) parts.push(`Customer Benefits: ${bens}`);
+    if (profile.brand_tone) parts.push(`Brand Tone: ${profile.brand_tone}`);
+    const priorities = arr(profile.current_priorities);
+    if (priorities) parts.push(`Current Priorities: ${priorities}`);
+    const pillars = arr(profile.messaging_pillars);
+    if (pillars) parts.push(`Messaging Pillars: ${pillars}`);
+    const restricted = arr(profile.restricted_claims);
+    if (restricted) parts.push(`RESTRICTED CLAIMS (do NOT use): ${restricted}`);
+    const validCtas = arr(profile.valid_ctas);
+    if (validCtas) parts.push(`Approved CTAs: ${validCtas}`);
+    const proofs = arr(profile.proof_points);
+    if (proofs) parts.push(`Proof Points: ${proofs}`);
+  }
+  
+  if (chunks.length > 0) {
+    parts.push("\nRELEVANT SOURCE EXCERPTS:");
+    for (const chunk of chunks.slice(0, 8)) {
+      parts.push(`[${chunk.metadata?.source_category || "general"}: ${chunk.metadata?.source_title || "source"}]\n${chunk.chunk_text.slice(0, 500)}`);
+    }
+  }
+  
+  if (parts.length === 0) return "";
+  
+  return "\n\n" + parts.join("\n") + `
+
+IMPORTANT BUSINESS CONTEXT RULES:
+- Use company-specific language and positioning from the business context above.
+- Do NOT make claims that are not supported by the business context.
+- Prioritize the strongest differentiators and messaging angles found above.
+- Reflect the brand tone and voice described.
+- Each post must include a "context_rationale" explaining which business angle was used.`;
+}
+
 function buildSystemPrompt(hasPersona: boolean, hasCampaign: boolean): string {
-  return `You are a B2B SaaS content strategist for LinkedinIQ — an AI-powered customer support platform.
+  return `You are a B2B SaaS content strategist — a context-aware content intelligence engine.
 
 Your job: Turn product instructions into structured LinkedIn content that is DEEPLY personalized for the target persona and aligned with the marketing campaign strategy.
 
