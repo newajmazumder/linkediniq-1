@@ -12,8 +12,7 @@ type LinkedInAccount = {
   last_synced_at: string | null;
 };
 
-const PUBLISHED_ORIGIN = "https://linkediniq.lovable.app";
-const REDIRECT_URI = `${PUBLISHED_ORIGIN}/settings`;
+const REDIRECT_URI = `${window.location.origin}/linkedin-callback`;
 
 const SettingsPage = () => {
   const { user } = useAuth();

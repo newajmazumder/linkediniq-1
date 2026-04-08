@@ -16,6 +16,7 @@ import StrategyPage from "@/pages/StrategyPage";
 import PerformancePage from "@/pages/PerformancePage";
 import PostDetailPage from "@/pages/PostDetailPage";
 import SettingsPage from "@/pages/SettingsPage";
+import LinkedInCallbackPage from "@/pages/LinkedInCallbackPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
