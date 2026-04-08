@@ -1093,8 +1093,10 @@ export type Database = {
           hook_type: string | null
           id: string
           idea_id: string
+          image_briefs: Json | null
           persona_id: string | null
           post_style: string
+          post_type: string
           tone: string | null
           updated_at: string
           user_id: string
@@ -1111,8 +1113,10 @@ export type Database = {
           hook_type?: string | null
           id?: string
           idea_id: string
+          image_briefs?: Json | null
           persona_id?: string | null
           post_style: string
+          post_type?: string
           tone?: string | null
           updated_at?: string
           user_id: string
@@ -1129,8 +1133,10 @@ export type Database = {
           hook_type?: string | null
           id?: string
           idea_id?: string
+          image_briefs?: Json | null
           persona_id?: string | null
           post_style?: string
+          post_type?: string
           tone?: string | null
           updated_at?: string
           user_id?: string
