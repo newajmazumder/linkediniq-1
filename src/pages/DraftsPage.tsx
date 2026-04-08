@@ -10,6 +10,7 @@ import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle, Loader2, BarChart3
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { getScoreInterpretation } from "@/components/create/PostCard";
 
 type Draft = {
   id: string;
@@ -216,10 +217,9 @@ const DraftsPage = () => {
                           <span className="text-lg font-bold text-foreground">{prediction.predicted_score}</span>
                           <span className="text-xs text-muted-foreground">/100</span>
                         </div>
-                        <span className={cn("text-xs font-medium flex items-center gap-1", riskColors[prediction.risk_level] || "text-muted-foreground")}>
-                          {prediction.risk_level === "high" ? <AlertTriangle className="h-3 w-3" /> : prediction.risk_level === "low" ? <CheckCircle className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-                          {prediction.risk_level} risk
-                        </span>
+                        {(() => { const interp = getScoreInterpretation(prediction.predicted_score); return (
+                          <span className={cn("text-xs font-medium", interp.color)}>{interp.label}</span>
+                        ); })()}
                       </div>
                       {pubRec && (
                         <Badge variant="outline" className={cn("text-[10px]", pubRec.bg, pubRec.text)}>
