@@ -134,7 +134,33 @@ const AnalyticsPage = () => {
 
   useEffect(() => {
     fetchData();
+    fetchPatterns();
   }, [user]);
+
+  const fetchPatterns = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from("content_patterns")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("avg_engagement_rate", { ascending: false });
+    setLearnedPatterns((data || []) as LearnedPattern[]);
+  };
+
+  const learnFromData = async () => {
+    setLearning(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("learn-patterns");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Learned ${data.patterns_count || 0} patterns!`);
+      fetchPatterns();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to learn patterns");
+    } finally {
+      setLearning(false);
+    }
+  };
 
   const savePerformance = async (draftId: string) => {
     if (!user) return;
