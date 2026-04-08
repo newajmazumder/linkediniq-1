@@ -30,34 +30,87 @@ serve(async (req) => {
       });
     }
 
-    const { draft_id } = await req.json();
-    if (!draft_id) {
-      return new Response(JSON.stringify({ error: "draft_id is required" }), {
+    const body = await req.json();
+    const { draft_id, post_id, post_content, post_meta } = body;
+
+    // Support two modes: draft-based or inline (post_id / raw content)
+    let content = "";
+    let hookType = "unknown";
+    let tone = "unknown";
+    let style = "unknown";
+    let contentIntent = "unknown";
+    let personaId: string | null = null;
+    let campaignId: string | null = null;
+    let postType = "text";
+
+    if (draft_id) {
+      // Original draft-based flow
+      const { data: draft } = await supabase
+        .from("drafts")
+        .select("*, ideas(idea_title, instruction, objective, target_audience)")
+        .eq("id", draft_id)
+        .single();
+
+      if (!draft) {
+        return new Response(JSON.stringify({ error: "Draft not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      content = draft.custom_content || "No content";
+
+      if (draft.selected_post_id) {
+        const { data } = await supabase
+          .from("posts")
+          .select("hook_type, tone, post_style, content_intent, persona_id, campaign_id, post_type")
+          .eq("id", draft.selected_post_id)
+          .single();
+        if (data) {
+          hookType = data.hook_type || hookType;
+          tone = data.tone || tone;
+          style = data.post_style || style;
+          contentIntent = data.content_intent || contentIntent;
+          personaId = data.persona_id;
+          campaignId = data.campaign_id;
+          postType = data.post_type || "text";
+        }
+      }
+    } else if (post_id) {
+      // Inline scoring from Create page — fetch post directly
+      const { data: postData } = await supabase
+        .from("posts")
+        .select("hook, body, cta, hook_type, tone, post_style, content_intent, persona_id, campaign_id, post_type")
+        .eq("id", post_id)
+        .single();
+
+      if (!postData) {
+        return new Response(JSON.stringify({ error: "Post not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      content = `${postData.hook}\n\n${postData.body}\n\n${postData.cta}`;
+      hookType = postData.hook_type || hookType;
+      tone = postData.tone || tone;
+      style = postData.post_style || style;
+      contentIntent = postData.content_intent || contentIntent;
+      personaId = postData.persona_id;
+      campaignId = postData.campaign_id;
+      postType = postData.post_type || "text";
+    } else if (post_content) {
+      // Raw content scoring (no DB reference)
+      content = post_content;
+      hookType = post_meta?.hook_type || hookType;
+      tone = post_meta?.tone || tone;
+      style = post_meta?.post_style || style;
+      contentIntent = post_meta?.content_intent || contentIntent;
+      personaId = post_meta?.persona_id || null;
+      campaignId = post_meta?.campaign_id || null;
+      postType = post_meta?.post_type || "text";
+    } else {
+      return new Response(JSON.stringify({ error: "draft_id, post_id, or post_content is required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
-    }
-
-    // Fetch draft + linked post
-    const { data: draft } = await supabase
-      .from("drafts")
-      .select("*, ideas(idea_title, instruction, objective, target_audience)")
-      .eq("id", draft_id)
-      .single();
-
-    if (!draft) {
-      return new Response(JSON.stringify({ error: "Draft not found" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    let postMeta: any = null;
-    if (draft.selected_post_id) {
-      const { data } = await supabase
-        .from("posts")
-        .select("hook_type, tone, post_style, content_intent, persona_id, campaign_id")
-        .eq("id", draft.selected_post_id)
-        .single();
-      postMeta = data;
     }
 
     // Fetch all context in parallel
@@ -66,15 +119,15 @@ serve(async (req) => {
       supabase.from("business_profiles")
         .select("company_summary, product_summary, differentiators, current_priorities, brand_tone, restricted_claims, customer_problems, product_features, customer_benefits, industries_served")
         .eq("user_id", user.id).maybeSingle(),
-      postMeta?.persona_id
+      personaId
         ? supabase.from("audience_personas")
             .select("name, pain_points, goals, objections, awareness_level, industry, business_size, geography, language_style, content_preference")
-            .eq("id", postMeta.persona_id).single()
+            .eq("id", personaId).single()
         : Promise.resolve({ data: null }),
-      postMeta?.campaign_id
+      campaignId
         ? supabase.from("campaigns")
             .select("name, goal, core_message, cta_type, tone")
-            .eq("id", postMeta.campaign_id).single()
+            .eq("id", campaignId).single()
         : Promise.resolve({ data: null }),
     ]);
 
@@ -108,14 +161,10 @@ serve(async (req) => {
       }
     }
 
-    const content = draft.custom_content || "No content";
-    const hookType = postMeta?.hook_type || "unknown";
-    const tone = postMeta?.tone || "unknown";
-    const style = postMeta?.post_style || "unknown";
-    const campaignGoal = campaign?.goal || draft.ideas?.objective || "awareness";
+    const campaignGoal = campaign?.goal || "awareness";
     const campaignCta = campaign?.cta_type || "soft";
 
-    const prompt = `You are a LinkedIn content performance predictor and pre-publish advisor. Score this draft with DEEP causal analysis.
+    const prompt = `You are a LinkedIn content performance predictor and pre-publish advisor. Score this ${postType === "carousel" ? "carousel" : postType === "image_text" ? "image+text" : "text"} post with DEEP causal analysis.
 
 DRAFT CONTENT:
 ${content.slice(0, 2000)}
@@ -124,7 +173,8 @@ POST METADATA:
 - Hook type: ${hookType}
 - Tone: ${tone}
 - Style: ${style}
-- Content intent: ${postMeta?.content_intent || "unknown"}
+- Content intent: ${contentIntent}
+- Post type: ${postType}
 - Campaign goal: ${campaignGoal}
 - Campaign CTA type: ${campaignCta}
 
@@ -153,6 +203,7 @@ ${patternsSummary || "No historical patterns yet."}
 
 SCORING INSTRUCTIONS:
 Score each dimension 0-100. Be SPECIFIC and CAUSAL in your reasoning — reference the persona's industry, geography, awareness level, and actual pattern data.
+${postType !== "text" ? `\nAlso evaluate the visual/carousel strategy — is the post type appropriate for the goal and audience?` : ""}
 
 Return VALID JSON only (no markdown fences):
 {
@@ -218,27 +269,29 @@ Return VALID JSON only (no markdown fences):
     if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     const result = JSON.parse(raw);
 
-    // Save prediction
-    await supabase.from("prediction_scores").insert({
-      user_id: user.id,
-      draft_id,
-      hook_strength: result.hook_strength || 0,
-      persona_relevance: result.persona_relevance || 0,
-      clarity: result.clarity || 0,
-      goal_alignment: result.goal_alignment || 0,
-      cta_alignment: result.cta_alignment || 0,
-      context_relevance: result.context_relevance || 0,
-      predicted_score: result.predicted_score || 0,
-      risk_level: result.risk_level || "medium",
-      suggestions: result.suggestions || [],
-      historical_comparison: result.historical_comparison || null,
-      strongest_element: result.strongest_element || null,
-      weakest_element: result.weakest_element || null,
-      failure_reasons: result.failure_reasons || [],
-      improved_hooks: result.improved_hooks || [],
-      improved_ctas: result.improved_ctas || [],
-      publish_recommendation: result.publish_recommendation || "revise",
-    });
+    // Save prediction (only if draft_id provided — inline scoring doesn't persist)
+    if (draft_id) {
+      await supabase.from("prediction_scores").insert({
+        user_id: user.id,
+        draft_id,
+        hook_strength: result.hook_strength || 0,
+        persona_relevance: result.persona_relevance || 0,
+        clarity: result.clarity || 0,
+        goal_alignment: result.goal_alignment || 0,
+        cta_alignment: result.cta_alignment || 0,
+        context_relevance: result.context_relevance || 0,
+        predicted_score: result.predicted_score || 0,
+        risk_level: result.risk_level || "medium",
+        suggestions: result.suggestions || [],
+        historical_comparison: result.historical_comparison || null,
+        strongest_element: result.strongest_element || null,
+        weakest_element: result.weakest_element || null,
+        failure_reasons: result.failure_reasons || [],
+        improved_hooks: result.improved_hooks || [],
+        improved_ctas: result.improved_ctas || [],
+        publish_recommendation: result.publish_recommendation || "revise",
+      });
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

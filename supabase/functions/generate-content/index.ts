@@ -71,7 +71,6 @@ function buildCampaignBlock(data: any): string {
 IMPORTANT: Align all posts with this campaign's goal, tone, CTA type, and style mix. Weight the 4 variations according to the style mix percentages.`;
 }
 
-// Goal-aware chunk prioritization map
 const GOAL_CATEGORY_PRIORITIES: Record<string, string[]> = {
   awareness: ["pain_points", "audience_notes", "founder_voice", "company_overview"],
   engagement: ["founder_voice", "company_overview", "case_study", "audience_notes"],
@@ -113,7 +112,6 @@ function buildBusinessContextBlock(profile: any, chunks: any[], campaignGoal?: s
   }
   
   if (chunks.length > 0) {
-    // Goal-aware filtering: prioritize chunks by source_category matching goal
     let sortedChunks = chunks;
     if (campaignGoal) {
       const priorities = GOAL_CATEGORY_PRIORITIES[campaignGoal] || [];
@@ -152,14 +150,12 @@ function buildPerformanceIntelligenceBlock(patterns: any[]): string {
   const parts: string[] = ["\n\nPERFORMANCE INTELLIGENCE (from past content analysis):"];
   parts.push("The following patterns are learned from the user's ACTUAL published content performance. Use these to make smarter decisions.\n");
 
-  // Group patterns by dimension
   const byDim: Record<string, any[]> = {};
   for (const p of patterns) {
     if (!byDim[p.dimension]) byDim[p.dimension] = [];
     byDim[p.dimension].push(p);
   }
 
-  // Sort each dimension group by engagement rate
   for (const [dim, items] of Object.entries(byDim)) {
     const sorted = items.sort((a: any, b: any) => (b.avg_engagement_rate || 0) - (a.avg_engagement_rate || 0));
     const best = sorted[0];
@@ -177,7 +173,6 @@ function buildPerformanceIntelligenceBlock(patterns: any[]): string {
     parts.push("");
   }
 
-  // Build what to repeat / avoid
   const allSorted = [...patterns].sort((a, b) => (b.avg_engagement_rate || 0) - (a.avg_engagement_rate || 0));
   const topPatterns = allSorted.slice(0, 3);
   const bottomPatterns = allSorted.filter(p => p.sample_count >= 2).slice(-3);
@@ -201,10 +196,78 @@ function buildPerformanceIntelligenceBlock(patterns: any[]): string {
   return parts.join("\n");
 }
 
-function buildSystemPrompt(hasPersona: boolean, hasCampaign: boolean): string {
+function getPostTypeInstructions(postType: string): string {
+  if (postType === "image_text") {
+    return `
+
+POST TYPE: IMAGE + TEXT
+This is a LinkedIn image+text post. Generate both text content AND an image brief for each variation.
+
+For each post, include an "image_briefs" array with exactly 1 image brief object:
+{
+  "slide_number": 1,
+  "visual_description": "Detailed description of what the image should show (layout, colors, elements, text overlays)",
+  "text_overlay": "Any text that should appear ON the image (headline, key stat, quote)",
+  "design_notes": "Style guidance (minimal, bold, infographic, photo-based, illustration)"
+}
+
+IMAGE RULES:
+- The image should COMPLEMENT the text, not repeat it
+- Use the image to show data, frameworks, comparisons, or emotional visuals
+- Text overlay should be punchy (max 10-15 words)
+- The text post should reference or lead into the image
+- Keep the text post slightly shorter since the image carries part of the message`;
+  }
+  
+  if (postType === "carousel") {
+    return `
+
+POST TYPE: CAROUSEL (5-10 SLIDES)
+This is a LinkedIn carousel post. Generate text content (the post caption) AND carousel slide briefs.
+
+For each post, include an "image_briefs" array with 5-10 slide brief objects:
+{
+  "slide_number": 1-10,
+  "visual_description": "What this slide should look like visually",
+  "text_overlay": "The main text/headline on this slide",
+  "design_notes": "Color scheme, layout style, visual hierarchy"
+}
+
+CAROUSEL RULES:
+- Slide 1: Hook slide — bold headline that makes people swipe
+- Slides 2-8: Content slides — one key point per slide, progressive narrative
+- Last slide: CTA slide — clear action + branding
+- Each slide should have a single focused message
+- Text overlay per slide: max 30-40 words
+- The text caption (hook + body + cta) should tease the carousel content and encourage swiping
+- Keep caption shorter (2-4 lines) — the carousel IS the content
+- Use frameworks, step-by-step, myths vs reality, before/after, or numbered lists as carousel structures`;
+  }
+  
+  return `
+
+POST TYPE: TEXT ONLY
+This is a standard text-only LinkedIn post. No images or carousels.
+Do NOT include "image_briefs" in the output (or set it to an empty array []).`;
+}
+
+function buildSystemPrompt(hasPersona: boolean, hasCampaign: boolean, postType: string = "text"): string {
+  const postTypeInstructions = getPostTypeInstructions(postType);
+  
+  const imageBriefsSchema = postType === "text" ? "" : `
+      "image_briefs": [
+        {
+          "slide_number": 1,
+          "visual_description": "string",
+          "text_overlay": "string",
+          "design_notes": "string"
+        }
+      ],`;
+
   return `You are a B2B SaaS content strategist — a context-aware content intelligence engine.
 
 Your job: Turn product instructions into structured LinkedIn content that is DEEPLY personalized for the target persona and aligned with the marketing campaign strategy.
+${postTypeInstructions}
 
 RULES:
 - Sound human. Never generic AI tone.
@@ -281,7 +344,7 @@ Given a user instruction, respond with VALID JSON (no markdown, no code fences) 
       "post_style": "founder_story | customer_story | educational | framework | pain_solution | product_insight | hybrid_story_insight | hybrid_pain_education | soft_promotion",
       "tone": "string (must align with persona's preferred communication style)",
       "content_intent": "Awareness | Education | Trust | Product | Lead",
-      "context_rationale": "string (1-2 sentences: which business angle, differentiator, or product feature was used and why)",
+      "context_rationale": "string (1-2 sentences: which business angle, differentiator, or product feature was used and why)",${imageBriefsSchema}
       "generation_influences": {
         "what_repeated": "string (what proven pattern was intentionally used based on performance data)",
         "what_avoided": "string (what underperforming pattern was intentionally avoided)",
@@ -328,7 +391,7 @@ serve(async (req) => {
       });
     }
 
-    const { instruction, knowledge, persona_id, campaign_id } = await req.json();
+    const { instruction, knowledge, persona_id, campaign_id, post_type = "text" } = await req.json();
 
     if (!persona_id || persona_id === "none") {
       return new Response(JSON.stringify({ error: "Please select a target persona" }), {
@@ -393,7 +456,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = buildSystemPrompt(true, true);
+    const systemPrompt = buildSystemPrompt(true, true, post_type);
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
     const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + businessContextBlock + performanceBlock;
 
@@ -472,6 +535,8 @@ serve(async (req) => {
       persona_id: persona_id,
       campaign_id: campaign_id,
       hook_type: p.hook_type || null,
+      post_type: post_type,
+      image_briefs: p.image_briefs || [],
     }));
 
     const { data: posts, error: postsError } = await supabase
@@ -481,7 +546,14 @@ serve(async (req) => {
 
     if (postsError) throw postsError;
 
-    return new Response(JSON.stringify({ idea, posts }), {
+    // Merge generation_influences and context_rationale from parsed data onto returned posts
+    const enrichedPosts = (posts || []).map((dbPost: any, idx: number) => ({
+      ...dbPost,
+      context_rationale: parsed.posts[idx]?.context_rationale || null,
+      generation_influences: parsed.posts[idx]?.generation_influences || null,
+    }));
+
+    return new Response(JSON.stringify({ idea, posts: enrichedPosts }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
