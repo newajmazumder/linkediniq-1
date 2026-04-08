@@ -107,6 +107,13 @@ serve(async (req) => {
       };
     });
 
+    // Fetch business profile for context-aware analysis
+    const { data: businessProfile } = await supabase
+      .from("business_profiles")
+      .select("company_summary, product_summary, differentiators, brand_tone, current_priorities, messaging_pillars")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
     if (enriched.length === 0) {
       return new Response(
         JSON.stringify({
@@ -126,7 +133,23 @@ serve(async (req) => {
       );
     }
 
+    const businessContextSection = businessProfile ? `
+BUSINESS CONTEXT:
+- Company: ${businessProfile.company_summary || "Not specified"}
+- Product: ${businessProfile.product_summary || "Not specified"}
+- Differentiators: ${Array.isArray(businessProfile.differentiators) && businessProfile.differentiators.length > 0 ? businessProfile.differentiators.join(", ") : "Not specified"}
+- Brand Tone: ${businessProfile.brand_tone || "Not specified"}
+- Current Priorities: ${Array.isArray(businessProfile.current_priorities) && businessProfile.current_priorities.length > 0 ? businessProfile.current_priorities.join(", ") : "Not specified"}
+- Messaging Pillars: ${Array.isArray(businessProfile.messaging_pillars) && businessProfile.messaging_pillars.length > 0 ? businessProfile.messaging_pillars.join(", ") : "Not specified"}
+
+When analyzing performance, also evaluate:
+- Whether posts that use the strongest business differentiators perform better
+- Whether posts aligned with current priorities outperform generic content
+- Whether the brand tone is consistently used in top-performing posts
+- Provide specific recommendations referencing actual business context` : "";
+
     const prompt = `You are a LinkedIn content strategist. Analyze these post performance metrics WITH full metadata (persona, tone, hook type, content style, content intent) and provide deep, persona-specific insights.
+${businessContextSection}
 
 Posts data:
 ${JSON.stringify(enriched, null, 2)}
