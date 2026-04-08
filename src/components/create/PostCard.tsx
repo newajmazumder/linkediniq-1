@@ -247,6 +247,14 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
         </div>
       )}
 
+      {/* Context rationale */}
+      {post.context_rationale && !compact && (
+        <div className="rounded-md bg-accent/10 border border-accent/20 p-3">
+          <p className="text-xs text-muted-foreground mb-1">Business context used</p>
+          <p className="text-xs text-foreground">{post.context_rationale}</p>
+        </div>
+      )}
+
       {/* Scores */}
       {score && (
         <div className="space-y-1 pt-1">
