@@ -200,7 +200,8 @@ Given a user instruction, respond with VALID JSON (no markdown, no code fences) 
       "first_comment": "string (suggested first comment to boost engagement)",
       "post_style": "founder_story | customer_story | educational | framework | pain_solution | product_insight | hybrid_story_insight | hybrid_pain_education | soft_promotion",
       "tone": "string (must align with persona's preferred communication style)",
-      "content_intent": "Awareness | Education | Trust | Product | Lead"
+      "content_intent": "Awareness | Education | Trust | Product | Lead",
+      "context_rationale": "string (1-2 sentences: which business angle, differentiator, or product feature was used and why)"
     }
     // ... 4 total variations
   ]
