@@ -90,6 +90,14 @@ STRATEGIC CONTEXT:
 - CTA Type: ${context.cta_type || "not specified"}
 ${personaDetails ? `- Target Persona: ${personaDetails.name} (${personaDetails.industry || "general"}, ${personaDetails.awareness_level || "unknown"} awareness)` : ""}
 ${campaignDetails ? `- Campaign: ${campaignDetails.name} (Goal: ${campaignDetails.goal})` : ""}
+${businessProfile ? `
+BUSINESS CONTEXT:
+- Company: ${businessProfile.company_summary || "Not specified"}
+- Product: ${businessProfile.product_summary || "Not specified"}
+- Differentiators: ${Array.isArray(businessProfile.differentiators) && businessProfile.differentiators.length > 0 ? businessProfile.differentiators.join(", ") : "Not specified"}
+- Brand Tone: ${businessProfile.brand_tone || "Not specified"}
+- Current Priorities: ${Array.isArray(businessProfile.current_priorities) && businessProfile.current_priorities.length > 0 ? businessProfile.current_priorities.join(", ") : "Not specified"}
+- Messaging Pillars: ${Array.isArray(businessProfile.messaging_pillars) && businessProfile.messaging_pillars.length > 0 ? businessProfile.messaging_pillars.join(", ") : "Not specified"}` : ""}
 
 PERFORMANCE METRICS:
 - Reactions: ${metrics?.reactions || 0}
