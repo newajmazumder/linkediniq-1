@@ -304,22 +304,77 @@ const AnalyticsPage = () => {
             <p className="text-xs text-muted-foreground">No patterns learned yet. Add performance data and click "Learn from Data".</p>
           </div>
         ) : (
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {learnedPatterns.slice(0, 9).map((p, i) => (
-              <div key={i} className="rounded-lg border border-border bg-card p-3 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-medium text-muted-foreground uppercase">{p.dimension.replace("_", " ")}</span>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{p.dimension_value}</span>
+          <>
+            {/* Content patterns */}
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {learnedPatterns.filter(p => !["post_length", "publish_time"].includes(p.dimension)).slice(0, 9).map((p, i) => (
+                <div key={i} className="rounded-lg border border-border bg-card p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-medium text-muted-foreground uppercase">{p.dimension.replace("_", " ")}</span>
+                    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{p.dimension_value}</span>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-foreground">{p.avg_engagement_rate}%</span>
+                    <span className="text-[10px] text-muted-foreground">avg engagement</span>
+                  </div>
+                  <div className="text-[10px] text-muted-foreground">{p.sample_count} posts · {p.avg_impressions} avg impressions</div>
+                  {p.insight && <p className="text-xs text-foreground italic mt-1">{p.insight}</p>}
                 </div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-semibold text-foreground">{p.avg_engagement_rate}%</span>
-                  <span className="text-[10px] text-muted-foreground">avg engagement</span>
+              ))}
+            </div>
+
+            {/* Distribution Intelligence */}
+            {learnedPatterns.some(p => ["post_length", "publish_time"].includes(p.dimension)) && (
+              <div className="space-y-2 mt-4">
+                <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Distribution Intelligence
+                </h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {/* Post Length */}
+                  {learnedPatterns.filter(p => p.dimension === "post_length").length > 0 && (
+                    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                      <span className="text-[10px] font-medium text-primary uppercase">Post Length</span>
+                      {learnedPatterns.filter(p => p.dimension === "post_length").map((p, i) => (
+                        <div key={i} className="flex items-center justify-between">
+                          <span className="text-xs text-foreground">{p.dimension_value}</span>
+                          <div className="text-right">
+                            <span className="text-xs font-semibold text-foreground">{p.avg_engagement_rate}%</span>
+                            <span className="text-[10px] text-muted-foreground ml-1">({p.sample_count} posts)</span>
+                          </div>
+                        </div>
+                      ))}
+                      {learnedPatterns.filter(p => p.dimension === "post_length").find(p => p.insight) && (
+                        <p className="text-[10px] text-muted-foreground italic">
+                          {learnedPatterns.filter(p => p.dimension === "post_length").find(p => p.insight)?.insight}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                  {/* Publish Time */}
+                  {learnedPatterns.filter(p => p.dimension === "publish_time").length > 0 && (
+                    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
+                      <span className="text-[10px] font-medium text-primary uppercase">Publish Time</span>
+                      {learnedPatterns.filter(p => p.dimension === "publish_time").map((p, i) => (
+                        <div key={i} className="flex items-center justify-between">
+                          <span className="text-xs text-foreground">{p.dimension_value}</span>
+                          <div className="text-right">
+                            <span className="text-xs font-semibold text-foreground">{p.avg_engagement_rate}%</span>
+                            <span className="text-[10px] text-muted-foreground ml-1">({p.sample_count} posts)</span>
+                          </div>
+                        </div>
+                      ))}
+                      {learnedPatterns.filter(p => p.dimension === "publish_time").find(p => p.insight) && (
+                        <p className="text-[10px] text-muted-foreground italic">
+                          {learnedPatterns.filter(p => p.dimension === "publish_time").find(p => p.insight)?.insight}
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div className="text-[10px] text-muted-foreground">{p.sample_count} posts · {p.avg_impressions} avg impressions</div>
-                {p.insight && <p className="text-xs text-foreground italic mt-1">{p.insight}</p>}
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
 
