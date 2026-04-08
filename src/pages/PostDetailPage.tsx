@@ -179,11 +179,35 @@ const PostDetailPage = () => {
       toast.success("Metrics saved");
       const { data } = await supabase.from("post_metrics").select("*").eq("linkedin_post_id", postId!).single();
       if (data) setMetrics(data);
+
+      // Auto-trigger learning if enough data exists
+      triggerAutoLearn();
     } catch (err: any) {
       toast.error(err.message);
     } finally {
       setSavingMetrics(false);
     }
+  };
+
+  const triggerAutoLearn = async () => {
+    try {
+      // Check if there are 3+ metrics entries
+      const { count } = await supabase
+        .from("post_metrics")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user!.id);
+
+      if (count && count >= 3) {
+        // Run learn-patterns in background
+        supabase.functions.invoke("learn-patterns").then(({ data, error }) => {
+          if (!error && data?.patterns_count > 0) {
+            toast.success(`Patterns updated: ${data.patterns_count} patterns learned`, { duration: 3000 });
+            // Also refresh strategy recommendations
+            supabase.functions.invoke("recommend-next").catch(() => {});
+          }
+        }).catch(() => {});
+      }
+    } catch { /* non-critical */ }
   };
 
   const runAnalysis = async () => {

@@ -396,9 +396,11 @@ export type Database = {
           persona_id: string | null
           post_id: string | null
           post_style: string | null
+          publish_hour: number | null
           tone: string | null
           topic: string | null
           user_id: string
+          word_count: number | null
         }
         Insert: {
           campaign_id?: string | null
@@ -414,9 +416,11 @@ export type Database = {
           persona_id?: string | null
           post_id?: string | null
           post_style?: string | null
+          publish_hour?: number | null
           tone?: string | null
           topic?: string | null
           user_id: string
+          word_count?: number | null
         }
         Update: {
           campaign_id?: string | null
@@ -432,9 +436,11 @@ export type Database = {
           persona_id?: string | null
           post_id?: string | null
           post_style?: string | null
+          publish_hour?: number | null
           tone?: string | null
           topic?: string | null
           user_id?: string
+          word_count?: number | null
         }
         Relationships: [
           {
