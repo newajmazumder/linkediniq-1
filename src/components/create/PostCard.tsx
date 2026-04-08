@@ -24,6 +24,7 @@ export type Post = {
   first_comment: string | null;
   post_style: string;
   tone: string | null;
+  context_rationale?: string | null;
 };
 
 export type PostScore = {
