@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap, CalendarDays, BarChart3, UserCircle, Target } from "lucide-react";
+import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap, CalendarDays, BarChart3, UserCircle, Target, Activity, Settings } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
@@ -7,10 +7,12 @@ const navItems = [
   { to: "/create", icon: PenLine, label: "Create" },
   { to: "/drafts", icon: FileText, label: "Drafts" },
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },
+  { to: "/performance", icon: Activity, label: "Performance" },
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/audience", icon: UserCircle, label: "Audience" },
   { to: "/strategy", icon: Target, label: "Strategy" },
   { to: "/competitors", icon: Users, label: "Competitors" },
+  { to: "/settings", icon: Settings, label: "Settings" },
 ];
 
 const AppSidebar = () => {
@@ -28,7 +30,7 @@ const AppSidebar = () => {
 
       <nav className="flex-1 px-3 py-2 space-y-0.5">
         {navItems.map(({ to, icon: Icon, label }) => {
-          const isActive = location.pathname === to;
+          const isActive = to === "/" ? location.pathname === "/" : location.pathname.startsWith(to);
           return (
             <NavLink
               key={to}

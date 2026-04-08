@@ -3,12 +3,14 @@ import AppSidebar from "@/components/AppSidebar";
 
 const AppLayout = () => {
   const location = useLocation();
-  const isFullWidth = location.pathname === "/create" || location.pathname === "/competitors";
+  const isFullWidth = ["/create", "/competitors", "/performance"].some(
+    p => location.pathname === p || location.pathname.startsWith("/performance/")
+  );
 
   return (
     <div className="flex h-screen overflow-hidden">
       <AppSidebar />
-      <main className={`flex-1 overflow-y-auto ${isFullWidth ? "" : ""}`}>
+      <main className={`flex-1 overflow-y-auto`}>
         <div className={isFullWidth ? "h-full" : "mx-auto max-w-4xl px-6 py-8"}>
           <Outlet />
         </div>
