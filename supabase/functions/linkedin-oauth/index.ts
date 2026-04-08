@@ -24,7 +24,7 @@ serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) throw new Error("Unauthorized");
 
-    const { action, code, redirect_uri } = await req.json();
+    const { action, code, redirect_uri, app_origin } = await req.json();
 
     const clientId = Deno.env.get("LINKEDIN_CLIENT_ID");
     const clientSecret = Deno.env.get("LINKEDIN_CLIENT_SECRET");
@@ -36,7 +36,7 @@ serve(async (req) => {
     if (action === "get_auth_url") {
       // Generate LinkedIn OAuth authorization URL
       const scopes = ["openid", "profile", "email", "w_member_social"];
-      const state = crypto.randomUUID();
+      const state = encodeURIComponent(app_origin || new URL(redirect_uri).origin);
       const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirect_uri)}&state=${state}&scope=${encodeURIComponent(scopes.join(" "))}`;
 
       return new Response(JSON.stringify({ auth_url: authUrl, state }), {

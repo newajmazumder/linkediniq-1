@@ -10,12 +10,25 @@ const LinkedInCallbackPage = () => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get("code");
     const error = params.get("error");
+    const state = params.get("state");
+
+    const getTargetOrigin = () => {
+      if (!state) return window.location.origin;
+
+      try {
+        const decodedOrigin = decodeURIComponent(state);
+        return new URL(decodedOrigin).origin;
+      } catch {
+        return window.location.origin;
+      }
+    };
 
     if (window.opener) {
-      // Send the code back to the parent window
+      const targetOrigin = getTargetOrigin();
+
       window.opener.postMessage(
         { type: "LINKEDIN_OAUTH_CALLBACK", code, error },
-        window.location.origin
+        targetOrigin
       );
       // Close this popup after a short delay
       setTimeout(() => window.close(), 500);

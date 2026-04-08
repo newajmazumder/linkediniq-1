@@ -12,7 +12,8 @@ type LinkedInAccount = {
   last_synced_at: string | null;
 };
 
-const REDIRECT_URI = `${window.location.origin}/linkedin-callback`;
+const PUBLISHED_ORIGIN = "https://linkediniq.lovable.app";
+const REDIRECT_URI = `${PUBLISHED_ORIGIN}/linkedin-callback`;
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -33,7 +34,7 @@ const SettingsPage = () => {
   // Listen for OAuth callback from popup window
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      if (event.origin !== PUBLISHED_ORIGIN) return;
       if (event.data?.type !== "LINKEDIN_OAUTH_CALLBACK") return;
 
       const { code, error } = event.data;
@@ -77,7 +78,11 @@ const SettingsPage = () => {
     setConnecting(true);
     try {
       const { data, error } = await supabase.functions.invoke("linkedin-oauth", {
-        body: { action: "get_auth_url", redirect_uri: REDIRECT_URI },
+        body: {
+          action: "get_auth_url",
+          redirect_uri: REDIRECT_URI,
+          app_origin: window.location.origin,
+        },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
