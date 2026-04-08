@@ -14,6 +14,7 @@ type LinkedInAccount = {
 
 const PUBLISHED_ORIGIN = "https://linkediniq.lovable.app";
 const REDIRECT_URI = `${PUBLISHED_ORIGIN}/linkedin-callback`;
+const PUBLISHED_SETTINGS_URL = `${PUBLISHED_ORIGIN}/settings`;
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -21,6 +22,7 @@ const SettingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const isPreviewEnvironment = window.location.origin !== PUBLISHED_ORIGIN;
 
   const fetchAccount = useCallback(async () => {
     const { data } = await supabase
@@ -75,6 +77,12 @@ const SettingsPage = () => {
   };
 
   const handleConnect = async () => {
+    if (isPreviewEnvironment) {
+      window.open(PUBLISHED_SETTINGS_URL, "_blank", "noopener,noreferrer");
+      toast.info("Complete LinkedIn connection from the published app.");
+      return;
+    }
+
     setConnecting(true);
     try {
       const { data, error } = await supabase.functions.invoke("linkedin-oauth", {
@@ -185,6 +193,23 @@ const SettingsPage = () => {
         </div>
 
         <div className="px-6 py-5 space-y-4">
+          {isPreviewEnvironment && (
+            <div className="rounded-md border border-border bg-muted/40 px-4 py-3">
+              <p className="text-xs text-muted-foreground">
+                LinkedIn connection must be completed on the published app because preview and published use separate sign-in environments.
+              </p>
+              <a
+                href={PUBLISHED_SETTINGS_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Open published app
+              </a>
+            </div>
+          )}
+
           {account ? (
             <>
               <div className="grid grid-cols-2 gap-4">
@@ -216,7 +241,7 @@ const SettingsPage = () => {
               {account.connection_status === "pending" && (
                 <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3">
                   <p className="text-xs text-amber-800">
-                    <strong>Connection pending.</strong> Click "Connect LinkedIn" below to complete the OAuth authorization.
+                    <strong>Connection pending.</strong> {isPreviewEnvironment ? "Open the published app below to complete the OAuth authorization." : "Click \"Connect LinkedIn\" below to complete the OAuth authorization."}
                   </p>
                 </div>
               )}
@@ -229,7 +254,7 @@ const SettingsPage = () => {
                     className="inline-flex items-center gap-1.5 rounded-md bg-[hsl(210,100%,40%)] px-3 py-1.5 text-xs font-medium text-white hover:bg-[hsl(210,100%,35%)] transition-colors disabled:opacity-50"
                   >
                     <ExternalLink className="h-3.5 w-3.5" />
-                    {connecting ? "Connecting..." : "Connect LinkedIn"}
+                    {connecting ? "Connecting..." : isPreviewEnvironment ? "Open published app" : "Connect LinkedIn"}
                   </button>
                 )}
                 <button
@@ -261,7 +286,7 @@ const SettingsPage = () => {
                 className="inline-flex items-center gap-2 rounded-md bg-[hsl(210,100%,40%)] px-4 py-2 text-sm font-medium text-white hover:bg-[hsl(210,100%,35%)] transition-colors disabled:opacity-50"
               >
                 <Linkedin className="h-4 w-4" />
-                {connecting ? "Redirecting to LinkedIn..." : "Connect LinkedIn"}
+                {connecting ? "Redirecting to LinkedIn..." : isPreviewEnvironment ? "Open published app" : "Connect LinkedIn"}
               </button>
             </div>
           )}
