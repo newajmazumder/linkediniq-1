@@ -16,6 +16,7 @@ import StrategyPage from "@/pages/StrategyPage";
 import PerformancePage from "@/pages/PerformancePage";
 import PostDetailPage from "@/pages/PostDetailPage";
 import SettingsPage from "@/pages/SettingsPage";
+import BusinessContextPage from "@/pages/BusinessContextPage";
 import LinkedInCallbackPage from "@/pages/LinkedInCallbackPage";
 import NotFound from "@/pages/NotFound";
 
@@ -42,6 +43,7 @@ const AppRoutes = () => {
       ) : (
         <Route element={<AppLayout />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/context" element={<BusinessContextPage />} />
           <Route path="/create" element={<CreatePage />} />
           <Route path="/drafts" element={<DraftsPage />} />
           <Route path="/competitors" element={<CompetitorsPage />} />

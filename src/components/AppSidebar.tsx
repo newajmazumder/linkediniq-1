@@ -1,9 +1,10 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap, CalendarDays, BarChart3, UserCircle, Target, Activity, Settings } from "lucide-react";
+import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap, CalendarDays, BarChart3, UserCircle, Target, Activity, Settings, BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+  { to: "/context", icon: BookOpen, label: "Business Context" },
   { to: "/create", icon: PenLine, label: "Create" },
   { to: "/drafts", icon: FileText, label: "Drafts" },
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },

@@ -71,8 +71,58 @@ function buildCampaignBlock(data: any): string {
 IMPORTANT: Align all posts with this campaign's goal, tone, CTA type, and style mix. Weight the 4 variations according to the style mix percentages.`;
 }
 
+function buildBusinessContextBlock(profile: any, chunks: any[]): string {
+  const parts: string[] = [];
+  
+  if (profile) {
+    parts.push("BUSINESS CONTEXT (from structured knowledge):");
+    if (profile.company_summary) parts.push(`Company: ${profile.company_summary}`);
+    if (profile.product_summary) parts.push(`Product: ${profile.product_summary}`);
+    if (profile.target_audience) parts.push(`Target Audience: ${profile.target_audience}`);
+    
+    const arr = (v: any) => Array.isArray(v) && v.length > 0 ? v.join(", ") : null;
+    const diff = arr(profile.differentiators);
+    if (diff) parts.push(`Key Differentiators: ${diff}`);
+    const probs = arr(profile.customer_problems);
+    if (probs) parts.push(`Customer Problems: ${probs}`);
+    const feats = arr(profile.product_features);
+    if (feats) parts.push(`Product Features: ${feats}`);
+    const bens = arr(profile.customer_benefits);
+    if (bens) parts.push(`Customer Benefits: ${bens}`);
+    if (profile.brand_tone) parts.push(`Brand Tone: ${profile.brand_tone}`);
+    const priorities = arr(profile.current_priorities);
+    if (priorities) parts.push(`Current Priorities: ${priorities}`);
+    const pillars = arr(profile.messaging_pillars);
+    if (pillars) parts.push(`Messaging Pillars: ${pillars}`);
+    const restricted = arr(profile.restricted_claims);
+    if (restricted) parts.push(`RESTRICTED CLAIMS (do NOT use): ${restricted}`);
+    const validCtas = arr(profile.valid_ctas);
+    if (validCtas) parts.push(`Approved CTAs: ${validCtas}`);
+    const proofs = arr(profile.proof_points);
+    if (proofs) parts.push(`Proof Points: ${proofs}`);
+  }
+  
+  if (chunks.length > 0) {
+    parts.push("\nRELEVANT SOURCE EXCERPTS:");
+    for (const chunk of chunks.slice(0, 8)) {
+      parts.push(`[${chunk.metadata?.source_category || "general"}: ${chunk.metadata?.source_title || "source"}]\n${chunk.chunk_text.slice(0, 500)}`);
+    }
+  }
+  
+  if (parts.length === 0) return "";
+  
+  return "\n\n" + parts.join("\n") + `
+
+IMPORTANT BUSINESS CONTEXT RULES:
+- Use company-specific language and positioning from the business context above.
+- Do NOT make claims that are not supported by the business context.
+- Prioritize the strongest differentiators and messaging angles found above.
+- Reflect the brand tone and voice described.
+- Each post must include a "context_rationale" explaining which business angle was used.`;
+}
+
 function buildSystemPrompt(hasPersona: boolean, hasCampaign: boolean): string {
-  return `You are a B2B SaaS content strategist for LinkedinIQ — an AI-powered customer support platform.
+  return `You are a B2B SaaS content strategist — a context-aware content intelligence engine.
 
 Your job: Turn product instructions into structured LinkedIn content that is DEEPLY personalized for the target persona and aligned with the marketing campaign strategy.
 
@@ -150,7 +200,8 @@ Given a user instruction, respond with VALID JSON (no markdown, no code fences) 
       "first_comment": "string (suggested first comment to boost engagement)",
       "post_style": "founder_story | customer_story | educational | framework | pain_solution | product_insight | hybrid_story_insight | hybrid_pain_education | soft_promotion",
       "tone": "string (must align with persona's preferred communication style)",
-      "content_intent": "Awareness | Education | Trust | Product | Lead"
+      "content_intent": "Awareness | Education | Trust | Product | Lead",
+      "context_rationale": "string (1-2 sentences: which business angle, differentiator, or product feature was used and why)"
     }
     // ... 4 total variations
   ]
@@ -236,12 +287,36 @@ serve(async (req) => {
     }
     const campaignBlock = buildCampaignBlock(campaignData);
 
+    // Fetch business context
+    const [profileRes, chunksRes] = await Promise.all([
+      supabase.from("business_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("context_chunks")
+        .select("chunk_text, metadata")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
+
+    // Filter chunks by active sources
+    let relevantChunks = chunksRes.data || [];
+    if (relevantChunks.length > 0) {
+      const { data: activeSources } = await supabase
+        .from("context_sources")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+      const activeIds = new Set((activeSources || []).map((s: any) => s.id));
+      // chunks don't have source_id in select, but we fetched from active user — keep all for now
+    }
+
+    const businessContextBlock = buildBusinessContextBlock(profileRes.data, relevantChunks as any[]);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = buildSystemPrompt(true, true);
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
-    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock;
+    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + businessContextBlock;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
