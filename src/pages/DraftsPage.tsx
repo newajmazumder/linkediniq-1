@@ -10,6 +10,7 @@ import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle, Loader2, BarChart3
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { getScoreInterpretation } from "@/components/create/PostCard";
 
 type Draft = {
   id: string;
