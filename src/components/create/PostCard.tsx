@@ -44,15 +44,6 @@ export type Post = {
   } | null;
 };
 
-export type PostScore = {
-  post_id: string;
-  hook_strength: number;
-  clarity: number;
-  business_relevance: number;
-  engagement_potential: number;
-  overall: number;
-};
-
 export type PredictionResult = {
   hook_strength: number;
   persona_relevance: number;
@@ -109,18 +100,24 @@ const publishColors: Record<string, { bg: string; text: string; label: string }>
   not_recommended: { bg: "bg-destructive/10", text: "text-destructive", label: "Not recommended" },
 };
 
+export const getScoreInterpretation = (score: number): { label: string; color: string } => {
+  if (score >= 80) return { label: "Strong — ready to publish", color: "text-green-600" };
+  if (score >= 60) return { label: "Decent — review suggestions", color: "text-yellow-600" };
+  if (score >= 40) return { label: "Weak — revision needed", color: "text-destructive" };
+  return { label: "Not recommended — rethink approach", color: "text-destructive" };
+};
+
 type Props = {
   post: Post;
   ideaId: string;
   userId: string;
-  score?: PostScore;
   selected?: boolean;
   onSelect?: () => void;
   onPostUpdate: (updated: Post) => void;
   compact?: boolean;
 };
 
-const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdate, compact }: Props) => {
+const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, compact }: Props) => {
   const [rewriting, setRewriting] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [predicting, setPredicting] = useState(false);
@@ -164,9 +161,9 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
       if (data?.error) throw new Error(data.error);
       setPrediction(data);
       setShowPrediction(true);
-      toast.success("Prediction complete!");
+      toast.success("Analysis complete!");
     } catch (err: any) {
-      toast.error(err.message || "Prediction failed");
+      toast.error(err.message || "Analysis failed");
     } finally {
       setPredicting(false);
     }
@@ -181,7 +178,7 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       onPostUpdate(data.post);
-      setPrediction(null); // Clear prediction on rewrite
+      setPrediction(null);
       toast.success("Post updated");
     } catch (err: any) {
       toast.error(err.message || "Rewrite failed");
@@ -193,6 +190,7 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
   const isRewriting = rewriting !== null;
   const PostTypeIcon = postTypeIcons[post.post_type || "text"] || FileText;
   const pubRec = prediction ? publishColors[prediction.publish_recommendation] || publishColors.revise : null;
+  const scoreInterp = prediction ? getScoreInterpretation(prediction.predicted_score) : null;
 
   const ScoreBar = ({ label, value }: { label: string; value: number }) => (
     <div className="flex items-center gap-2">
@@ -233,10 +231,19 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
           {post.tone && (
             <span className="text-xs text-muted-foreground">· {post.tone}</span>
           )}
-          {score && (
-            <span className="ml-1 inline-flex items-center rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground">
-              {score.overall}
-            </span>
+          {/* Unified score badge from prediction */}
+          {prediction && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "ml-1 text-xs font-semibold",
+                prediction.predicted_score >= 80 ? "border-green-500/30 bg-green-500/10 text-green-600" :
+                prediction.predicted_score >= 60 ? "border-yellow-500/30 bg-yellow-500/10 text-yellow-600" :
+                "border-destructive/30 bg-destructive/10 text-destructive"
+              )}
+            >
+              {prediction.predicted_score}
+            </Badge>
           )}
         </div>
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -244,7 +251,7 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
             onClick={predictPerformance}
             disabled={predicting}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-50"
-            title="Predict performance"
+            title="Analyze performance"
           >
             {predicting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BarChart3 className="h-3.5 w-3.5" />}
           </button>
@@ -408,30 +415,21 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
         </div>
       )}
 
-      {/* Basic Scores */}
-      {score && !prediction && (
-        <div className="space-y-1 pt-1">
-          <ScoreBar label="Hook" value={score.hook_strength} />
-          <ScoreBar label="Clarity" value={score.clarity} />
-          <ScoreBar label="Relevance" value={score.business_relevance} />
-          <ScoreBar label="Engage" value={score.engagement_potential} />
-        </div>
-      )}
-
-      {/* Inline Prediction Score Card */}
+      {/* Unified Prediction Score Card */}
       {prediction && (
         <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-3" onClick={(e) => e.stopPropagation()}>
-          {/* Header */}
+          {/* Header: Score + Interpretation + Readiness */}
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-foreground">{prediction.predicted_score}</span>
                 <span className="text-xs text-muted-foreground">/100</span>
               </div>
-              <span className={cn("text-xs font-medium flex items-center gap-1", riskColors[prediction.risk_level] || "text-muted-foreground")}>
-                {prediction.risk_level === "high" ? <AlertTriangle className="h-3 w-3" /> : prediction.risk_level === "low" ? <CheckCircle className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
-                {prediction.risk_level} risk
-              </span>
+              {scoreInterp && (
+                <span className={cn("text-xs font-medium", scoreInterp.color)}>
+                  {scoreInterp.label}
+                </span>
+              )}
             </div>
             {pubRec && (
               <Badge variant="outline" className={cn("text-[10px]", pubRec.bg, pubRec.text)}>

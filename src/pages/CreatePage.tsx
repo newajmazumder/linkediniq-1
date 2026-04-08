@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, LayoutGrid, List, BarChart3, FileText, Image, Layers } from "lucide-react";
+import { Loader2, Sparkles, LayoutGrid, List, FileText, Image, Layers } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import KnowledgeInput, { KnowledgeContext } from "@/components/create/KnowledgeInput";
 import IdeaBrief from "@/components/create/IdeaBrief";
-import PostCard, { Post, PostScore } from "@/components/create/PostCard";
+import PostCard, { Post } from "@/components/create/PostCard";
 import ComparisonView from "@/components/create/ComparisonView";
 
 type Idea = {
@@ -47,9 +47,7 @@ const CreatePage = () => {
   const [idea, setIdea] = useState<Idea | null>(null);
   const [posts, setPosts] = useState<Post[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "compare">("list");
-  const [scores, setScores] = useState<Record<string, PostScore>>({});
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
-  const [scoring, setScoring] = useState(false);
   const [postType, setPostType] = useState<PostType>("text");
   const [knowledge, setKnowledge] = useState<KnowledgeContext>({
     productDescription: "",
@@ -82,7 +80,6 @@ const CreatePage = () => {
     setLoading(true);
     setIdea(null);
     setPosts([]);
-    setScores({});
     setSelectedPostId(null);
 
     try {
@@ -103,34 +100,11 @@ const CreatePage = () => {
 
       setIdea(data.idea);
       setPosts(data.posts);
-      toast.success("Content generated!");
+      toast.success("Content generated! Click 📊 on any variation to analyze performance.");
     } catch (err: any) {
       toast.error(err.message || "Failed to generate content");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleScore = async () => {
-    if (posts.length === 0) return;
-    setScoring(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("score-posts", {
-        body: { posts },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      const scoreMap: Record<string, PostScore> = {};
-      data.scores?.forEach((s: PostScore) => {
-        scoreMap[s.post_id] = s;
-      });
-      setScores(scoreMap);
-      toast.success("Posts scored!");
-    } catch (err: any) {
-      toast.error(err.message || "Scoring failed");
-    } finally {
-      setScoring(false);
     }
   };
 
@@ -255,10 +229,6 @@ const CreatePage = () => {
               <div className="flex items-center justify-between">
                 <h2 className="text-sm font-medium text-foreground">4 Variations</h2>
                 <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="sm" onClick={handleScore} disabled={scoring} className="h-8 text-xs">
-                    {scoring ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <BarChart3 className="mr-1 h-3.5 w-3.5" />}
-                    Score
-                  </Button>
                   <button onClick={() => setViewMode("list")} className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
                     <List className="h-4 w-4" />
                   </button>
@@ -269,11 +239,11 @@ const CreatePage = () => {
               </div>
 
               {viewMode === "compare" && idea ? (
-                <ComparisonView posts={posts} ideaId={idea.id} userId={user!.id} scores={scores} selectedId={selectedPostId} onSelect={setSelectedPostId} onPostUpdate={handlePostUpdate} />
+                <ComparisonView posts={posts} ideaId={idea.id} userId={user!.id} selectedId={selectedPostId} onSelect={setSelectedPostId} onPostUpdate={handlePostUpdate} />
               ) : (
                 <div className="space-y-4">
                   {posts.sort((a, b) => a.variation_number - b.variation_number).map((post) => (
-                    <PostCard key={post.id} post={post} ideaId={idea!.id} userId={user!.id} score={scores[post.id]} onPostUpdate={handlePostUpdate} />
+                    <PostCard key={post.id} post={post} ideaId={idea!.id} userId={user!.id} onPostUpdate={handlePostUpdate} />
                   ))}
                 </div>
               )}
