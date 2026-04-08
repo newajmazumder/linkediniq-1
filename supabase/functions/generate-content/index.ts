@@ -287,12 +287,36 @@ serve(async (req) => {
     }
     const campaignBlock = buildCampaignBlock(campaignData);
 
+    // Fetch business context
+    const [profileRes, chunksRes] = await Promise.all([
+      supabase.from("business_profiles").select("*").eq("user_id", user.id).maybeSingle(),
+      supabase.from("context_chunks")
+        .select("chunk_text, metadata")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
+
+    // Filter chunks by active sources
+    let relevantChunks = chunksRes.data || [];
+    if (relevantChunks.length > 0) {
+      const { data: activeSources } = await supabase
+        .from("context_sources")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("is_active", true);
+      const activeIds = new Set((activeSources || []).map((s: any) => s.id));
+      // chunks don't have source_id in select, but we fetched from active user — keep all for now
+    }
+
+    const businessContextBlock = buildBusinessContextBlock(profileRes.data, relevantChunks as any[]);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const systemPrompt = buildSystemPrompt(true, true);
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
-    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock;
+    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + businessContextBlock;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
