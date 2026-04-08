@@ -12,8 +12,7 @@ type LinkedInAccount = {
   last_synced_at: string | null;
 };
 
-const PUBLISHED_ORIGIN = "https://linkediniq.lovable.app";
-const REDIRECT_URI = `${PUBLISHED_ORIGIN}/settings`;
+const REDIRECT_URI = `${window.location.origin}/linkedin-callback`;
 
 const SettingsPage = () => {
   const { user } = useAuth();
@@ -31,15 +30,25 @@ const SettingsPage = () => {
     setLoading(false);
   }, []);
 
-  // Handle OAuth callback code in URL
+  // Listen for OAuth callback from popup window
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    if (code && user) {
-      // Clean URL
-      window.history.replaceState({}, "", window.location.pathname);
-      exchangeCode(code);
-    }
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "LINKEDIN_OAUTH_CALLBACK") return;
+
+      const { code, error } = event.data;
+      if (error) {
+        toast.error(`LinkedIn authorization failed: ${error}`);
+        setConnecting(false);
+        return;
+      }
+      if (code && user) {
+        exchangeCode(code);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, [user]);
 
   useEffect(() => {
@@ -72,8 +81,16 @@ const SettingsPage = () => {
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      // Open LinkedIn auth in a new window (preview runs in iframe, can't redirect)
-      window.open(data.auth_url, "_blank");
+      // Open LinkedIn auth in a popup window
+      const width = 600;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      window.open(
+        data.auth_url,
+        "linkedin_oauth",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+      );
     } catch (err: any) {
       toast.error(err.message || "Failed to start LinkedIn OAuth");
       setConnecting(false);

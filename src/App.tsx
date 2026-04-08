@@ -16,6 +16,7 @@ import StrategyPage from "@/pages/StrategyPage";
 import PerformancePage from "@/pages/PerformancePage";
 import PostDetailPage from "@/pages/PostDetailPage";
 import SettingsPage from "@/pages/SettingsPage";
+import LinkedInCallbackPage from "@/pages/LinkedInCallbackPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,23 +32,28 @@ const AppRoutes = () => {
     );
   }
 
-  if (!user) return <AuthPage />;
-
   return (
     <Routes>
-      <Route element={<AppLayout />}>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/create" element={<CreatePage />} />
-        <Route path="/drafts" element={<DraftsPage />} />
-        <Route path="/competitors" element={<CompetitorsPage />} />
-        <Route path="/calendar" element={<CalendarPage />} />
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        <Route path="/audience" element={<AudiencePage />} />
-        <Route path="/strategy" element={<StrategyPage />} />
-        <Route path="/performance" element={<PerformancePage />} />
-        <Route path="/performance/:postId" element={<PostDetailPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Route>
+      {/* Public route for LinkedIn OAuth callback - no auth required */}
+      <Route path="/linkedin-callback" element={<LinkedInCallbackPage />} />
+      
+      {!user ? (
+        <Route path="*" element={<AuthPage />} />
+      ) : (
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/create" element={<CreatePage />} />
+          <Route path="/drafts" element={<DraftsPage />} />
+          <Route path="/competitors" element={<CompetitorsPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/audience" element={<AudiencePage />} />
+          <Route path="/strategy" element={<StrategyPage />} />
+          <Route path="/performance" element={<PerformancePage />} />
+          <Route path="/performance/:postId" element={<PostDetailPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+        </Route>
+      )}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
