@@ -5,6 +5,7 @@ import {
   Copy, BookmarkPlus, RefreshCw, ChevronDown,
   Minus, User, Zap, Package, Loader2,
   BookOpen, MessageSquare, Shuffle, Eye, AlertTriangle, BarChart3, Bold,
+  Image, Layers, FileText, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, CheckCircle, Lightbulb,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -13,6 +14,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+
+export type ImageBrief = {
+  slide_number: number;
+  visual_description: string;
+  text_overlay: string;
+  design_notes: string;
+};
 
 export type Post = {
   id: string;
@@ -24,6 +34,8 @@ export type Post = {
   first_comment: string | null;
   post_style: string;
   tone: string | null;
+  post_type?: string;
+  image_briefs?: ImageBrief[] | null;
   context_rationale?: string | null;
   generation_influences?: {
     what_repeated?: string;
@@ -41,6 +53,25 @@ export type PostScore = {
   overall: number;
 };
 
+export type PredictionResult = {
+  hook_strength: number;
+  persona_relevance: number;
+  clarity: number;
+  goal_alignment: number;
+  cta_alignment: number;
+  context_relevance: number;
+  predicted_score: number;
+  risk_level: string;
+  suggestions: string[];
+  historical_comparison: string;
+  strongest_element: string;
+  weakest_element: string;
+  failure_reasons: string[];
+  improved_hooks: string[];
+  improved_ctas: string[];
+  publish_recommendation: string;
+};
+
 const styleLabels: Record<string, string> = {
   product_insight: "Product Insight",
   pain_solution: "Pain → Solution",
@@ -52,6 +83,30 @@ const styleLabels: Record<string, string> = {
   hybrid_story_insight: "Story + Insight",
   hybrid_pain_education: "Pain + Education",
   soft_promotion: "Soft Promotion",
+};
+
+const postTypeIcons: Record<string, any> = {
+  text: FileText,
+  image_text: Image,
+  carousel: Layers,
+};
+
+const postTypeLabels: Record<string, string> = {
+  text: "Text",
+  image_text: "Image + Text",
+  carousel: "Carousel",
+};
+
+const riskColors: Record<string, string> = {
+  low: "text-green-600",
+  medium: "text-yellow-600",
+  high: "text-destructive",
+};
+
+const publishColors: Record<string, { bg: string; text: string; label: string }> = {
+  publish: { bg: "bg-green-500/10", text: "text-green-600", label: "Ready to publish" },
+  revise: { bg: "bg-yellow-500/10", text: "text-yellow-600", label: "Revise before publishing" },
+  not_recommended: { bg: "bg-destructive/10", text: "text-destructive", label: "Not recommended" },
 };
 
 type Props = {
@@ -68,6 +123,10 @@ type Props = {
 const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdate, compact }: Props) => {
   const [rewriting, setRewriting] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
+  const [predicting, setPredicting] = useState(false);
+  const [prediction, setPrediction] = useState<PredictionResult | null>(null);
+  const [showPrediction, setShowPrediction] = useState(false);
+  const [showBriefs, setShowBriefs] = useState(false);
 
   const copyPost = () => {
     const text = `${post.hook}\n\n${post.body}\n\n${post.cta}`;
@@ -95,6 +154,24 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
     }
   };
 
+  const predictPerformance = async () => {
+    setPredicting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("predict-score", {
+        body: { post_id: post.id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setPrediction(data);
+      setShowPrediction(true);
+      toast.success("Prediction complete!");
+    } catch (err: any) {
+      toast.error(err.message || "Prediction failed");
+    } finally {
+      setPredicting(false);
+    }
+  };
+
   const rewritePost = async (action: string) => {
     setRewriting(action);
     try {
@@ -104,6 +181,7 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       onPostUpdate(data.post);
+      setPrediction(null); // Clear prediction on rewrite
       toast.success("Post updated");
     } catch (err: any) {
       toast.error(err.message || "Rewrite failed");
@@ -113,6 +191,8 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
   };
 
   const isRewriting = rewriting !== null;
+  const PostTypeIcon = postTypeIcons[post.post_type || "text"] || FileText;
+  const pubRec = prediction ? publishColors[prediction.publish_recommendation] || publishColors.revise : null;
 
   const ScoreBar = ({ label, value }: { label: string; value: number }) => (
     <div className="flex items-center gap-2">
@@ -136,9 +216,13 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
     >
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex h-5 w-5 items-center justify-center rounded bg-secondary text-xs font-medium text-secondary-foreground">
             {post.variation_number}
+          </span>
+          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <PostTypeIcon className="h-3 w-3" />
+            {postTypeLabels[post.post_type || "text"]}
           </span>
           <span className="text-xs text-muted-foreground">
             {styleLabels[post.post_style] || post.post_style}
@@ -156,6 +240,14 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
           )}
         </div>
         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={predictPerformance}
+            disabled={predicting}
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-50"
+            title="Predict performance"
+          >
+            {predicting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BarChart3 className="h-3.5 w-3.5" />}
+          </button>
           <button
             onClick={copyPost}
             className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"
@@ -244,6 +336,37 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
         <p className="font-medium">{post.cta}</p>
       </div>
 
+      {/* Image Briefs for image_text and carousel */}
+      {post.image_briefs && post.image_briefs.length > 0 && !compact && (
+        <div className="space-y-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowBriefs(!showBriefs); }}
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            {post.post_type === "carousel" ? <Layers className="h-3 w-3" /> : <Image className="h-3 w-3" />}
+            {showBriefs ? "Hide" : "Show"} {post.post_type === "carousel" ? `${post.image_briefs.length} slide briefs` : "image brief"}
+          </button>
+          {showBriefs && (
+            <div className="space-y-2">
+              {(post.image_briefs as ImageBrief[]).map((brief, idx) => (
+                <div key={idx} className="rounded-md bg-secondary/50 border border-border p-3 space-y-1">
+                  <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
+                    {post.post_type === "carousel" ? `Slide ${brief.slide_number}` : "Image"}
+                  </p>
+                  {brief.text_overlay && (
+                    <p className="text-xs font-medium text-foreground">"{brief.text_overlay}"</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">{brief.visual_description}</p>
+                  {brief.design_notes && (
+                    <p className="text-[10px] text-muted-foreground italic">Design: {brief.design_notes}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* First comment */}
       {post.first_comment && !compact && (
         <div className="rounded-md bg-secondary p-3">
@@ -285,13 +408,128 @@ const PostCard = ({ post, ideaId, userId, score, selected, onSelect, onPostUpdat
         </div>
       )}
 
-      {/* Scores */}
-      {score && (
+      {/* Basic Scores */}
+      {score && !prediction && (
         <div className="space-y-1 pt-1">
           <ScoreBar label="Hook" value={score.hook_strength} />
           <ScoreBar label="Clarity" value={score.clarity} />
           <ScoreBar label="Relevance" value={score.business_relevance} />
           <ScoreBar label="Engage" value={score.engagement_potential} />
+        </div>
+      )}
+
+      {/* Inline Prediction Score Card */}
+      {prediction && (
+        <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-3" onClick={(e) => e.stopPropagation()}>
+          {/* Header */}
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-foreground">{prediction.predicted_score}</span>
+                <span className="text-xs text-muted-foreground">/100</span>
+              </div>
+              <span className={cn("text-xs font-medium flex items-center gap-1", riskColors[prediction.risk_level] || "text-muted-foreground")}>
+                {prediction.risk_level === "high" ? <AlertTriangle className="h-3 w-3" /> : prediction.risk_level === "low" ? <CheckCircle className="h-3 w-3" /> : <ShieldAlert className="h-3 w-3" />}
+                {prediction.risk_level} risk
+              </span>
+            </div>
+            {pubRec && (
+              <Badge variant="outline" className={cn("text-[10px]", pubRec.bg, pubRec.text)}>
+                {prediction.publish_recommendation === "publish" ? <ShieldCheck className="h-3 w-3 mr-1" /> : prediction.publish_recommendation === "not_recommended" ? <ShieldAlert className="h-3 w-3 mr-1" /> : null}
+                {pubRec.label}
+              </Badge>
+            )}
+          </div>
+
+          {/* 6 Scoring Dimensions */}
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+            {[
+              { label: "Hook", value: prediction.hook_strength },
+              { label: "Persona", value: prediction.persona_relevance },
+              { label: "Clarity", value: prediction.clarity },
+              { label: "Goal", value: prediction.goal_alignment },
+              { label: "CTA", value: prediction.cta_alignment },
+              { label: "Context", value: prediction.context_relevance },
+            ].map(({ label, value }) => (
+              <div key={label} className="text-center">
+                <p className={cn("text-sm font-semibold", value >= 70 ? "text-green-600" : value >= 40 ? "text-yellow-600" : "text-destructive")}>{value}</p>
+                <p className="text-[10px] text-muted-foreground">{label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Strongest / Weakest */}
+          {(prediction.strongest_element || prediction.weakest_element) && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {prediction.strongest_element && (
+                <div className="rounded-md bg-green-500/5 border border-green-500/20 p-2">
+                  <p className="text-[10px] font-medium text-green-600 flex items-center gap-1"><ArrowUp className="h-3 w-3" /> Strongest</p>
+                  <p className="text-xs text-foreground mt-0.5">{prediction.strongest_element}</p>
+                </div>
+              )}
+              {prediction.weakest_element && (
+                <div className="rounded-md bg-destructive/5 border border-destructive/20 p-2">
+                  <p className="text-[10px] font-medium text-destructive flex items-center gap-1"><ArrowDown className="h-3 w-3" /> Weakest</p>
+                  <p className="text-xs text-foreground mt-0.5">{prediction.weakest_element}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Toggle details */}
+          <button onClick={() => setShowPrediction(!showPrediction)} className="text-[10px] text-primary hover:underline">
+            {showPrediction ? "Show less" : "Show detailed analysis"}
+          </button>
+
+          {showPrediction && (
+            <div className="space-y-3 pt-1">
+              {prediction.failure_reasons && prediction.failure_reasons.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-destructive flex items-center gap-1"><AlertTriangle className="h-3 w-3" /> Why this may underperform</p>
+                  {prediction.failure_reasons.map((r, i) => (
+                    <p key={i} className="text-xs text-foreground flex items-start gap-1.5 pl-1"><span className="mt-1 h-1 w-1 rounded-full bg-destructive shrink-0" />{r}</p>
+                  ))}
+                </div>
+              )}
+
+              {prediction.improved_hooks && prediction.improved_hooks.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-primary flex items-center gap-1"><Zap className="h-3 w-3" /> Better hook options</p>
+                  {prediction.improved_hooks.map((h, i) => (
+                    <div key={i} className="flex items-start gap-1.5 pl-1">
+                      <span className="mt-1 h-1 w-1 rounded-full bg-primary shrink-0" />
+                      <p className="text-xs text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => { navigator.clipboard.writeText(h); toast.success("Hook copied"); }}>{h}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {prediction.improved_ctas && prediction.improved_ctas.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-primary flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Better CTA options</p>
+                  {prediction.improved_ctas.map((c, i) => (
+                    <div key={i} className="flex items-start gap-1.5 pl-1">
+                      <span className="mt-1 h-1 w-1 rounded-full bg-primary shrink-0" />
+                      <p className="text-xs text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => { navigator.clipboard.writeText(c); toast.success("CTA copied"); }}>{c}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {prediction.suggestions && prediction.suggestions.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-medium text-foreground flex items-center gap-1"><Lightbulb className="h-3 w-3 text-primary" /> Quick fixes</p>
+                  {prediction.suggestions.map((s, i) => (
+                    <p key={i} className="text-xs text-muted-foreground flex items-start gap-1.5 pl-1"><span className="mt-1 h-1 w-1 rounded-full bg-primary shrink-0" />{s}</p>
+                  ))}
+                </div>
+              )}
+
+              {prediction.historical_comparison && (
+                <p className="text-xs text-muted-foreground italic">{prediction.historical_comparison}</p>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
