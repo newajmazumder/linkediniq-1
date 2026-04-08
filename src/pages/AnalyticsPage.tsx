@@ -286,6 +286,43 @@ const AnalyticsPage = () => {
         ))}
       </div>
 
+      {/* Learned Patterns */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Learned Patterns
+          </h2>
+          <Button onClick={learnFromData} disabled={learning || drafts.length === 0} size="sm" variant="outline">
+            {learning ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1.5 h-3.5 w-3.5" />}
+            Learn from Data
+          </Button>
+        </div>
+
+        {learnedPatterns.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-border py-8 text-center">
+            <p className="text-xs text-muted-foreground">No patterns learned yet. Add performance data and click "Learn from Data".</p>
+          </div>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {learnedPatterns.slice(0, 9).map((p, i) => (
+              <div key={i} className="rounded-lg border border-border bg-card p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase">{p.dimension.replace("_", " ")}</span>
+                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">{p.dimension_value}</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-sm font-semibold text-foreground">{p.avg_engagement_rate}%</span>
+                  <span className="text-[10px] text-muted-foreground">avg engagement</span>
+                </div>
+                <div className="text-[10px] text-muted-foreground">{p.sample_count} posts · {p.avg_impressions} avg impressions</div>
+                {p.insight && <p className="text-xs text-foreground italic mt-1">{p.insight}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       {/* Performance Input */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
