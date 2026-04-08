@@ -46,7 +46,7 @@ const KnowledgeInput = ({ value, onChange }: Props) => {
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-foreground">Product Description</label>
             <Textarea
-              placeholder="e.g. Chattrn is an AI-powered customer support platform..."
+              placeholder="e.g. LinkedinIQ is an AI-powered customer support platform..."
               value={value.productDescription}
               onChange={(e) => onChange({ ...value, productDescription: e.target.value })}
               rows={2}

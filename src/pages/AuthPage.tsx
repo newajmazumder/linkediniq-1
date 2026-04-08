@@ -36,7 +36,7 @@ const AuthPage = () => {
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
             <Zap className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-semibold text-foreground">Chattrn</span>
+          <span className="text-xl font-semibold text-foreground">LinkedinIQ</span>
         </div>
         <p className="text-center text-sm text-muted-foreground">
           {isSignUp ? "Create your account" : "Sign in to Content Engine"}

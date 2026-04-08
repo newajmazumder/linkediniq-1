@@ -72,7 +72,7 @@ IMPORTANT: Align all posts with this campaign's goal, tone, CTA type, and style 
 }
 
 function buildSystemPrompt(hasPersona: boolean, hasCampaign: boolean): string {
-  return `You are a B2B SaaS content strategist for Chattrn — an AI-powered customer support platform.
+  return `You are a B2B SaaS content strategist for LinkedinIQ — an AI-powered customer support platform.
 
 Your job: Turn product instructions into structured LinkedIn content that is DEEPLY personalized for the target persona and aligned with the marketing campaign strategy.
 
