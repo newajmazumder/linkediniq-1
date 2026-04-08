@@ -68,6 +68,84 @@ export type Database = {
         }
         Relationships: []
       }
+      business_profiles: {
+        Row: {
+          brand_tone: string | null
+          company_summary: string | null
+          created_at: string
+          current_priorities: Json | null
+          customer_benefits: Json | null
+          customer_problems: Json | null
+          desired_perception: string | null
+          differentiators: Json | null
+          founder_story: string | null
+          id: string
+          industries_served: Json | null
+          keywords: Json | null
+          messaging_pillars: Json | null
+          objections: Json | null
+          offers_campaigns: Json | null
+          product_features: Json | null
+          product_summary: string | null
+          proof_points: Json | null
+          restricted_claims: Json | null
+          target_audience: string | null
+          updated_at: string
+          user_id: string
+          valid_ctas: Json | null
+        }
+        Insert: {
+          brand_tone?: string | null
+          company_summary?: string | null
+          created_at?: string
+          current_priorities?: Json | null
+          customer_benefits?: Json | null
+          customer_problems?: Json | null
+          desired_perception?: string | null
+          differentiators?: Json | null
+          founder_story?: string | null
+          id?: string
+          industries_served?: Json | null
+          keywords?: Json | null
+          messaging_pillars?: Json | null
+          objections?: Json | null
+          offers_campaigns?: Json | null
+          product_features?: Json | null
+          product_summary?: string | null
+          proof_points?: Json | null
+          restricted_claims?: Json | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id: string
+          valid_ctas?: Json | null
+        }
+        Update: {
+          brand_tone?: string | null
+          company_summary?: string | null
+          created_at?: string
+          current_priorities?: Json | null
+          customer_benefits?: Json | null
+          customer_problems?: Json | null
+          desired_perception?: string | null
+          differentiators?: Json | null
+          founder_story?: string | null
+          id?: string
+          industries_served?: Json | null
+          keywords?: Json | null
+          messaging_pillars?: Json | null
+          objections?: Json | null
+          offers_campaigns?: Json | null
+          product_features?: Json | null
+          product_summary?: string | null
+          proof_points?: Json | null
+          restricted_claims?: Json | null
+          target_audience?: string | null
+          updated_at?: string
+          user_id?: string
+          valid_ctas?: Json | null
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           core_message: string | null
@@ -253,6 +331,125 @@ export type Database = {
           linkedin_url?: string | null
           name?: string
           tags?: string[] | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      context_chunks: {
+        Row: {
+          chunk_index: number
+          chunk_text: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          source_id: string
+          user_id: string
+        }
+        Insert: {
+          chunk_index?: number
+          chunk_text: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          source_id: string
+          user_id: string
+        }
+        Update: {
+          chunk_index?: number
+          chunk_text?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          source_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_chunks_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "context_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      context_settings: {
+        Row: {
+          auto_extract_on_ingest: boolean
+          created_at: string
+          default_active_categories: Json | null
+          founder_tone_weight: number
+          id: string
+          product_docs_weight: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_extract_on_ingest?: boolean
+          created_at?: string
+          default_active_categories?: Json | null
+          founder_tone_weight?: number
+          id?: string
+          product_docs_weight?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_extract_on_ingest?: boolean
+          created_at?: string
+          default_active_categories?: Json | null
+          founder_tone_weight?: number
+          id?: string
+          product_docs_weight?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      context_sources: {
+        Row: {
+          created_at: string
+          file_url: string | null
+          id: string
+          ingestion_status: string
+          is_active: boolean
+          raw_content: string | null
+          source_category: string
+          source_type: string
+          source_url: string | null
+          tags: Json | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          ingestion_status?: string
+          is_active?: boolean
+          raw_content?: string | null
+          source_category?: string
+          source_type?: string
+          source_url?: string | null
+          tags?: Json | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_url?: string | null
+          id?: string
+          ingestion_status?: string
+          is_active?: boolean
+          raw_content?: string | null
+          source_category?: string
+          source_type?: string
+          source_url?: string | null
+          tags?: Json | null
+          title?: string
           updated_at?: string
           user_id?: string
         }
