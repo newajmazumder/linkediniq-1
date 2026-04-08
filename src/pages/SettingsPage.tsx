@@ -30,15 +30,25 @@ const SettingsPage = () => {
     setLoading(false);
   }, []);
 
-  // Handle OAuth callback code in URL
+  // Listen for OAuth callback from popup window
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    if (code && user) {
-      // Clean URL
-      window.history.replaceState({}, "", window.location.pathname);
-      exchangeCode(code);
-    }
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "LINKEDIN_OAUTH_CALLBACK") return;
+
+      const { code, error } = event.data;
+      if (error) {
+        toast.error(`LinkedIn authorization failed: ${error}`);
+        setConnecting(false);
+        return;
+      }
+      if (code && user) {
+        exchangeCode(code);
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, [user]);
 
   useEffect(() => {
