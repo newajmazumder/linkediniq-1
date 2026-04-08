@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, LayoutGrid, List, BarChart3 } from "lucide-react";
+import { Loader2, Sparkles, LayoutGrid, List, BarChart3, FileText, Image, Layers } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -32,6 +32,14 @@ type Idea = {
 type PersonaOption = { id: string; name: string };
 type CampaignOption = { id: string; name: string };
 
+type PostType = "text" | "image_text" | "carousel";
+
+const postTypeOptions: { value: PostType; label: string; icon: any; description: string }[] = [
+  { value: "text", label: "Text", icon: FileText, description: "Standard text-only post" },
+  { value: "image_text", label: "Image + Text", icon: Image, description: "Post with an image brief" },
+  { value: "carousel", label: "Carousel", icon: Layers, description: "Multi-slide carousel post (5-10 slides)" },
+];
+
 const CreatePage = () => {
   const { user } = useAuth();
   const [instruction, setInstruction] = useState("");
@@ -42,6 +50,7 @@ const CreatePage = () => {
   const [scores, setScores] = useState<Record<string, PostScore>>({});
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [scoring, setScoring] = useState(false);
+  const [postType, setPostType] = useState<PostType>("text");
   const [knowledge, setKnowledge] = useState<KnowledgeContext>({
     productDescription: "",
     features: "",
@@ -85,6 +94,7 @@ const CreatePage = () => {
             : undefined,
           persona_id: selectedPersonaId || undefined,
           campaign_id: selectedCampaignId || undefined,
+          post_type: postType,
         },
       });
 
@@ -137,7 +147,7 @@ const CreatePage = () => {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Create</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Select a persona and campaign, then describe what you want to promote.
+            Select a persona, campaign, and post type, then describe what you want to promote.
           </p>
         </div>
 
@@ -172,6 +182,33 @@ const CreatePage = () => {
                 )}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Post Type Selector */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">Post Type</label>
+            <div className="grid grid-cols-3 gap-2">
+              {postTypeOptions.map((opt) => {
+                const Icon = opt.icon;
+                return (
+                  <button
+                    key={opt.value}
+                    onClick={() => setPostType(opt.value)}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-center transition-colors ${
+                      postType === opt.value
+                        ? "border-primary bg-primary/5 text-foreground"
+                        : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="text-xs font-medium">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              {postTypeOptions.find((o) => o.value === postType)?.description}
+            </p>
           </div>
         </div>
 
