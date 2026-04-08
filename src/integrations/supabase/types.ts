@@ -336,6 +336,144 @@ export type Database = {
         }
         Relationships: []
       }
+      content_patterns: {
+        Row: {
+          avg_comments: number | null
+          avg_engagement_rate: number | null
+          avg_impressions: number | null
+          avg_likes: number | null
+          best_combination: Json | null
+          dimension: string
+          dimension_value: string
+          id: string
+          insight: string | null
+          sample_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avg_comments?: number | null
+          avg_engagement_rate?: number | null
+          avg_impressions?: number | null
+          avg_likes?: number | null
+          best_combination?: Json | null
+          dimension: string
+          dimension_value: string
+          id?: string
+          insight?: string | null
+          sample_count?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avg_comments?: number | null
+          avg_engagement_rate?: number | null
+          avg_impressions?: number | null
+          avg_likes?: number | null
+          best_combination?: Json | null
+          dimension?: string
+          dimension_value?: string
+          id?: string
+          insight?: string | null
+          sample_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      content_tags: {
+        Row: {
+          campaign_id: string | null
+          content_intent: string | null
+          content_type: string | null
+          created_at: string
+          cta_type: string | null
+          draft_id: string | null
+          goal: string | null
+          hook_type: string | null
+          id: string
+          linkedin_post_id: string | null
+          persona_id: string | null
+          post_id: string | null
+          post_style: string | null
+          tone: string | null
+          topic: string | null
+          user_id: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          content_intent?: string | null
+          content_type?: string | null
+          created_at?: string
+          cta_type?: string | null
+          draft_id?: string | null
+          goal?: string | null
+          hook_type?: string | null
+          id?: string
+          linkedin_post_id?: string | null
+          persona_id?: string | null
+          post_id?: string | null
+          post_style?: string | null
+          tone?: string | null
+          topic?: string | null
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string | null
+          content_intent?: string | null
+          content_type?: string | null
+          created_at?: string
+          cta_type?: string | null
+          draft_id?: string | null
+          goal?: string | null
+          hook_type?: string | null
+          id?: string
+          linkedin_post_id?: string | null
+          persona_id?: string | null
+          post_id?: string | null
+          post_style?: string | null
+          tone?: string | null
+          topic?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_tags_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_tags_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_tags_linkedin_post_id_fkey"
+            columns: ["linkedin_post_id"]
+            isOneToOne: false
+            referencedRelation: "linkedin_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_tags_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "audience_personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_tags_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       context_chunks: {
         Row: {
           chunk_index: number
@@ -842,6 +980,8 @@ export type Database = {
           id: string
           impressions: number
           likes: number
+          profile_visits: number
+          saves: number
           updated_at: string
           user_id: string
         }
@@ -852,6 +992,8 @@ export type Database = {
           id?: string
           impressions?: number
           likes?: number
+          profile_visits?: number
+          saves?: number
           updated_at?: string
           user_id: string
         }
@@ -862,6 +1004,8 @@ export type Database = {
           id?: string
           impressions?: number
           likes?: number
+          profile_visits?: number
+          saves?: number
           updated_at?: string
           user_id?: string
         }
@@ -989,6 +1133,89 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prediction_scores: {
+        Row: {
+          clarity: number | null
+          created_at: string
+          draft_id: string | null
+          goal_alignment: number | null
+          historical_comparison: string | null
+          hook_strength: number | null
+          id: string
+          persona_relevance: number | null
+          predicted_score: number | null
+          risk_level: string | null
+          suggestions: Json | null
+          user_id: string
+        }
+        Insert: {
+          clarity?: number | null
+          created_at?: string
+          draft_id?: string | null
+          goal_alignment?: number | null
+          historical_comparison?: string | null
+          hook_strength?: number | null
+          id?: string
+          persona_relevance?: number | null
+          predicted_score?: number | null
+          risk_level?: string | null
+          suggestions?: Json | null
+          user_id: string
+        }
+        Update: {
+          clarity?: number | null
+          created_at?: string
+          draft_id?: string | null
+          goal_alignment?: number | null
+          historical_comparison?: string | null
+          hook_strength?: number | null
+          id?: string
+          persona_relevance?: number | null
+          predicted_score?: number | null
+          risk_level?: string | null
+          suggestions?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prediction_scores_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      strategy_recommendations: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          gap_analysis: Json | null
+          id: string
+          recommendation: Json
+          status: string
+          user_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          gap_analysis?: Json | null
+          id?: string
+          recommendation?: Json
+          status?: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          gap_analysis?: Json | null
+          id?: string
+          recommendation?: Json
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       sync_logs: {
         Row: {
