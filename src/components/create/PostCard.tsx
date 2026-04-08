@@ -25,6 +25,11 @@ export type Post = {
   post_style: string;
   tone: string | null;
   context_rationale?: string | null;
+  generation_influences?: {
+    what_repeated?: string;
+    what_avoided?: string;
+    what_tested?: string;
+  } | null;
 };
 
 export type PostScore = {
