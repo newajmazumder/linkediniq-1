@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap, CalendarDays, BarChart3, UserCircle, Target, Activity, Settings } from "lucide-react";
+import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap, CalendarDays, BarChart3, UserCircle, Target, Activity, Settings, BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
