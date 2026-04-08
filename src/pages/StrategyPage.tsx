@@ -87,9 +87,39 @@ const StrategyPage = () => {
 
   useEffect(() => {
     if (user) {
-      Promise.all([fetchCampaigns(), fetchPersonas()]).then(() => setLoading(false));
+      Promise.all([fetchCampaigns(), fetchPersonas(), fetchRecommendations()]).then(() => setLoading(false));
     }
   }, [user]);
+
+  const fetchRecommendations = async () => {
+    const { data } = await supabase
+      .from("strategy_recommendations")
+      .select("recommendation, gap_analysis")
+      .eq("user_id", user!.id)
+      .eq("status", "pending")
+      .order("created_at", { ascending: false })
+      .limit(5);
+    if (data && data.length > 0) {
+      setRecommendations(data.map((r: any) => r.recommendation as Recommendation));
+      setGapAnalysis(data[0]?.gap_analysis as GapAnalysis || null);
+    }
+  };
+
+  const generateRecommendations = async () => {
+    setLoadingRecs(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("recommend-next");
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setRecommendations(data.recommendations || []);
+      setGapAnalysis(data.gap_analysis || null);
+      toast.success("Recommendations generated!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate");
+    } finally {
+      setLoadingRecs(false);
+    }
+  };
 
   const fetchCampaigns = async () => {
     const { data } = await supabase.from("campaigns").select("*").order("created_at", { ascending: false });
