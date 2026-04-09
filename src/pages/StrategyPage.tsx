@@ -103,6 +103,7 @@ const emptyForm = {
   target_quantity: "",
   target_timeframe: "monthly",
   target_priority: "medium",
+  language: "english",
 };
 
 type Recommendation = {
@@ -226,6 +227,7 @@ const StrategyPage = () => {
         target_quantity: form.target_quantity ? parseInt(form.target_quantity) : null,
         target_timeframe: form.target_timeframe,
         target_priority: form.target_priority,
+        language: form.language,
       };
 
       if (editingId) {
@@ -273,6 +275,7 @@ const StrategyPage = () => {
       target_quantity: c.target_quantity?.toString() || "",
       target_timeframe: c.target_timeframe || "monthly",
       target_priority: c.target_priority || "medium",
+      language: (c as any).language || "english",
     });
     setEditingId(c.id);
     setShowForm(true);
