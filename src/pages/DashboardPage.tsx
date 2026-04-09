@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Lightbulb, FileText, Clock, Sparkles, Loader2, TrendingUp, ArrowRight, Beaker, Wrench, Repeat } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Lightbulb, FileText, Clock, Sparkles, Loader2, TrendingUp, ArrowRight, Beaker, Wrench, Repeat, Trash2 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -28,6 +28,7 @@ const recTypeConfig: Record<string, { icon: any; label: string; color: string }>
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ ideas: 0, drafts: 0 });
   const [recentIdeas, setRecentIdeas] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -61,6 +62,19 @@ const DashboardPage = () => {
       setRecommendations(data.recommendations || []);
       toast.success("Recommendations generated!");
     } catch (err: any) { toast.error(err.message || "Failed"); } finally { setLoadingRecs(false); }
+  };
+
+  const deleteIdea = async (ideaId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase.from("ideas").delete().eq("id", ideaId);
+      if (error) throw error;
+      setRecentIdeas(prev => prev.filter(i => i.id !== ideaId));
+      setStats(prev => ({ ...prev, ideas: Math.max(0, prev.ideas - 1) }));
+      toast.success("Idea deleted");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete");
+    }
   };
 
   return (
@@ -152,7 +166,11 @@ const DashboardPage = () => {
         ) : (
           <div className="space-y-2">
             {recentIdeas.map((idea) => (
-              <div key={idea.id} className="flex items-start gap-3 rounded-lg border border-border bg-card p-4">
+              <div
+                key={idea.id}
+                onClick={() => navigate(`/create?idea=${idea.id}`)}
+                className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 cursor-pointer hover:bg-accent/50 transition-colors group"
+              >
                 <Clock className="mt-0.5 h-4 w-4 text-muted-foreground shrink-0" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground truncate">{idea.idea_title || idea.instruction}</p>
@@ -161,7 +179,16 @@ const DashboardPage = () => {
                     {idea.target_audience && <span> · {idea.target_audience}</span>}
                   </p>
                 </div>
-                <span className="text-xs text-muted-foreground shrink-0">{new Date(idea.created_at).toLocaleDateString()}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-muted-foreground">{new Date(idea.created_at).toLocaleDateString()}</span>
+                  <button
+                    onClick={(e) => deleteIdea(idea.id, e)}
+                    className="opacity-0 group-hover:opacity-100 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all"
+                    title="Delete idea"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
