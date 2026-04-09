@@ -497,6 +497,8 @@ serve(async (req) => {
     }
     const campaignBlock = buildCampaignBlock(campaignData);
     const campaignGoal = campaignData.goal || "awareness";
+    const primaryObjective = campaignData.primary_objective || campaignGoal;
+    const outcomeStrategyBlock = buildOutcomeStrategyBlock(primaryObjective);
 
     // Fetch business context, chunks, AND learned patterns in parallel
     const [profileRes, chunksRes, patternsRes] = await Promise.all([
