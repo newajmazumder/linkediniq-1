@@ -56,6 +56,8 @@ const AppRoutes = () => {
           <Route path="/performance" element={<PerformancePage />} />
           <Route path="/performance/:postId" element={<PostDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/campaign/new" element={<CampaignBuilderPage />} />
+          <Route path="/campaign/:id" element={<CampaignPlanPage />} />
         </Route>
       )}
       <Route path="*" element={<NotFound />} />

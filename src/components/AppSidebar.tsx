@@ -12,6 +12,7 @@ const navItems = [
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/audience", icon: UserCircle, label: "Audience" },
   { to: "/strategy", icon: Target, label: "Strategy" },
+  { to: "/campaign/new", icon: Rocket, label: "Campaign Builder" },
   { to: "/competitors", icon: Users, label: "Competitors" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
