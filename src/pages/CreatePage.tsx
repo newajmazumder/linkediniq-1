@@ -118,6 +118,7 @@ const CreatePage = () => {
           persona_id: selectedPersonaId || undefined,
           campaign_id: selectedCampaignId || undefined,
           post_type: postType,
+          language,
         },
       });
 
