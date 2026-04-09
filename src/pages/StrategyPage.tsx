@@ -545,6 +545,9 @@ const StrategyPage = () => {
                           <span className="font-medium text-foreground">Style Mix:</span> Storytelling {c.style_storytelling}% · Educational {c.style_educational}% · Product {c.style_product_led}% · Authority {c.style_authority}%
                         </div>
                         <div className="flex gap-2 pt-2">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/campaign/${c.id}`)}>
+                            <Target className="mr-1 h-3 w-3" /> View Plan
+                          </Button>
                           <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
                           <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(c.id)}>
                             <Trash2 className="mr-1 h-3 w-3" /> Delete
