@@ -316,6 +316,59 @@ This is a standard text-only LinkedIn post. No images or carousels.
 Do NOT include "image_briefs" in the output (or set it to an empty array []).`;
 }
 
+function buildLanguageBlock(language: string): string {
+  if (language !== "bangla") return "";
+
+  return `
+
+LANGUAGE: BANGLA (বাংলা) — NATIVE GENERATION MODE
+
+CRITICAL DIRECTIVE: You MUST generate ALL content (hook, body, CTA, first_comment) directly in Bangla. 
+Do NOT generate in English then translate. Think in Bangla. Structure sentences in Bangla-first logic.
+
+BANGLA CONTENT QUALITY RULES:
+
+1. TONE & STYLE:
+   - Use conversational, business-friendly Bangla
+   - Simple, direct phrasing that sounds like a real Bangladeshi business owner talking
+   - AVOID: overly formal literary Bangla, Sanskrit-heavy vocabulary, textbook style, robotic sentence structure
+   - Prefer: "আপনার দোকানে…", "মেসেজ আসে", "রিপ্লাই দিতে দেরি হচ্ছে"
+
+2. SMART ENGLISH MIXING (realistic usage):
+   - Keep English product/tech terms in English when natural: AI Agent, WhatsApp, Facebook inbox, conversion, CRM, SaaS, B2B, support ticket
+   - Sentence flow MUST remain Bangla-first
+   - Example: "আপনার WhatsApp inbox-এ প্রতিদিন কতো মেসেজ আসে?"
+
+3. CULTURAL CONTEXT (Bangladesh-specific):
+   - Reference real BD business scenarios: Friday night rush, WhatsApp orders, Messenger confusion
+   - eCommerce patterns: "Price koto?" behavior, COD orders, social commerce
+   - Use relatable situations Bangladeshi business owners face daily
+   - Mention local platforms: bKash, Pathao, Daraz when relevant
+
+4. CTA LOCALIZATION:
+   - CTAs must feel natural in Bangla: "কমেন্ট করুন 'SCALE'", "আপনার অভিজ্ঞতা কী?", "এই সমস্যাটা কি আপনারও হচ্ছে?"
+   - Do NOT directly translate English CTA patterns
+   - Use Bangla conversational CTA tone
+
+5. READABILITY:
+   - Short sentences in Bangla (even shorter than English)
+   - Clear line breaks — same formatting rules apply
+   - Avoid long complex Bangla sentences
+   - 1-2 lines per paragraph max
+
+6. FORMATTING IN BANGLA:
+   - All formatting rules (line breaks, bullets, CTA isolation, emphasis) apply equally
+   - Bullet symbols (→ • ⚡ 👉) work the same way
+   - "Quoted concepts" can be in Bangla or mixed
+
+7. SELF-VALIDATION:
+   - Before returning: Does this sound like a native Bangladeshi wrote it?
+   - Is it easy to read out loud in Bangla?
+   - Does it avoid translation artifacts?
+   - If a native Bangladeshi reads it, they should NOT suspect AI
+   - If any check fails → regenerate in more natural Bangla`;
+}
+
 function buildFormattingIntelligenceBlock(postIndex: number, campaignGoal?: string): string {
   // Rotate formatting modes across posts in a campaign
   const modes = [
@@ -556,7 +609,7 @@ serve(async (req) => {
       });
     }
 
-    const { instruction, knowledge, persona_id, campaign_id, post_type = "text" } = await req.json();
+    const { instruction, knowledge, persona_id, campaign_id, post_type = "text", language: requestLanguage } = await req.json();
 
     if (!persona_id || persona_id === "none") {
       return new Response(JSON.stringify({ error: "Please select a target persona" }), {
@@ -600,6 +653,10 @@ serve(async (req) => {
     const primaryObjective = campaignData.primary_objective || campaignGoal;
     const outcomeStrategyBlock = buildOutcomeStrategyBlock(primaryObjective);
 
+    // Determine language: request param > campaign setting > default english
+    const language = requestLanguage || (campaignData as any).language || "english";
+    const languageBlock = buildLanguageBlock(language);
+
     // Fetch business context, chunks, AND learned patterns in parallel
     const [profileRes, chunksRes, patternsRes] = await Promise.all([
       supabase.from("business_profiles").select("*").eq("user_id", user.id).maybeSingle(),
@@ -625,7 +682,7 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(true, true, post_type);
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
-    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + outcomeStrategyBlock + businessContextBlock + performanceBlock;
+    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + outcomeStrategyBlock + businessContextBlock + performanceBlock + languageBlock;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
