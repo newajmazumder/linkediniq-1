@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Send, Check, ArrowRight, Sparkles, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
-import ReactMarkdown from "react-markdown";
+import CampaignRichText from "@/components/campaign/CampaignRichText";
 
 const STEP_LABELS: Record<string, string> = {
   goal: "Business Goal",
@@ -21,11 +21,16 @@ const STEP_LABELS: Record<string, string> = {
 
 const STEPS = ["goal", "targets", "structure", "audience", "product", "style", "blueprint"];
 
+type ChatMessageItem = {
+  role: string;
+  content: unknown;
+};
+
 const CampaignBuilderPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>([]);
+  const [messages, setMessages] = useState<ChatMessageItem[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [currentStep, setCurrentStep] = useState("goal");
@@ -195,7 +200,7 @@ const CampaignBuilderPage = () => {
 };
 
 /* ── Chat Message ── */
-const ChatMessage = ({ role, content }: { role: string; content: string }) => {
+const ChatMessage = ({ role, content }: { role: string; content: unknown }) => {
   const isUser = role === "user";
   return (
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
@@ -205,13 +210,7 @@ const ChatMessage = ({ role, content }: { role: string; content: string }) => {
           ? "bg-primary text-primary-foreground"
           : "bg-muted text-foreground"
       )}>
-        {isUser ? (
-          <p className="whitespace-pre-wrap">{content}</p>
-        ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none [&>p]:mb-2 [&>ol]:mb-2 [&>ul]:mb-2 [&>blockquote]:mb-2 [&>p:last-child]:mb-0">
-            <ReactMarkdown>{content}</ReactMarkdown>
-          </div>
-        )}
+        <CampaignRichText content={content} variant={isUser ? "user" : "assistant"} />
       </div>
     </div>
   );

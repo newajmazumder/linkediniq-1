@@ -8,6 +8,255 @@ const corsHeaders = {
 
 const STEPS = ["goal", "targets", "structure", "audience", "product", "style", "blueprint"] as const;
 
+const RESPONSE_KEYS = ["message", "suggested_options", "extracted_data", "blueprint", "step_complete", "questions", "plan_calculation", "context_check"];
+
+function stripCodeFences(text: string): string {
+  return text.startsWith("```")
+    ? text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "")
+    : text;
+}
+
+function repairJson(text: string): string {
+  let repaired = text.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
+  let braces = 0;
+  let brackets = 0;
+
+  for (const char of repaired) {
+    if (char === "{") braces++;
+    if (char === "}") braces--;
+    if (char === "[") brackets++;
+    if (char === "]") brackets--;
+  }
+
+  while (brackets > 0) {
+    repaired += "]";
+    brackets--;
+  }
+
+  while (braces > 0) {
+    repaired += "}";
+    braces--;
+  }
+
+  return repaired;
+}
+
+function tryParseJson(text: string): any | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    try {
+      return JSON.parse(repairJson(text));
+    } catch {
+      return null;
+    }
+  }
+}
+
+function extractLeadingJsonBlock(text: string): { jsonBlock: string; remainder: string } | null {
+  const trimmed = text.trimStart();
+  const firstChar = trimmed[0];
+
+  if (firstChar !== "{" && firstChar !== "[") return null;
+
+  const stack: string[] = [];
+  const pairs: Record<string, string> = { "{": "}", "[": "]" };
+  let inString = false;
+  let escaped = false;
+
+  for (let index = 0; index < trimmed.length; index++) {
+    const char = trimmed[index];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === "\\" && inString) {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (inString) continue;
+
+    if (pairs[char]) {
+      stack.push(pairs[char]);
+      continue;
+    }
+
+    if (char === stack[stack.length - 1]) {
+      stack.pop();
+      if (stack.length === 0) {
+        return {
+          jsonBlock: trimmed.slice(0, index + 1),
+          remainder: trimmed.slice(index + 1).trim(),
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function safeStr(val: any): string {
+  if (val === null || val === undefined || val === "") return "";
+  if (typeof val === "string") return val.trim();
+  if (typeof val === "number") return String(val);
+  if (typeof val === "boolean") return val ? "Yes" : "No";
+  if (Array.isArray(val)) return val.map(safeStr).filter(Boolean).join(", ");
+  if (typeof val === "object") {
+    for (const key of ["text", "question", "label", "title", "name", "value"]) {
+      if (key in val) {
+        const resolved = safeStr(val[key]);
+        if (resolved) return resolved;
+      }
+    }
+
+    return Object.entries(val)
+      .map(([key, value]) => `${humanizeKey(key)}: ${safeStr(value)}`)
+      .filter(Boolean)
+      .join(", ");
+  }
+
+  return String(val);
+}
+
+function valueToMarkdown(value: any, depth = 0): string {
+  const indent = "  ".repeat(depth);
+
+  if (value === null || value === undefined || value === "") return "";
+
+  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+    return `${indent}${safeStr(value)}`;
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => {
+        if (item === null || item === undefined || item === "") return null;
+
+        if (typeof item === "object") {
+          const nested = valueToMarkdown(item, depth + 1);
+          return nested ? `${indent}-\n${nested}` : null;
+        }
+
+        return `${indent}- ${safeStr(item)}`;
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return Object.entries(value)
+    .map(([key, item]) => {
+      if (item === null || item === undefined || item === "") return null;
+      if (Array.isArray(item) && item.length === 0) return null;
+
+      if (typeof item === "object") {
+        const nested = valueToMarkdown(item, depth + 1);
+        return nested ? `${indent}- **${humanizeKey(key)}:**\n${nested}` : `${indent}- **${humanizeKey(key)}:**`;
+      }
+
+      return `${indent}- **${humanizeKey(key)}:** ${safeStr(item)}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function formatSection(title: string, value: any): string {
+  const body = valueToMarkdown(value).trim();
+  return body ? `**${title}**\n${body}` : "";
+}
+
+function parseStrategistResponse(rawContent: string): any {
+  const cleaned = stripCodeFences(rawContent.trim()).trim();
+  const directParse = tryParseJson(cleaned);
+
+  if (directParse !== null) return directParse;
+
+  const leadingJson = extractLeadingJsonBlock(cleaned);
+  if (!leadingJson) return { message: cleaned, step_complete: false };
+
+  const parsedBlock = tryParseJson(leadingJson.jsonBlock);
+  if (parsedBlock === null) return { message: cleaned, step_complete: false };
+
+  const isResponseEnvelope = typeof parsedBlock === "object" && parsedBlock !== null && RESPONSE_KEYS.some((key) => key in parsedBlock);
+
+  if (isResponseEnvelope) {
+    const mergedMessage = [safeStr(parsedBlock.message), leadingJson.remainder].filter(Boolean).join("\n\n").trim();
+    return {
+      ...parsedBlock,
+      message: mergedMessage || "I captured the important details and organized them below.",
+    };
+  }
+
+  return {
+    message: leadingJson.remainder || "I organized the details below.",
+    inline_structured_data: parsedBlock,
+    step_complete: false,
+  };
+}
+
+function normalizeSuggestedOptions(options: any): string[] {
+  if (!Array.isArray(options)) return [];
+
+  return options
+    .map((option) => safeStr(option))
+    .filter(Boolean);
+}
+
+function composeReadableMessage(payload: any): string {
+  if (!payload) return "I'm processing your request...";
+  if (typeof payload === "string") return payload;
+
+  const parts: string[] = [];
+  let inlineStructuredData = payload.inline_structured_data ?? null;
+  let primaryMessage = safeStr(payload.message);
+
+  const leadingJsonInMessage = typeof primaryMessage === "string" ? extractLeadingJsonBlock(primaryMessage) : null;
+  if (leadingJsonInMessage) {
+    const parsedLeadingBlock = tryParseJson(leadingJsonInMessage.jsonBlock);
+    if (parsedLeadingBlock !== null) {
+      inlineStructuredData = inlineStructuredData ?? parsedLeadingBlock;
+      primaryMessage = leadingJsonInMessage.remainder || "";
+    }
+  }
+
+  if (primaryMessage) parts.push(primaryMessage);
+  if (payload.context_check) parts.push(`> **Strategic note:** ${safeStr(payload.context_check)}`);
+  if (inlineStructuredData && typeof inlineStructuredData === "object") parts.push(formatSection("Captured details", inlineStructuredData));
+  if (payload.plan_calculation && typeof payload.plan_calculation === "object") parts.push(formatSection("Plan snapshot", payload.plan_calculation));
+  if (payload.extracted_data && typeof payload.extracted_data === "object") parts.push(formatSection("What I captured", payload.extracted_data));
+
+  if (Array.isArray(payload.questions) && payload.questions.length > 0) {
+    const formattedQuestions = payload.questions
+      .map((question: any, index: number) => `${index + 1}. ${safeStr(question)}`)
+      .join("\n");
+    parts.push(`**Next questions**\n${formattedQuestions}`);
+  }
+
+  if (Array.isArray(payload.recommendations) && payload.recommendations.length > 0) {
+    const formattedRecommendations = payload.recommendations
+      .map((recommendation: any) => `- ${safeStr(recommendation)}`)
+      .join("\n");
+    parts.push(`**Recommendations**\n${formattedRecommendations}`);
+  }
+
+  const readable = parts.filter(Boolean).join("\n\n").trim();
+  return readable || "I'm ready to continue. What would you like to share next?";
+}
+
 function getStepSystemPrompt(step: string, collectedData: any, businessProfile: any, personas: any[]): string {
   const contextBlock = businessProfile ? `
 BUSINESS CONTEXT (use to ask smarter questions):
@@ -414,90 +663,9 @@ serve(async (req) => {
     const rawContent = aiData.choices?.[0]?.message?.content;
     if (!rawContent) throw new Error("No AI response");
 
-    let cleanContent = rawContent.trim();
-    if (cleanContent.startsWith("```")) {
-      cleanContent = cleanContent.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
-    }
-
-    let parsed: any;
-    try {
-      parsed = JSON.parse(cleanContent);
-    } catch {
-      // Try to repair truncated JSON
-      try {
-        let repaired = cleanContent.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
-        let braces = 0, brackets = 0;
-        for (const c of repaired) { if (c === '{') braces++; if (c === '}') braces--; if (c === '[') brackets++; if (c === ']') brackets--; }
-        while (brackets > 0) { repaired += ']'; brackets--; }
-        while (braces > 0) { repaired += '}'; braces--; }
-        parsed = JSON.parse(repaired);
-      } catch {
-        parsed = { message: cleanContent, step_complete: false };
-      }
-    }
-
-    // Safely convert any value to a displayable string
-    function safeStr(val: any): string {
-      if (val === null || val === undefined) return "";
-      if (typeof val === "string") return val;
-      if (typeof val === "number" || typeof val === "boolean") return String(val);
-      if (Array.isArray(val)) return val.map(safeStr).join(", ");
-      if (typeof val === "object") {
-        if (val.text) return safeStr(val.text);
-        if (val.question) return safeStr(val.question);
-        if (val.label) return safeStr(val.label);
-        if (val.name) return safeStr(val.name);
-        if (val.value) return safeStr(val.value);
-        return Object.entries(val).map(([k, v]) => `${k}: ${safeStr(v)}`).join(", ");
-      }
-      return String(val);
-    }
-
-    // Compose a human-readable message from structured JSON fields
-    function composeReadableMessage(p: any): string {
-      if (!p || typeof p !== "object") return typeof p === "string" ? p : "I'm processing your request...";
-
-      const parts: string[] = [];
-
-      if (p.message) parts.push(safeStr(p.message));
-
-      if (p.context_check) parts.push(`\n> **Strategic Note:** ${safeStr(p.context_check)}`);
-
-      if (p.plan_calculation && typeof p.plan_calculation === "object") {
-        const pc = p.plan_calculation;
-        const calcParts: string[] = [];
-        if (pc.total_weeks) calcParts.push(`**Duration:** ${safeStr(pc.total_weeks)} weeks`);
-        if (pc.posts_per_week) calcParts.push(`**Frequency:** ${safeStr(pc.posts_per_week)} posts/week`);
-        if (pc.total_post_count) calcParts.push(`**Total Posts:** ${safeStr(pc.total_post_count)}`);
-        if (pc.format_distribution) calcParts.push(`**Formats:** ${safeStr(pc.format_distribution)}`);
-        if (calcParts.length > 0) parts.push(`\n📊 **Campaign Structure**\n${calcParts.join("\n")}`);
-      }
-
-      if (Array.isArray(p.questions) && p.questions.length > 0) {
-        const qList = p.questions.map((q: any, i: number) => `${i + 1}. ${safeStr(q)}`).join("\n");
-        parts.push(`\n${qList}`);
-      }
-
-      if (p.extracted_data && typeof p.extracted_data === "object") {
-        const ed = p.extracted_data;
-        const summaryParts: string[] = [];
-        if (ed.objective) summaryParts.push(`Objective: **${safeStr(ed.objective)}**`);
-        if (ed.target_metric && ed.target_quantity) summaryParts.push(`Target: **${safeStr(ed.target_quantity)} ${safeStr(ed.target_metric)}**`);
-        if (ed.duration_weeks) summaryParts.push(`Duration: **${safeStr(ed.duration_weeks)} weeks**`);
-        if (ed.posts_per_week) summaryParts.push(`Frequency: **${safeStr(ed.posts_per_week)} posts/week**`);
-        if (summaryParts.length > 0) parts.push(`\n✅ **Captured:** ${summaryParts.join(" · ")}`);
-      }
-
-      if (parts.length === 0) {
-        const fallbackParts = Object.values(p).filter(v => typeof v === "string" && (v as string).length > 10);
-        if (fallbackParts.length > 0) return (fallbackParts as string[]).join("\n\n");
-        return "I'm ready to continue. What would you like to share?";
-      }
-
-      return parts.join("\n");
-    }
-
+    const parsed = parseStrategistResponse(rawContent);
     const readableMessage = composeReadableMessage(parsed);
+    const normalizedSuggestedOptions = normalizeSuggestedOptions(parsed.suggested_options);
 
     // Add AI response to messages
     messages.push({ role: "assistant", content: readableMessage });
@@ -536,7 +704,7 @@ serve(async (req) => {
       conversation_id: conversation.id,
       current_step: nextStep,
       message: readableMessage,
-      suggested_options: parsed.suggested_options || [],
+      suggested_options: normalizedSuggestedOptions,
       blueprint: parsed.blueprint || null,
       step_complete: parsed.step_complete || false,
       collected_data: collectedData,
