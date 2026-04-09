@@ -146,6 +146,59 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_progress: {
+        Row: {
+          campaign_id: string
+          contributing_post_ids: Json | null
+          created_at: string
+          current_value: number | null
+          gap_analysis: string | null
+          id: string
+          metric_name: string
+          period_end: string | null
+          period_start: string | null
+          target_value: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          contributing_post_ids?: Json | null
+          created_at?: string
+          current_value?: number | null
+          gap_analysis?: string | null
+          id?: string
+          metric_name: string
+          period_end?: string | null
+          period_start?: string | null
+          target_value?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          contributing_post_ids?: Json | null
+          created_at?: string
+          current_value?: number | null
+          gap_analysis?: string | null
+          id?: string
+          metric_name?: string
+          period_end?: string | null
+          period_start?: string | null
+          target_value?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_progress_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           core_message: string | null
@@ -156,12 +209,18 @@ export type Database = {
           is_active: boolean | null
           name: string
           offer: string | null
+          primary_objective: string | null
           primary_persona_id: string | null
           secondary_persona_id: string | null
           style_authority: number | null
           style_educational: number | null
           style_product_led: number | null
           style_storytelling: number | null
+          target_metric: string | null
+          target_priority: string | null
+          target_quantity: number | null
+          target_start_date: string | null
+          target_timeframe: string | null
           tone: string | null
           updated_at: string
           user_id: string
@@ -175,12 +234,18 @@ export type Database = {
           is_active?: boolean | null
           name: string
           offer?: string | null
+          primary_objective?: string | null
           primary_persona_id?: string | null
           secondary_persona_id?: string | null
           style_authority?: number | null
           style_educational?: number | null
           style_product_led?: number | null
           style_storytelling?: number | null
+          target_metric?: string | null
+          target_priority?: string | null
+          target_quantity?: number | null
+          target_start_date?: string | null
+          target_timeframe?: string | null
           tone?: string | null
           updated_at?: string
           user_id: string
@@ -194,12 +259,18 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           offer?: string | null
+          primary_objective?: string | null
           primary_persona_id?: string | null
           secondary_persona_id?: string | null
           style_authority?: number | null
           style_educational?: number | null
           style_product_led?: number | null
           style_storytelling?: number | null
+          target_metric?: string | null
+          target_priority?: string | null
+          target_quantity?: number | null
+          target_start_date?: string | null
+          target_timeframe?: string | null
           tone?: string | null
           updated_at?: string
           user_id?: string
@@ -349,7 +420,9 @@ export type Database = {
           dimension_value: string
           id: string
           insight: string | null
+          outcome_type: string | null
           sample_count: number
+          target_metric: string | null
           updated_at: string
           user_id: string
         }
@@ -365,7 +438,9 @@ export type Database = {
           dimension_value: string
           id?: string
           insight?: string | null
+          outcome_type?: string | null
           sample_count?: number
+          target_metric?: string | null
           updated_at?: string
           user_id: string
         }
@@ -381,7 +456,9 @@ export type Database = {
           dimension_value?: string
           id?: string
           insight?: string | null
+          outcome_type?: string | null
           sample_count?: number
+          target_metric?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -1154,69 +1231,99 @@ export type Database = {
       }
       prediction_scores: {
         Row: {
+          action_potential: number | null
+          attention_potential: number | null
           clarity: number | null
           context_relevance: number | null
           created_at: string
           cta_alignment: number | null
           draft_id: string | null
+          engagement_potential: number | null
           failure_reasons: Json | null
           goal_alignment: number | null
+          goal_fit_score: number | null
           historical_comparison: string | null
           hook_strength: number | null
           id: string
           improved_ctas: Json | null
           improved_hooks: Json | null
+          outcome_potential: number | null
+          outcome_probability: number | null
           persona_relevance: number | null
           predicted_score: number | null
           publish_recommendation: string | null
           risk_level: string | null
+          stage_breakdown: Json | null
           strongest_element: string | null
           suggestions: Json | null
+          target_metric: string | null
+          target_quantity: number | null
           user_id: string
+          weak_stage: string | null
           weakest_element: string | null
         }
         Insert: {
+          action_potential?: number | null
+          attention_potential?: number | null
           clarity?: number | null
           context_relevance?: number | null
           created_at?: string
           cta_alignment?: number | null
           draft_id?: string | null
+          engagement_potential?: number | null
           failure_reasons?: Json | null
           goal_alignment?: number | null
+          goal_fit_score?: number | null
           historical_comparison?: string | null
           hook_strength?: number | null
           id?: string
           improved_ctas?: Json | null
           improved_hooks?: Json | null
+          outcome_potential?: number | null
+          outcome_probability?: number | null
           persona_relevance?: number | null
           predicted_score?: number | null
           publish_recommendation?: string | null
           risk_level?: string | null
+          stage_breakdown?: Json | null
           strongest_element?: string | null
           suggestions?: Json | null
+          target_metric?: string | null
+          target_quantity?: number | null
           user_id: string
+          weak_stage?: string | null
           weakest_element?: string | null
         }
         Update: {
+          action_potential?: number | null
+          attention_potential?: number | null
           clarity?: number | null
           context_relevance?: number | null
           created_at?: string
           cta_alignment?: number | null
           draft_id?: string | null
+          engagement_potential?: number | null
           failure_reasons?: Json | null
           goal_alignment?: number | null
+          goal_fit_score?: number | null
           historical_comparison?: string | null
           hook_strength?: number | null
           id?: string
           improved_ctas?: Json | null
           improved_hooks?: Json | null
+          outcome_potential?: number | null
+          outcome_probability?: number | null
           persona_relevance?: number | null
           predicted_score?: number | null
           publish_recommendation?: string | null
           risk_level?: string | null
+          stage_breakdown?: Json | null
           strongest_element?: string | null
           suggestions?: Json | null
+          target_metric?: string | null
+          target_quantity?: number | null
           user_id?: string
+          weak_stage?: string | null
           weakest_element?: string | null
         }
         Relationships: [
