@@ -28,6 +28,7 @@ const recTypeConfig: Record<string, { icon: any; label: string; color: string }>
 
 const DashboardPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ ideas: 0, drafts: 0 });
   const [recentIdeas, setRecentIdeas] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
