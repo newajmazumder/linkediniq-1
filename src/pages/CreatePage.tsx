@@ -97,7 +97,7 @@ const CreatePage = () => {
           // Load existing posts for this idea
           supabase.from("posts").select("*").eq("idea_id", ideaId).order("variation_number").then(({ data: postsData }) => {
             if (postsData && postsData.length > 0) {
-              setPosts(postsData as Post[]);
+              setPosts(postsData as unknown as Post[]);
             }
           });
         }
