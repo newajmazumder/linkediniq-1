@@ -6,6 +6,18 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const FUNNEL_PATHS: Record<string, string> = {
+  followers: "impressions → engagement → profile visits → follows",
+  dms: "impressions → curiosity → engagement → direct response",
+  leads: "impressions → relevance → trust → intent → conversion",
+  demo_bookings: "impressions → relevance → trust → intent → booking",
+  signups: "impressions → relevance → trust → signup → conversion",
+  awareness: "impressions → attention → engagement → recall",
+  engagement: "impressions → attention → emotional response → interaction",
+  education: "impressions → read depth → perceived value → saves/shares",
+  profile_visits: "impressions → engagement → curiosity → profile visit",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -33,7 +45,6 @@ serve(async (req) => {
     const body = await req.json();
     const { draft_id, post_id, post_content, post_meta } = body;
 
-    // Support two modes: draft-based or inline (post_id / raw content)
     let content = "";
     let hookType = "unknown";
     let tone = "unknown";
@@ -44,7 +55,6 @@ serve(async (req) => {
     let postType = "text";
 
     if (draft_id) {
-      // Original draft-based flow
       const { data: draft } = await supabase
         .from("drafts")
         .select("*, ideas(idea_title, instruction, objective, target_audience)")
@@ -76,7 +86,6 @@ serve(async (req) => {
         }
       }
     } else if (post_id) {
-      // Inline scoring from Create page — fetch post directly
       const { data: postData } = await supabase
         .from("posts")
         .select("hook, body, cta, hook_type, tone, post_style, content_intent, persona_id, campaign_id, post_type")
@@ -98,7 +107,6 @@ serve(async (req) => {
       campaignId = postData.campaign_id;
       postType = postData.post_type || "text";
     } else if (post_content) {
-      // Raw content scoring (no DB reference)
       content = post_content;
       hookType = post_meta?.hook_type || hookType;
       tone = post_meta?.tone || tone;
@@ -113,7 +121,7 @@ serve(async (req) => {
       });
     }
 
-    // Fetch all context in parallel
+    // Fetch all context in parallel (including campaign target data)
     const [patternsRes, profileRes, personaRes, campaignRes] = await Promise.all([
       supabase.from("content_patterns").select("*").eq("user_id", user.id),
       supabase.from("business_profiles")
@@ -126,7 +134,7 @@ serve(async (req) => {
         : Promise.resolve({ data: null }),
       campaignId
         ? supabase.from("campaigns")
-            .select("name, goal, core_message, cta_type, tone")
+            .select("name, goal, core_message, cta_type, tone, primary_objective, target_metric, target_quantity, target_timeframe")
             .eq("id", campaignId).single()
         : Promise.resolve({ data: null }),
     ]);
@@ -139,7 +147,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    // Build rich pattern summary with comparative data
+    // Build pattern summary
     const byDim: Record<string, any[]> = {};
     for (const p of patterns) {
       if (!byDim[p.dimension]) byDim[p.dimension] = [];
@@ -161,10 +169,14 @@ serve(async (req) => {
       }
     }
 
+    const primaryObjective = (campaign as any)?.primary_objective || campaign?.goal || "awareness";
     const campaignGoal = campaign?.goal || "awareness";
     const campaignCta = campaign?.cta_type || "soft";
+    const targetMetric = (campaign as any)?.target_metric || "";
+    const targetQuantity = (campaign as any)?.target_quantity || "";
+    const funnelPath = FUNNEL_PATHS[primaryObjective] || FUNNEL_PATHS["awareness"];
 
-    const prompt = `You are a LinkedIn content performance predictor and pre-publish advisor. Score this ${postType === "carousel" ? "carousel" : postType === "image_text" ? "image+text" : "text"} post with DEEP causal analysis.
+    const prompt = `You are a LinkedIn content OUTCOME PREDICTOR. Score this ${postType === "carousel" ? "carousel" : postType === "image_text" ? "image+text" : "text"} post with DEEP causal analysis focused on whether it can achieve the campaign's measurable target.
 
 DRAFT CONTENT:
 ${content.slice(0, 2000)}
@@ -177,6 +189,10 @@ POST METADATA:
 - Post type: ${postType}
 - Campaign goal: ${campaignGoal}
 - Campaign CTA type: ${campaignCta}
+- PRIMARY OBJECTIVE: ${primaryObjective}
+- TARGET METRIC: ${targetMetric || "N/A"}
+- TARGET QUANTITY: ${targetQuantity || "N/A"}
+- EXPECTED FUNNEL: ${funnelPath}
 
 ${persona ? `TARGET PERSONA: ${persona.name}
 - Industry: ${(persona as any).industry || "General"}
@@ -202,8 +218,18 @@ HISTORICAL PERFORMANCE PATTERNS:
 ${patternsSummary || "No historical patterns yet."}
 
 SCORING INSTRUCTIONS:
-Score each dimension 0-100. Be SPECIFIC and CAUSAL in your reasoning — reference the persona's industry, geography, awareness level, and actual pattern data.
-${postType !== "text" ? `\nAlso evaluate the visual/carousel strategy — is the post type appropriate for the goal and audience?` : ""}
+1. Score each QUALITY dimension 0-100 (hook_strength, persona_relevance, clarity, goal_alignment, cta_alignment, context_relevance)
+2. Score each FUNNEL STAGE 0-100 (attention_potential, engagement_potential, action_potential, outcome_potential)
+3. Calculate outcome_probability: likelihood this post contributes to the target of "${targetQuantity} ${targetMetric}" (0-100)
+4. Calculate goal_fit_score: how well the content structure serves the ${primaryObjective} objective (0-100)
+5. Identify the weak_stage: which funnel stage is most likely to fail
+6. Be SPECIFIC and CAUSAL — reference the persona, patterns, and objective
+
+FUNNEL STAGE DEFINITIONS for ${primaryObjective}:
+- Attention: Will this hook stop the scroll for this persona? 
+- Engagement: Will the body create enough value/emotion to react?
+- Action: Will the CTA drive the intended action (${primaryObjective})?
+- Outcome: Can this realistically contribute to ${targetQuantity} ${targetMetric}?
 
 Return VALID JSON only (no markdown fences):
 {
@@ -214,25 +240,31 @@ Return VALID JSON only (no markdown fences):
   "cta_alignment": 0-100,
   "context_relevance": 0-100,
   "predicted_score": 0-100,
+  "outcome_probability": 0-100,
+  "goal_fit_score": 0-100,
+  "attention_potential": 0-100,
+  "engagement_potential": 0-100,
+  "action_potential": 0-100,
+  "outcome_potential": 0-100,
+  "weak_stage": "attention" | "engagement" | "action" | "outcome",
+  "stage_breakdown": {
+    "attention": "1 sentence: why this score for attention",
+    "engagement": "1 sentence: why this score for engagement",
+    "action": "1 sentence: why this score for action",
+    "outcome": "1 sentence: why this score for outcome"
+  },
   "risk_level": "low" | "medium" | "high",
-  "strongest_element": "2-3 sentence explanation of the strongest aspect, referencing specific persona/context data",
-  "weakest_element": "2-3 sentence explanation of the weakest aspect, referencing specific pattern data or persona mismatch",
+  "strongest_element": "2-3 sentence explanation referencing specific persona/context data",
+  "weakest_element": "2-3 sentence explanation referencing specific pattern data or persona mismatch",
   "failure_reasons": [
-    "specific causal reason why this may underperform, e.g. 'hook uses curiosity framing but pattern data shows pain_driven hooks outperform curiosity by 2.1x for this user'",
-    "another specific reason referencing persona/goal/context mismatch"
+    "specific causal reason tied to the ${primaryObjective} objective, e.g. 'this post explains too much, reducing the reason to DM'",
+    "another reason referencing persona/goal/funnel mismatch"
   ],
-  "improved_hooks": [
-    "alternative hook option 1 tailored to persona and best-performing patterns",
-    "alternative hook option 2",
-    "alternative hook option 3"
-  ],
-  "improved_ctas": [
-    "alternative CTA aligned with campaign goal '${campaignGoal}' and persona awareness level",
-    "alternative CTA option 2"
-  ],
+  "improved_hooks": ["hook 1 optimized for ${primaryObjective}", "hook 2", "hook 3"],
+  "improved_ctas": ["CTA aligned with ${primaryObjective} objective", "CTA option 2"],
   "publish_recommendation": "publish" | "revise" | "not_recommended",
-  "historical_comparison": "one sentence comparing to similar past posts using pattern data",
-  "suggestions": ["specific actionable improvement 1", "improvement 2", "improvement 3"]
+  "historical_comparison": "one sentence comparing to similar past posts",
+  "suggestions": ["specific actionable improvement tied to ${primaryObjective}", "improvement 2", "improvement 3"]
 }`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -244,7 +276,7 @@ Return VALID JSON only (no markdown fences):
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: "You are a LinkedIn content performance predictor and pre-publish advisor. Score drafts based on historical patterns, business context, persona alignment, and content quality. Be SPECIFIC, CAUSAL, and ACTIONABLE. Never give generic advice — always reference the specific persona, goal, patterns, and business context." },
+          { role: "system", content: `You are a LinkedIn content OUTCOME PREDICTOR. Your job is not just to score content quality — it's to predict whether this post can achieve a SPECIFIC BUSINESS OUTCOME. Score drafts against the campaign's measurable target using funnel-stage analysis. Be SPECIFIC, CAUSAL, and OUTCOME-FOCUSED. Every suggestion must tie back to the campaign objective (${primaryObjective}).` },
           { role: "user", content: prompt },
         ],
       }),
@@ -269,7 +301,7 @@ Return VALID JSON only (no markdown fences):
     if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     const result = JSON.parse(raw);
 
-    // Save prediction (only if draft_id provided — inline scoring doesn't persist)
+    // Save prediction (only if draft_id provided)
     if (draft_id) {
       await supabase.from("prediction_scores").insert({
         user_id: user.id,
@@ -290,6 +322,16 @@ Return VALID JSON only (no markdown fences):
         improved_hooks: result.improved_hooks || [],
         improved_ctas: result.improved_ctas || [],
         publish_recommendation: result.publish_recommendation || "revise",
+        outcome_probability: result.outcome_probability || 0,
+        goal_fit_score: result.goal_fit_score || 0,
+        attention_potential: result.attention_potential || 0,
+        engagement_potential: result.engagement_potential || 0,
+        action_potential: result.action_potential || 0,
+        outcome_potential: result.outcome_potential || 0,
+        weak_stage: result.weak_stage || null,
+        stage_breakdown: result.stage_breakdown || {},
+        target_metric: targetMetric || null,
+        target_quantity: targetQuantity ? parseInt(targetQuantity) : null,
       });
     }
 

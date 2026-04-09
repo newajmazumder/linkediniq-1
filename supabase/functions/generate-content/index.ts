@@ -62,6 +62,10 @@ function buildCampaignBlock(data: any): string {
   return `\n\nCAMPAIGN STRATEGY:
 - Campaign: ${data.name}
 - Goal: ${data.goal || "awareness"}
+- Primary Objective: ${data.primary_objective || data.goal || "awareness"}
+- Target Metric: ${data.target_metric || "N/A"}
+- Target Quantity: ${data.target_quantity || "N/A"}
+- Target Timeframe: ${data.target_timeframe || "monthly"}
 - Core Message: ${data.core_message || "Not specified"}
 - Offer: ${data.offer || "None"}
 - CTA Type: ${data.cta_type || "soft"} ${data.cta_type === "soft" ? "(follow, comment)" : data.cta_type === "medium" ? "(DM, engage)" : "(book demo, signup)"}
@@ -69,6 +73,67 @@ function buildCampaignBlock(data: any): string {
 - Content Style Mix: Storytelling ${data.style_storytelling}%, Educational ${data.style_educational}%, Product-Led ${data.style_product_led}%, Authority ${data.style_authority}%
 
 IMPORTANT: Align all posts with this campaign's goal, tone, CTA type, and style mix. Weight the 4 variations according to the style mix percentages.`;
+}
+
+function buildOutcomeStrategyBlock(objective: string): string {
+  const strategies: Record<string, string> = {
+    followers: `OUTCOME STRATEGY — FOLLOWER GROWTH:
+Optimize for: relatability, identity alignment, shareability, memorability, lighter CTA, high top-of-funnel appeal.
+Preferred: relatable hooks, category insights, thought-provoking statements, "follow for more" or no-pressure CTA.
+Avoid: hard sell, demo-heavy CTA, feature overload. The goal is to make people WANT to see more from you.
+Expected funnel: impressions → engagement → profile visits → follows`,
+
+    dms: `OUTCOME STRATEGY — DIRECT MESSAGES:
+Optimize for: curiosity gaps, direct response triggers, incomplete but compelling information, high intrigue, personalized CTA.
+Preferred: tension in hook, tactical insight WITHOUT fully resolving, "comment/DM me for...", high-interest problem framing.
+Avoid: explaining everything (kills DM motivation), weak CTA, passive educational tone.
+Expected funnel: impressions → curiosity → engagement → direct response / DM`,
+
+    leads: `OUTCOME STRATEGY — LEAD GENERATION:
+Optimize for: pain → consequence → solution → proof, strong business value proposition, lower friction CTA, trust and relevance.
+Preferred: urgent problem framing, value clarity, proof/mechanism/differentiation, direct CTA.
+Avoid: generic awareness content, emotional storytelling without action, vague offers.
+Expected funnel: impressions → relevance → trust → click/reply/intent → conversion`,
+
+    demo_bookings: `OUTCOME STRATEGY — DEMO BOOKINGS:
+Optimize for: pain → consequence → solution → proof, strong business value proposition, clear CTA with low friction.
+Preferred: urgent problem framing, specific ROI/results data, proof points before CTA, direct booking CTA.
+Avoid: generic awareness content, soft CTAs, content without clear next step.
+Expected funnel: impressions → relevance → trust → click/reply/intent → demo booking`,
+
+    signups: `OUTCOME STRATEGY — SIGNUPS:
+Optimize for: clear value proposition, low-friction offer, urgency, proof of results.
+Preferred: problem → solution → proof → easy signup CTA, free trial/freemium angle, specific results.
+Avoid: vague messaging, complex signup processes, content without action pathway.
+Expected funnel: impressions → relevance → trust → signup intent → conversion`,
+
+    awareness: `OUTCOME STRATEGY — AWARENESS / REACH:
+Optimize for: broad relevance, reach-friendly hook, emotional or surprising opening, easy readability, discussion or share potential.
+Preferred: strong first line, fast clarity, high resonance, low-friction CTA.
+Avoid: over-specific conversion CTA too early, product pitch in first lines.
+Expected funnel: impressions → attention → engagement → recall / profile interest`,
+
+    engagement: `OUTCOME STRATEGY — ENGAGEMENT:
+Optimize for: discussion triggers, opinion-driven content, relatable scenarios, question-based CTAs.
+Preferred: contrarian takes, "what do you think?" hooks, debate-worthy topics, personal experiences.
+Avoid: one-directional content, passive reading experience, complex jargon.
+Expected funnel: impressions → attention → emotional response → comment/react/share`,
+
+    education: `OUTCOME STRATEGY — EDUCATION:
+Optimize for: clarity, usefulness, credibility, save/share potential, strong knowledge delivery.
+Preferred: frameworks, step-by-step insights, examples, stat-backed learning.
+Avoid: shallow generalities, overly promotional language.
+Expected funnel: impressions → read depth → perceived value → saves / comments / reshares`,
+
+    profile_visits: `OUTCOME STRATEGY — PROFILE VISITS:
+Optimize for: intrigue about the author, credibility signals, curiosity about expertise.
+Preferred: personal stories, expertise hints, "I help X do Y" positioning, bio-worthy hooks.
+Avoid: fully self-contained content (no reason to visit profile), generic advice.
+Expected funnel: impressions → engagement → curiosity about author → profile visit`,
+  };
+
+  const strategy = strategies[objective] || strategies["awareness"];
+  return `\n\n${strategy}\n\nCRITICAL: Every content decision (hook type, body structure, CTA) must serve this specific outcome. Do NOT generate generic content — optimize for the stated objective.`;
 }
 
 const GOAL_CATEGORY_PRIORITIES: Record<string, string[]> = {
@@ -432,6 +497,8 @@ serve(async (req) => {
     }
     const campaignBlock = buildCampaignBlock(campaignData);
     const campaignGoal = campaignData.goal || "awareness";
+    const primaryObjective = campaignData.primary_objective || campaignGoal;
+    const outcomeStrategyBlock = buildOutcomeStrategyBlock(primaryObjective);
 
     // Fetch business context, chunks, AND learned patterns in parallel
     const [profileRes, chunksRes, patternsRes] = await Promise.all([
@@ -458,7 +525,7 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(true, true, post_type);
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
-    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + businessContextBlock + performanceBlock;
+    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + outcomeStrategyBlock + businessContextBlock + performanceBlock;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
