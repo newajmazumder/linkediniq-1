@@ -108,12 +108,15 @@ const CampaignRichText = ({ content, variant = "assistant", className }: Campaig
           ),
           th: ({ children }) => <th className={cn("border px-3 py-2 font-semibold", tableBorderClass)}>{children}</th>,
           td: ({ children }) => <td className={cn("border px-3 py-2 align-top", tableBorderClass)}>{children}</td>,
-          code: ({ inline, children }) =>
-            inline ? (
-              <code className={cn("rounded px-1.5 py-0.5 font-mono text-[0.92em] text-current", codeSurfaceClass)}>{children}</code>
+          code: ({ className, children }) => {
+            const isBlock = Boolean(className);
+
+            return isBlock ? (
+              <code className={cn("font-mono text-xs text-current", className)}>{children}</code>
             ) : (
-              <code className="font-mono text-xs text-current">{children}</code>
-            ),
+              <code className={cn("rounded px-1.5 py-0.5 font-mono text-[0.92em] text-current", codeSurfaceClass)}>{children}</code>
+            );
+          },
           pre: ({ children }) => <pre className={cn("my-3 overflow-x-auto rounded-xl p-3", codeSurfaceClass)}>{children}</pre>,
           a: ({ href, children }) => (
             <a href={href} target="_blank" rel="noreferrer" className="underline underline-offset-4">
