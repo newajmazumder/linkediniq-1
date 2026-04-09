@@ -684,22 +684,24 @@ serve(async (req) => {
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
     const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + outcomeStrategyBlock + businessContextBlock + performanceBlock + languageBlock;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessage },
-        ],
-      }),
-    });
+    let response: Response | null = null;
+    const maxRetries = 2;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage },
+          ],
+        }),
+      });
 
-    if (!response.ok) {
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -710,9 +712,26 @@ serve(async (req) => {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (response.ok) break;
+
+      // Retry on 502/503/504
+      if ([502, 503, 504].includes(response.status) && attempt < maxRetries) {
+        console.warn(`AI gateway returned ${response.status}, retrying (${attempt + 1}/${maxRetries})...`);
+        await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+        continue;
+      }
+
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      throw new Error("AI gateway error");
+      return new Response(JSON.stringify({ error: "AI service is temporarily unavailable. Please try again in 30 seconds." }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!response || !response.ok) {
+      return new Response(JSON.stringify({ error: "AI service is temporarily unavailable. Please try again." }), {
+        status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const aiData = await response.json();
