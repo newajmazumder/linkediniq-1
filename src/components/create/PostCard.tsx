@@ -326,7 +326,19 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
                 )}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuContent align="end" className="w-56 max-h-[420px] overflow-y-auto">
+              {prediction && (
+                <>
+                  <p className="px-2 py-1.5 text-[10px] font-semibold text-primary uppercase tracking-wider">AI-Powered</p>
+                  <DropdownMenuItem onClick={regenerateFromSuggestions}>
+                    <Lightbulb className="mr-2 h-3.5 w-3.5 text-yellow-500" /> Regenerate from Suggestions
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={regenerateFromPrediction}>
+                    <ArrowUp className="mr-2 h-3.5 w-3.5 text-green-500" /> Regenerate from Prediction
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Refine</p>
               <DropdownMenuItem onClick={() => rewritePost("regenerate_hook")}>
                 <RefreshCw className="mr-2 h-3.5 w-3.5" /> Regenerate Hook
