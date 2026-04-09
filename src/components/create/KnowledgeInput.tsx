@@ -61,15 +61,6 @@ const KnowledgeInput = ({ value, onChange }: Props) => {
               className="text-sm"
             />
           </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-foreground">Target Audience</label>
-            <Input
-              placeholder="e.g. Ecommerce brands, SaaS founders, CX leaders"
-              value={value.targetAudience}
-              onChange={(e) => onChange({ ...value, targetAudience: e.target.value })}
-              className="text-sm"
-            />
-          </div>
         </div>
       )}
     </div>
