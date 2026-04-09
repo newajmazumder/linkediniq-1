@@ -63,6 +63,14 @@ const CreatePage = () => {
     if (user) {
       supabase.from("audience_personas").select("id, name").order("name").then(({ data }) => setPersonas((data || []) as PersonaOption[]));
       supabase.from("campaigns").select("id, name").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
+      supabase.from("business_profiles").select("product_summary, product_features").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+        if (data) {
+          setKnowledge({
+            productDescription: data.product_summary || "",
+            features: Array.isArray(data.product_features) ? (data.product_features as string[]).join(", ") : "",
+          });
+        }
+      });
     }
   }, [user]);
 
