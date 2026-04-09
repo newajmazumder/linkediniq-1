@@ -316,6 +316,81 @@ This is a standard text-only LinkedIn post. No images or carousels.
 Do NOT include "image_briefs" in the output (or set it to an empty array []).`;
 }
 
+function buildFormattingIntelligenceBlock(postIndex: number, campaignGoal?: string): string {
+  // Rotate formatting modes across posts in a campaign
+  const modes = [
+    { name: "Minimal Clean", desc: "Short paragraphs, lots of whitespace, elegant flow. 1-2 lines per block. Emphasis via standalone lines and quotes." },
+    { name: "High Contrast", desc: "Aggressive line breaks. Single-word lines. Dramatic pauses. Maximum visual punch between ideas." },
+    { name: "Bullet-Heavy", desc: "Use → • ⚡ 👉 symbols for key points. Lists dominate the middle section. Clean hook and CTA bookends." },
+    { name: "Story Rhythm", desc: "Micro-paragraph storytelling. 1-line scene-setting. Tight→spaced→tight rhythm. Emotional pacing through whitespace." },
+    { name: "Data + Structured", desc: "Numbered lists for logic. Stats isolated on their own line. Framework-style layout. Clean hierarchy." },
+    { name: "Contrarian Punch", desc: "ALL CAPS for emphasis words. Short punchy contradictions. Pattern interrupts every 2-3 lines. Aggressive spacing." },
+  ];
+
+  const mode = modes[postIndex % modes.length];
+
+  return `
+FORMATTING MODE FOR THIS POST: "${mode.name}"
+${mode.desc}
+
+LINKEDIN FORMATTING INTELLIGENCE — MANDATORY RULES:
+
+1. HOOK FORMATTING:
+   - Hook MUST be 1-2 lines max
+   - Create curiosity, tension, or contrast
+   - Use broken sentence structure, question hooks, or short punch lines
+   - Hook stands ALONE — followed by a blank line
+
+2. PARAGRAPH STRUCTURE:
+   - NEVER exceed 2-3 lines per paragraph
+   - Most paragraphs should be 1-2 lines
+   - Every new idea gets its own block with spacing
+   - Frequent blank lines create "breathing room"
+
+3. EMPHASIS TECHNIQUES (use at least 2 per post):
+   - Standalone single-line statements for key ideas
+   - ALL CAPS for 1-2 words max per post (sparingly, for impact)
+   - "Quotation marks" around concepts and coined terms
+   - Pattern interrupts: unexpected short line after longer blocks
+
+4. LIST FORMATTING (when explaining patterns, problems, or insights):
+   - Bullet symbols: → • ⚡ 👉 🚨 (vary per post)
+   - Numbered lists (1. 2. 3.) for structured logic
+   - Each bullet = 1 line, max 15 words
+   - Lists should be 3-5 items
+
+5. VISUAL RHYTHM:
+   - Vary between tight blocks (2-3 lines) and single lines
+   - Every 3-5 lines, insert a pattern interrupt:
+     → One-word line
+     → Contrast statement
+     → Unexpected question
+     → Bold standalone claim
+
+6. CTA FORMATTING:
+   - CTA MUST be visually separated (blank line before)
+   - CTA is its own block — NEVER buried in a paragraph
+   - Keep CTA to 1-2 lines max
+   - Can use emoji prefix for visibility (💬 👇 🔗)
+
+7. SELF-CHECK BEFORE OUTPUT:
+   - No paragraph exceeds 3 lines
+   - Key ideas are visually isolated
+   - At least 2 formatting techniques are used
+   - CTA is separated
+   - Post is scannable in 5 seconds
+   - If any check fails → reformat automatically
+
+FORMATTING ANTI-PATTERNS (NEVER DO):
+   - Long dense paragraphs (4+ lines)
+   - Wall-of-text body sections
+   - CTA mixed into the last paragraph
+   - No line breaks between ideas
+   - Generic formatting with no visual variety
+   - Overusing ALL CAPS (max 1-2 instances)
+   - Starting every line with emoji`;
+}
+
 function buildSystemPrompt(hasPersona: boolean, hasCampaign: boolean, postType: string = "text"): string {
   const postTypeInstructions = getPostTypeInstructions(postType);
   
@@ -329,9 +404,9 @@ function buildSystemPrompt(hasPersona: boolean, hasCampaign: boolean, postType: 
         }
       ],`;
 
-  return `You are a B2B SaaS content strategist — a context-aware content intelligence engine.
+  return `You are a B2B SaaS content strategist — a context-aware content intelligence engine with advanced LinkedIn formatting expertise.
 
-Your job: Turn product instructions into structured LinkedIn content that is DEEPLY personalized for the target persona and aligned with the marketing campaign strategy.
+Your job: Turn product instructions into structured, BEAUTIFULLY FORMATTED LinkedIn content that is DEEPLY personalized for the target persona and aligned with the marketing campaign strategy.
 ${postTypeInstructions}
 
 RULES:
@@ -339,9 +414,16 @@ RULES:
 - Never say "we are excited to announce" or similar clichés.
 - Focus on real business value for the specific persona's industry and context.
 - Every post must feel like a real founder/marketer wrote it FOR this specific person.
-- Use short, punchy lines. No walls of text.
 - Match the persona's language style exactly.
 - Adjust complexity and vocabulary to their awareness level.
+
+CRITICAL FORMATTING RULES:
+- Posts must be scroll-optimized for LinkedIn mobile
+- Use line breaks aggressively — short paragraphs only (1-2 lines)
+- Vary visual rhythm: tight blocks → single lines → spaced sections
+- Use formatting tools: standalone lines, "quoted concepts", bullet symbols (→ • ⚡), numbered lists, ALL CAPS (sparingly)
+- CTA must ALWAYS be visually separated as its own block
+- Every post must pass the "5-second scan test" — key ideas visible at a glance
 
 CONTENT ENGINES — use these frameworks when generating variations:
 
@@ -385,6 +467,15 @@ Before generating posts, you MUST create a content brief that includes:
 - Persona fit explanation (WHY this content will work for this specific persona)
 - Resonance reason (what makes this relatable to them)
 
+FORMATTING MODE ASSIGNMENT:
+Each of the 4 variations MUST use a DIFFERENT formatting mode:
+- Variation 1: "Minimal Clean" — elegant whitespace, standalone emphasis lines, quotes for concepts
+- Variation 2: "High Contrast" — aggressive breaks, single-word lines, dramatic pauses
+- Variation 3: "Bullet-Heavy" — symbol lists (→ • ⚡ 👉), structured middle section
+- Variation 4: "Story Rhythm" — micro-paragraphs, emotional pacing, tight→spaced→tight rhythm
+
+Each post MUST include a "formatting_mode" field indicating which mode was used.
+
 Given a user instruction, respond with VALID JSON (no markdown, no code fences) in this exact structure:
 
 {
@@ -403,12 +494,13 @@ Given a user instruction, respond with VALID JSON (no markdown, no code fences) 
       "variation_number": 1,
       "hook": "string (use one of the 4 hook types — curiosity, contrarian, pain-driven, or data/bold)",
       "hook_type": "curiosity | contrarian | pain_driven | data_bold",
-      "body": "string (use the appropriate content engine — story structure, educational framework, or hybrid)",
-      "cta": "string (must match campaign CTA type)",
+      "body": "string (MUST be formatted according to the assigned formatting mode — use \\n for line breaks, visual rhythm, emphasis techniques)",
+      "cta": "string (must match campaign CTA type — ALWAYS visually separated)",
       "first_comment": "string (suggested first comment to boost engagement)",
       "post_style": "founder_story | customer_story | educational | framework | pain_solution | product_insight | hybrid_story_insight | hybrid_pain_education | soft_promotion",
       "tone": "string (must align with persona's preferred communication style)",
       "content_intent": "Awareness | Education | Trust | Product | Lead",
+      "formatting_mode": "minimal_clean | high_contrast | bullet_heavy | story_rhythm | data_structured | contrarian_punch",
       "context_rationale": "string (1-2 sentences: which business angle, differentiator, or product feature was used and why)",${imageBriefsSchema}
       "generation_influences": {
         "what_repeated": "string (what proven pattern was intentionally used based on performance data)",
@@ -420,16 +512,24 @@ Given a user instruction, respond with VALID JSON (no markdown, no code fences) 
   ]
 }
 
+BODY FORMATTING REQUIREMENTS:
+- The "body" field MUST contain \\n characters for line breaks
+- Every paragraph must be separated by \\n\\n (double newline = blank line on LinkedIn)
+- Single \\n for tight groupings within a section
+- The body must look like a real LinkedIn post when rendered — NOT a text block
+- Include formatting elements: standalone lines, bullet symbols, quotes, pattern interrupts
+
 Each of the 4 posts MUST:
 - Use a DIFFERENT hook_type (one of each: curiosity, contrarian, pain_driven, data_bold)
 - Use a DIFFERENT post_style from the expanded list above
+- Use a DIFFERENT formatting_mode
 - Use a different angle/perspective
 - Have a content_intent tag
 - Speak DIRECTLY to the persona using their language style
 - Match the persona's awareness level
 - Follow the correct content engine structure for its post_style
 
-Make posts LinkedIn-ready: professional but human, value-driven, concise.`;
+Make posts LinkedIn-ready: professional but human, value-driven, visually dynamic, and scroll-optimized.`;
 }
 
 serve(async (req) => {
