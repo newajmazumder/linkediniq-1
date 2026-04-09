@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Send, Check, ArrowRight, Sparkles, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 
 const STEP_LABELS: Record<string, string> = {
   goal: "Business Goal",
