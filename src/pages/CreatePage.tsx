@@ -84,6 +84,10 @@ const CreatePage = () => {
       toast.error("Please select a campaign");
       return;
     }
+    if (!instruction.trim()) {
+      toast.error("Please add specific instructions");
+      return;
+    }
     setLoading(true);
     setIdea(null);
     setPosts([]);
