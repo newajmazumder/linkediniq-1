@@ -523,7 +523,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       conversation_id: conversation.id,
       current_step: nextStep,
-      message: parsed.message || cleanContent,
+      message: readableMessage,
       suggested_options: parsed.suggested_options || [],
       blueprint: parsed.blueprint || null,
       step_complete: parsed.step_complete || false,
