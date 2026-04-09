@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import LinkedInPostPreview from "./LinkedInPostPreview";
 import { toast } from "sonner";
 import {
   Copy, BookmarkPlus, RefreshCw, ChevronDown,
