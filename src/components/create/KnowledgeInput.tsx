@@ -6,7 +6,6 @@ import { ChevronDown, ChevronUp, Brain } from "lucide-react";
 export type KnowledgeContext = {
   productDescription: string;
   features: string;
-  targetAudience: string;
 };
 
 type Props = {
