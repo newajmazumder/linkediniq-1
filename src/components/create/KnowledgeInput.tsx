@@ -16,7 +16,7 @@ type Props = {
 const KnowledgeInput = ({ value, onChange }: Props) => {
   const [expanded, setExpanded] = useState(false);
 
-  const hasContent = value.productDescription || value.features || value.targetAudience;
+  const hasContent = value.productDescription || value.features;
 
   return (
     <div className="rounded-lg border border-border bg-card">
