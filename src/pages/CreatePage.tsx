@@ -214,7 +214,7 @@ const CreatePage = () => {
           />
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{instruction.length}/600</span>
-            <Button onClick={handleGenerate} disabled={loading || !selectedPersonaId || selectedPersonaId === "none" || !selectedCampaignId || selectedCampaignId === "none"} size="sm">
+            <Button onClick={handleGenerate} disabled={loading || !instruction.trim() || !selectedPersonaId || selectedPersonaId === "none" || !selectedCampaignId || selectedCampaignId === "none"} size="sm">
               {loading ? (
                 <>
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
