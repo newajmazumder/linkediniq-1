@@ -396,6 +396,7 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
         type={(post.post_type as "text" | "image_text" | "carousel") || "text"}
         content={`${post.hook}\n\n${post.body}\n\n${post.cta}`}
         slidesCount={post.image_briefs?.length || 5}
+        imageBriefs={post.image_briefs as any}
         firstComment={compact ? null : post.first_comment}
         contextRationale={compact ? null : (post.context_rationale || null)}
         metadata={{

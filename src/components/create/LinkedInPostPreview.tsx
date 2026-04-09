@@ -114,21 +114,56 @@ function ImagePlaceholder({ ratio = "16:9" }: { ratio?: "16:9" | "1:1" }) {
 
 // ─── Carousel Preview ───
 
-function CarouselPreview({ slidesCount = 5 }: { slidesCount: number }) {
+type SlideBrief = {
+  slide_number: number;
+  visual_description: string;
+  text_overlay: string;
+  design_notes: string;
+};
+
+function CarouselPreview({ slidesCount = 5, briefs }: { slidesCount: number; briefs?: SlideBrief[] | null }) {
   return (
     <div className="space-y-2">
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
-        {Array.from({ length: slidesCount }).map((_, i) => (
-          <div
-            key={i}
-            className="shrink-0 w-[160px] h-[200px] rounded-lg border border-border bg-muted/40 flex flex-col items-center justify-center gap-2"
-          >
-            <Layers className="h-5 w-5 text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground">
-              Slide {i + 1}
-            </span>
-          </div>
-        ))}
+        {Array.from({ length: slidesCount }).map((_, i) => {
+          const brief = briefs?.[i];
+          return (
+            <div
+              key={i}
+              className="shrink-0 w-full max-w-[552px] aspect-[4/5] rounded-lg border border-border bg-muted/40 flex flex-col p-4"
+            >
+              {brief ? (
+                <div className="flex flex-col justify-between h-full">
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Slide {brief.slide_number}
+                    </span>
+                    {brief.text_overlay && (
+                      <p className="text-sm font-semibold text-foreground leading-snug">
+                        "{brief.text_overlay}"
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {brief.visual_description}
+                    </p>
+                  </div>
+                  {brief.design_notes && (
+                    <p className="text-[10px] text-muted-foreground/70 italic mt-auto pt-2">
+                      Design: {brief.design_notes}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full gap-2">
+                  <Layers className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Slide {i + 1}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="flex items-center justify-between">
         <span className="text-[11px] text-muted-foreground">
@@ -192,6 +227,7 @@ export type PostPreviewProps = {
   type: "text" | "image_text" | "carousel";
   content: string;
   slidesCount?: number;
+  imageBriefs?: SlideBrief[] | null;
   metadata?: {
     postStyle?: string;
     tone?: string;
@@ -206,6 +242,7 @@ const PostPreview = ({
   type,
   content,
   slidesCount = 5,
+  imageBriefs,
   metadata,
   firstComment,
   contextRationale,
@@ -238,7 +275,7 @@ const PostPreview = ({
         )}
 
         {type === "carousel" && (
-          <CarouselPreview slidesCount={slidesCount} />
+          <CarouselPreview slidesCount={slidesCount} briefs={imageBriefs} />
         )}
 
         {/* Engagement bar */}
