@@ -391,12 +391,19 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
         </div>
       </div>
 
-      {/* Content */}
-      <div className={`space-y-2 text-foreground ${compact ? "text-xs" : "text-sm"}`}>
-        <p className="font-medium">{post.hook}</p>
-        <p className="whitespace-pre-line leading-relaxed">{post.body}</p>
-        <p className="font-medium">{post.cta}</p>
-      </div>
+      {/* LinkedIn-style content preview */}
+      <LinkedInPostPreview
+        type={(post.post_type as "text" | "image_text" | "carousel") || "text"}
+        content={`${post.hook}\n\n${post.body}\n\n${post.cta}`}
+        slidesCount={post.image_briefs?.length || 5}
+        firstComment={compact ? null : post.first_comment}
+        contextRationale={compact ? null : (post.context_rationale || null)}
+        metadata={{
+          postStyle: post.post_style,
+          tone: post.tone || undefined,
+          hookType: post.hook_type || undefined,
+        }}
+      />
 
       {/* Image Briefs for image_text and carousel */}
       {post.image_briefs && post.image_briefs.length > 0 && !compact && (
