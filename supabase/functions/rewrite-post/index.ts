@@ -42,6 +42,7 @@ serve(async (req) => {
       "rewrite_shorter", "rewrite_human", "rewrite_bold", "rewrite_product",
       "rewrite_story", "rewrite_educational", "rewrite_hybrid",
       "hook_curiosity", "hook_contrarian", "hook_pain", "hook_data",
+      "regenerate_from_suggestions", "regenerate_from_prediction",
     ];
     if (!validActions.includes(action)) {
       return new Response(JSON.stringify({ error: `Invalid action. Must be one of: ${validActions.join(", ")}` }), {
@@ -96,6 +97,50 @@ The transition between story and insight must feel seamless.\n\nCurrent post:\n$
       hook_contrarian: `Rewrite ONLY the hook of this LinkedIn post using a CONTRARIAN style. Examples: "Stop doing X. Here's why.", "Unpopular opinion: ...", "Everyone says X. They're wrong." Keep body and CTA exactly the same.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new contrarian hook", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
       hook_pain: `Rewrite ONLY the hook of this LinkedIn post using a PAIN-DRIVEN style. Examples: "You're losing X customers because...", "That feeling when your support queue hits 200...", "Your team is drowning and you know it." Keep body and CTA exactly the same.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new pain hook", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
       hook_data: `Rewrite ONLY the hook of this LinkedIn post using a DATA/BOLD STATEMENT style. Examples: "We reduced churn by 40% in 3 weeks.", "87% of support tickets are unnecessary.", "One change. 3x faster response time." Keep body and CTA exactly the same.\n\nCurrent post:\n${currentPost}\n\nRespond with VALID JSON (no markdown fences): {"hook": "new data hook", "body": "${post.body.replace(/"/g, '\\"')}", "cta": "${post.cta.replace(/"/g, '\\"')}"}`,
+      regenerate_from_suggestions: `You are improving a LinkedIn post based on specific AI-generated suggestions. Your job is to rewrite the ENTIRE post (hook, body, CTA) addressing ALL the suggestions below.
+
+SUGGESTIONS TO ADDRESS:
+${context?.suggestions?.map((s: string, i: number) => `${i + 1}. ${s}`).join("\n") || "No suggestions provided."}
+
+${context?.failure_reasons?.length ? `FAILURE REASONS TO FIX:\n${context.failure_reasons.map((r: string, i: number) => `- ${r}`).join("\n")}` : ""}
+${context?.weakest_element ? `WEAKEST ELEMENT: ${context.weakest_element}` : ""}
+${context?.strongest_element ? `STRONGEST ELEMENT (keep this): ${context.strongest_element}` : ""}
+
+${context?.improved_hooks?.length ? `SUGGESTED BETTER HOOKS:\n${context.improved_hooks.map((h: string) => `- ${h}`).join("\n")}` : ""}
+${context?.improved_ctas?.length ? `SUGGESTED BETTER CTAs:\n${context.improved_ctas.map((c: string) => `- ${c}`).join("\n")}` : ""}
+
+CURRENT POST:
+${currentPost}
+
+Rewrite the post to fix ALL weaknesses while preserving the strongest elements. Apply LinkedIn formatting best practices (short paragraphs, visual breaks, emphasis).${jsonInstruction}`,
+      regenerate_from_prediction: `You are improving a LinkedIn post based on a detailed prediction analysis. Your job is to rewrite the ENTIRE post (hook, body, CTA) to significantly improve the predicted score.
+
+PREDICTION ANALYSIS:
+- Overall Score: ${context?.predicted_score || "N/A"}/100
+- Publish Recommendation: ${context?.publish_recommendation || "N/A"}
+- Risk Level: ${context?.risk_level || "N/A"}
+
+DIMENSION SCORES (out of 100):
+- Hook Strength: ${context?.hook_strength || "N/A"}
+- Persona Relevance: ${context?.persona_relevance || "N/A"}
+- Clarity: ${context?.clarity || "N/A"}
+- Goal Alignment: ${context?.goal_alignment || "N/A"}
+- CTA Alignment: ${context?.cta_alignment || "N/A"}
+- Context Relevance: ${context?.context_relevance || "N/A"}
+
+${context?.weak_stage ? `WEAK FUNNEL STAGE: ${context.weak_stage}` : ""}
+${context?.weakest_element ? `WEAKEST ELEMENT: ${context.weakest_element}` : ""}
+${context?.strongest_element ? `STRONGEST ELEMENT (preserve this): ${context.strongest_element}` : ""}
+${context?.failure_reasons?.length ? `FAILURE REASONS:\n${context.failure_reasons.map((r: string) => `- ${r}`).join("\n")}` : ""}
+${context?.suggestions?.length ? `SUGGESTIONS:\n${context.suggestions.map((s: string) => `- ${s}`).join("\n")}` : ""}
+
+${context?.improved_hooks?.length ? `BETTER HOOK OPTIONS:\n${context.improved_hooks.map((h: string) => `- ${h}`).join("\n")}` : ""}
+${context?.improved_ctas?.length ? `BETTER CTA OPTIONS:\n${context.improved_ctas.map((c: string) => `- ${c}`).join("\n")}` : ""}
+
+CURRENT POST:
+${currentPost}
+
+Focus on improving the LOWEST scoring dimensions. Preserve what works (strongest element). Apply LinkedIn formatting best practices.${jsonInstruction}`,
     };
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
