@@ -123,6 +123,11 @@ function extractLeadingJsonBlock(text: string): { jsonBlock: string; remainder: 
   return null;
 }
 
+function isValidUuid(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
 function humanizeKey(key: string): string {
   return key
     .replace(/_/g, " ")
@@ -698,13 +703,18 @@ serve(async (req) => {
           style_educational: styleMix.educational || 25,
           style_product_led: styleMix.product_led || 25,
           style_authority: styleMix.authority || 25,
-          primary_persona_id: conv.collected_data.audience?.primary_persona_id || null,
+          primary_persona_id: isValidUuid(conv.collected_data.audience?.primary_persona_id) ? conv.collected_data.audience.primary_persona_id : null,
           is_active: true,
         })
         .select()
         .single();
 
-      if (campError) throw campError;
+      if (campError) {
+        console.error("Campaign insert error:", campError);
+        return new Response(JSON.stringify({ error: campError.message || "Failed to create campaign" }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
 
       // Create blueprint record
       const { data: blueprintRecord } = await supabase
