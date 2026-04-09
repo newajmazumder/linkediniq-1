@@ -97,7 +97,7 @@ const CreatePage = () => {
       const { data, error } = await supabase.functions.invoke("generate-content", {
         body: {
           instruction: instruction.trim(),
-          knowledge: knowledge.productDescription || knowledge.features || knowledge.targetAudience
+          knowledge: knowledge.productDescription || knowledge.features
             ? knowledge
             : undefined,
           persona_id: selectedPersonaId || undefined,
