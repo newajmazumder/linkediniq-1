@@ -18,6 +18,8 @@ import PostDetailPage from "@/pages/PostDetailPage";
 import SettingsPage from "@/pages/SettingsPage";
 import BusinessContextPage from "@/pages/BusinessContextPage";
 import LinkedInCallbackPage from "@/pages/LinkedInCallbackPage";
+import CampaignBuilderPage from "@/pages/CampaignBuilderPage";
+import CampaignPlanPage from "@/pages/CampaignPlanPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
