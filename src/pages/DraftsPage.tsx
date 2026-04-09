@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import LinkedInPostPreview from "@/components/create/LinkedInPostPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -202,8 +203,11 @@ const DraftsPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div onClick={() => startEdit(draft)} className="cursor-pointer rounded-md bg-secondary/50 p-3 text-sm text-foreground whitespace-pre-line leading-relaxed hover:bg-secondary transition-colors">
-                    {draft.custom_content || "No content"}
+                  <div onClick={() => startEdit(draft)} className="cursor-pointer">
+                    <LinkedInPostPreview
+                      type="text"
+                      content={draft.custom_content || "No content"}
+                    />
                   </div>
                 )}
 
