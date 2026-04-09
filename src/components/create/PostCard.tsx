@@ -177,11 +177,11 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
     }
   };
 
-  const rewritePost = async (action: string) => {
+  const rewritePost = async (action: string, ctx?: Record<string, any>) => {
     setRewriting(action);
     try {
       const { data, error } = await supabase.functions.invoke("rewrite-post", {
-        body: { post_id: post.id, action },
+        body: { post_id: post.id, action, context: ctx },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -193,6 +193,40 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
     } finally {
       setRewriting(null);
     }
+  };
+
+  const regenerateFromSuggestions = () => {
+    if (!prediction) return;
+    rewritePost("regenerate_from_suggestions", {
+      suggestions: prediction.suggestions,
+      failure_reasons: prediction.failure_reasons,
+      weakest_element: prediction.weakest_element,
+      strongest_element: prediction.strongest_element,
+      improved_hooks: prediction.improved_hooks,
+      improved_ctas: prediction.improved_ctas,
+    });
+  };
+
+  const regenerateFromPrediction = () => {
+    if (!prediction) return;
+    rewritePost("regenerate_from_prediction", {
+      predicted_score: prediction.predicted_score,
+      publish_recommendation: prediction.publish_recommendation,
+      risk_level: prediction.risk_level,
+      hook_strength: prediction.hook_strength,
+      persona_relevance: prediction.persona_relevance,
+      clarity: prediction.clarity,
+      goal_alignment: prediction.goal_alignment,
+      cta_alignment: prediction.cta_alignment,
+      context_relevance: prediction.context_relevance,
+      weak_stage: prediction.weak_stage,
+      weakest_element: prediction.weakest_element,
+      strongest_element: prediction.strongest_element,
+      failure_reasons: prediction.failure_reasons,
+      suggestions: prediction.suggestions,
+      improved_hooks: prediction.improved_hooks,
+      improved_ctas: prediction.improved_ctas,
+    });
   };
 
   const isRewriting = rewriting !== null;
