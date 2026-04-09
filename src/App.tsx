@@ -18,6 +18,8 @@ import PostDetailPage from "@/pages/PostDetailPage";
 import SettingsPage from "@/pages/SettingsPage";
 import BusinessContextPage from "@/pages/BusinessContextPage";
 import LinkedInCallbackPage from "@/pages/LinkedInCallbackPage";
+import CampaignBuilderPage from "@/pages/CampaignBuilderPage";
+import CampaignPlanPage from "@/pages/CampaignPlanPage";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -54,6 +56,8 @@ const AppRoutes = () => {
           <Route path="/performance" element={<PerformancePage />} />
           <Route path="/performance/:postId" element={<PostDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/campaign/new" element={<CampaignBuilderPage />} />
+          <Route path="/campaign/:id" element={<CampaignPlanPage />} />
         </Route>
       )}
       <Route path="*" element={<NotFound />} />

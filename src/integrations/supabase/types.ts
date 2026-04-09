@@ -146,6 +146,211 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_blueprints: {
+        Row: {
+          ai_recommendations: Json | null
+          audience_summary: Json | null
+          business_rationale: Json | null
+          campaign_id: string | null
+          campaign_summary: Json | null
+          content_strategy: Json | null
+          conversation_id: string | null
+          created_at: string | null
+          cta_strategy: Json | null
+          id: string
+          messaging_strategy: Json | null
+          status: string | null
+          success_model: Json | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_recommendations?: Json | null
+          audience_summary?: Json | null
+          business_rationale?: Json | null
+          campaign_id?: string | null
+          campaign_summary?: Json | null
+          content_strategy?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          cta_strategy?: Json | null
+          id?: string
+          messaging_strategy?: Json | null
+          status?: string | null
+          success_model?: Json | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_recommendations?: Json | null
+          audience_summary?: Json | null
+          business_rationale?: Json | null
+          campaign_id?: string | null
+          campaign_summary?: Json | null
+          content_strategy?: Json | null
+          conversation_id?: string | null
+          created_at?: string | null
+          cta_strategy?: Json | null
+          id?: string
+          messaging_strategy?: Json | null
+          status?: string | null
+          success_model?: Json | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_blueprints_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_blueprints_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_conversations: {
+        Row: {
+          blueprint_id: string | null
+          collected_data: Json | null
+          created_at: string | null
+          current_step: string | null
+          id: string
+          messages: Json | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          blueprint_id?: string | null
+          collected_data?: Json | null
+          created_at?: string | null
+          current_step?: string | null
+          id?: string
+          messages?: Json | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          blueprint_id?: string | null
+          collected_data?: Json | null
+          created_at?: string | null
+          current_step?: string | null
+          id?: string
+          messages?: Json | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_conversations_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_blueprints"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_post_plans: {
+        Row: {
+          campaign_id: string
+          content_angle: string | null
+          created_at: string | null
+          id: string
+          linked_draft_id: string | null
+          linked_post_id: string | null
+          post_number: number
+          post_objective: string | null
+          recommended_format: string | null
+          status: string | null
+          strategic_rationale: string | null
+          suggested_cta_type: string | null
+          suggested_hook_type: string | null
+          suggested_tone: string | null
+          updated_at: string | null
+          user_id: string
+          week_number: number
+          week_plan_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          content_angle?: string | null
+          created_at?: string | null
+          id?: string
+          linked_draft_id?: string | null
+          linked_post_id?: string | null
+          post_number: number
+          post_objective?: string | null
+          recommended_format?: string | null
+          status?: string | null
+          strategic_rationale?: string | null
+          suggested_cta_type?: string | null
+          suggested_hook_type?: string | null
+          suggested_tone?: string | null
+          updated_at?: string | null
+          user_id: string
+          week_number: number
+          week_plan_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          content_angle?: string | null
+          created_at?: string | null
+          id?: string
+          linked_draft_id?: string | null
+          linked_post_id?: string | null
+          post_number?: number
+          post_objective?: string | null
+          recommended_format?: string | null
+          status?: string | null
+          strategic_rationale?: string | null
+          suggested_cta_type?: string | null
+          suggested_hook_type?: string | null
+          suggested_tone?: string | null
+          updated_at?: string | null
+          user_id?: string
+          week_number?: number
+          week_plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_post_plans_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_post_plans_linked_draft_id_fkey"
+            columns: ["linked_draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_post_plans_linked_post_id_fkey"
+            columns: ["linked_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_post_plans_week_plan_id_fkey"
+            columns: ["week_plan_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_week_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_progress: {
         Row: {
           campaign_id: string
@@ -192,6 +397,137 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "campaign_progress_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_reports: {
+        Row: {
+          campaign_id: string
+          contribution_analysis: Json | null
+          created_at: string | null
+          cta_performance: Json | null
+          generated_at: string | null
+          health_status: string | null
+          id: string
+          outcome_progress: Json | null
+          posting_progress: Json | null
+          recommendations: Json | null
+          report_type: string | null
+          stage_performance: Json | null
+          user_id: string
+          weekly_trends: Json | null
+        }
+        Insert: {
+          campaign_id: string
+          contribution_analysis?: Json | null
+          created_at?: string | null
+          cta_performance?: Json | null
+          generated_at?: string | null
+          health_status?: string | null
+          id?: string
+          outcome_progress?: Json | null
+          posting_progress?: Json | null
+          recommendations?: Json | null
+          report_type?: string | null
+          stage_performance?: Json | null
+          user_id: string
+          weekly_trends?: Json | null
+        }
+        Update: {
+          campaign_id?: string
+          contribution_analysis?: Json | null
+          created_at?: string | null
+          cta_performance?: Json | null
+          generated_at?: string | null
+          health_status?: string | null
+          id?: string
+          outcome_progress?: Json | null
+          posting_progress?: Json | null
+          recommendations?: Json | null
+          report_type?: string | null
+          stage_performance?: Json | null
+          user_id?: string
+          weekly_trends?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_reports_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      campaign_week_plans: {
+        Row: {
+          audience_lens: string | null
+          blueprint_id: string | null
+          campaign_id: string
+          created_at: string | null
+          cta_strategy: string | null
+          hook_styles: Json | null
+          id: string
+          primary_message: string | null
+          recommended_formats: Json | null
+          recommended_post_count: number | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          week_number: number
+          week_purpose: string | null
+          weekly_goal: string | null
+        }
+        Insert: {
+          audience_lens?: string | null
+          blueprint_id?: string | null
+          campaign_id: string
+          created_at?: string | null
+          cta_strategy?: string | null
+          hook_styles?: Json | null
+          id?: string
+          primary_message?: string | null
+          recommended_formats?: Json | null
+          recommended_post_count?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          week_number: number
+          week_purpose?: string | null
+          weekly_goal?: string | null
+        }
+        Update: {
+          audience_lens?: string | null
+          blueprint_id?: string | null
+          campaign_id?: string
+          created_at?: string | null
+          cta_strategy?: string | null
+          hook_styles?: Json | null
+          id?: string
+          primary_message?: string | null
+          recommended_formats?: Json | null
+          recommended_post_count?: number | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          week_number?: number
+          week_purpose?: string | null
+          weekly_goal?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_week_plans_blueprint_id_fkey"
+            columns: ["blueprint_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_blueprints"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_week_plans_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"

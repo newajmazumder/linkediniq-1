@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ const postTypeOptions: { value: PostType; label: string; icon: any; description:
 
 const CreatePage = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [instruction, setInstruction] = useState("");
   const [loading, setLoading] = useState(false);
   const [idea, setIdea] = useState<Idea | null>(null);
@@ -57,7 +59,8 @@ const CreatePage = () => {
   const [personas, setPersonas] = useState<PersonaOption[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(searchParams.get("campaign_id") || "");
+  const [postPlan, setPostPlan] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
@@ -71,6 +74,17 @@ const CreatePage = () => {
           });
         }
       });
+      // Load post plan if provided
+      const planId = searchParams.get("post_plan_id");
+      if (planId) {
+        supabase.from("campaign_post_plans").select("*").eq("id", planId).single().then(({ data }) => {
+          if (data) {
+            setPostPlan(data);
+            if (data.content_angle) setInstruction(data.content_angle);
+            if (data.recommended_format) setPostType(data.recommended_format as PostType);
+          }
+        });
+      }
     }
   }, [user]);
 
@@ -135,6 +149,20 @@ const CreatePage = () => {
             Select a persona, campaign, and post type, then describe what you want to promote.
           </p>
         </div>
+
+        {/* Post Plan Banner */}
+        {postPlan && (
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
+            <p className="text-xs font-medium text-primary">📋 Campaign Post Plan — Post {postPlan.post_number}, Week {postPlan.week_number}</p>
+            <p className="text-xs text-foreground">{postPlan.post_objective}</p>
+            {postPlan.strategic_rationale && <p className="text-[10px] text-muted-foreground italic">{postPlan.strategic_rationale}</p>}
+            <div className="flex flex-wrap gap-1 mt-1">
+              {postPlan.suggested_hook_type && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{postPlan.suggested_hook_type}</span>}
+              {postPlan.suggested_tone && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">{postPlan.suggested_tone}</span>}
+              {postPlan.suggested_cta_type && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">{postPlan.suggested_cta_type} CTA</span>}
+            </div>
+          </div>
+        )}
 
         {/* Strategy Selectors */}
         <div className="space-y-3">

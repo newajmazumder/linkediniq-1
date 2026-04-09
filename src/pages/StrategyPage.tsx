@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Plus, Trash2, Target, ChevronDown, ChevronUp, Sparkles, ArrowRight, AlertTriangle, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -129,6 +130,7 @@ const priorityColors: Record<string, string> = {
 
 const StrategyPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
@@ -306,10 +308,16 @@ const StrategyPage = () => {
           <p className="mt-1 text-sm text-muted-foreground">Define campaigns with measurable targets and get AI recommendations.</p>
         </div>
         {tab === "campaigns" && (
-          <Button size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); }}>
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            New Campaign
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate("/campaign/new")}>
+              <Sparkles className="mr-1 h-3.5 w-3.5" />
+              AI Strategist
+            </Button>
+            <Button size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); }}>
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              New Campaign
+            </Button>
+          </div>
         )}
         {tab === "recommendations" && (
           <Button size="sm" onClick={generateRecommendations} disabled={loadingRecs}>
@@ -537,6 +545,9 @@ const StrategyPage = () => {
                           <span className="font-medium text-foreground">Style Mix:</span> Storytelling {c.style_storytelling}% · Educational {c.style_educational}% · Product {c.style_product_led}% · Authority {c.style_authority}%
                         </div>
                         <div className="flex gap-2 pt-2">
+                          <Button size="sm" variant="outline" onClick={() => navigate(`/campaign/${c.id}`)}>
+                            <Target className="mr-1 h-3 w-3" /> View Plan
+                          </Button>
                           <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
                           <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(c.id)}>
                             <Trash2 className="mr-1 h-3 w-3" /> Delete

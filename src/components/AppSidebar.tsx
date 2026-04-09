@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap, CalendarDays, BarChart3, UserCircle, Target, Activity, Settings, BookOpen } from "lucide-react";
+import { LayoutDashboard, PenLine, FileText, Users, LogOut, Zap, CalendarDays, BarChart3, UserCircle, Target, Activity, Settings, BookOpen, Rocket } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/audience", icon: UserCircle, label: "Audience" },
   { to: "/strategy", icon: Target, label: "Strategy" },
+  { to: "/campaign/new", icon: Rocket, label: "Campaign Builder" },
   { to: "/competitors", icon: Users, label: "Competitors" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
