@@ -1,0 +1,1 @@
+ALTER TABLE public.campaigns ADD COLUMN language text DEFAULT 'english';
