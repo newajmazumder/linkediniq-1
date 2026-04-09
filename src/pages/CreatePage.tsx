@@ -202,12 +202,15 @@ const CreatePage = () => {
 
         {/* Instruction Input */}
         <div className="rounded-lg border border-border bg-card p-4">
+          <div className="mb-1">
+            <label className="text-xs font-medium text-foreground">Specific Instructions <span className="text-destructive">*</span></label>
+          </div>
           <Textarea
-            placeholder='Optional: add specific instructions (e.g. "Focus on reducing support tickets")'
+            placeholder='e.g. "Focus on reducing support tickets" or "Highlight the AI chatbot feature for ecommerce brands"'
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             rows={3}
-            className="resize-none border-0 bg-transparent p-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0"
+            className={`resize-none border-0 bg-transparent p-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0 ${!instruction.trim() ? "border-destructive/50" : ""}`}
           />
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{instruction.length}/600</span>
