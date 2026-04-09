@@ -52,7 +52,6 @@ const CreatePage = () => {
   const [knowledge, setKnowledge] = useState<KnowledgeContext>({
     productDescription: "",
     features: "",
-    targetAudience: "",
   });
 
   const [personas, setPersonas] = useState<PersonaOption[]>([]);
