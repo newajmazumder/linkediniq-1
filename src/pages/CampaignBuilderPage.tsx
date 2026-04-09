@@ -110,11 +110,11 @@ const CampaignBuilderPage = () => {
   const currentStepIdx = STEPS.indexOf(currentStep);
 
   return (
-    <div className="content-fade-in flex h-full">
+    <div className="content-fade-in flex h-full overflow-hidden">
       {/* Left: Chat */}
-      <div className="flex flex-col flex-1 min-w-0 border-r border-border h-full">
-        {/* Fixed Header: Step indicator */}
-        <div className="flex-shrink-0 flex items-center gap-1 px-5 py-3 border-b border-border bg-card/50 overflow-x-auto">
+      <div className="flex flex-col flex-1 min-w-0 border-r border-border h-full overflow-hidden">
+        {/* Fixed Header: Step indicator — always visible */}
+        <div className="shrink-0 flex items-center gap-1 px-5 py-3 border-b border-border bg-card/50 overflow-x-auto">
           {STEPS.map((step, i) => (
             <div key={step} className="flex items-center gap-1 shrink-0">
               <div className={cn(
@@ -131,7 +131,7 @@ const CampaignBuilderPage = () => {
           ))}
         </div>
 
-        {/* Scrollable Messages */}
+        {/* Scrollable Messages — only this section scrolls */}
         <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-4">
           {messages.map((msg, i) => (
             <ChatMessage key={i} role={msg.role} content={msg.content} />
@@ -146,8 +146,8 @@ const CampaignBuilderPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Fixed Footer: Suggestions + Input */}
-        <div className="flex-shrink-0 border-t border-border bg-card">
+        {/* Fixed Footer: Suggestions + Input — always visible */}
+        <div className="shrink-0 border-t border-border bg-card">
           {suggestedOptions.length > 0 && (
             <div className="px-5 py-2 flex flex-wrap gap-1.5 border-b border-border bg-card/30">
               {suggestedOptions.map((opt, i) => (
