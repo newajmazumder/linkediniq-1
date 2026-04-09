@@ -396,6 +396,7 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
         type={(post.post_type as "text" | "image_text" | "carousel") || "text"}
         content={`${post.hook}\n\n${post.body}\n\n${post.cta}`}
         slidesCount={post.image_briefs?.length || 5}
+        imageBriefs={post.image_briefs as any}
         firstComment={compact ? null : post.first_comment}
         contextRationale={compact ? null : (post.context_rationale || null)}
         metadata={{
@@ -405,36 +406,7 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
         }}
       />
 
-      {/* Image Briefs for image_text and carousel */}
-      {post.image_briefs && post.image_briefs.length > 0 && !compact && (
-        <div className="space-y-2">
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowBriefs(!showBriefs); }}
-            className="text-xs text-primary hover:underline flex items-center gap-1"
-          >
-            {post.post_type === "carousel" ? <Layers className="h-3 w-3" /> : <Image className="h-3 w-3" />}
-            {showBriefs ? "Hide" : "Show"} {post.post_type === "carousel" ? `${post.image_briefs.length} slide briefs` : "image brief"}
-          </button>
-          {showBriefs && (
-            <div className="space-y-2">
-              {(post.image_briefs as ImageBrief[]).map((brief, idx) => (
-                <div key={idx} className="rounded-md bg-secondary/50 border border-border p-3 space-y-1">
-                  <p className="text-[10px] font-medium text-foreground flex items-center gap-1">
-                    {post.post_type === "carousel" ? `Slide ${brief.slide_number}` : "Image"}
-                  </p>
-                  {brief.text_overlay && (
-                    <p className="text-xs font-medium text-foreground">"{brief.text_overlay}"</p>
-                  )}
-                  <p className="text-xs text-muted-foreground">{brief.visual_description}</p>
-                  {brief.design_notes && (
-                    <p className="text-[10px] text-muted-foreground italic">Design: {brief.design_notes}</p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+
 
 
       {/* Generation Influences */}
