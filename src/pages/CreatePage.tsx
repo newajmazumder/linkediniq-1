@@ -74,6 +74,17 @@ const CreatePage = () => {
           });
         }
       });
+      // Load post plan if provided
+      const planId = searchParams.get("post_plan_id");
+      if (planId) {
+        supabase.from("campaign_post_plans").select("*").eq("id", planId).single().then(({ data }) => {
+          if (data) {
+            setPostPlan(data);
+            if (data.content_angle) setInstruction(data.content_angle);
+            if (data.recommended_format) setPostType(data.recommended_format as PostType);
+          }
+        });
+      }
     }
   }, [user]);
 
