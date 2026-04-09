@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Send, Check, ArrowRight, Sparkles, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
+import ReactMarkdown from "react-markdown";
 
 const STEP_LABELS: Record<string, string> = {
   goal: "Business Goal",
@@ -141,7 +142,9 @@ const CampaignBuilderPage = () => {
                   ? "bg-primary text-primary-foreground"
                   : "bg-muted text-foreground"
               )}>
-                <p className="whitespace-pre-wrap">{msg.content}</p>
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                </div>
               </div>
             </div>
           ))}
