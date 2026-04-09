@@ -61,6 +61,14 @@ export type PredictionResult = {
   improved_hooks: string[];
   improved_ctas: string[];
   publish_recommendation: string;
+  outcome_probability?: number;
+  goal_fit_score?: number;
+  attention_potential?: number;
+  engagement_potential?: number;
+  action_potential?: number;
+  outcome_potential?: number;
+  weak_stage?: string;
+  stage_breakdown?: Record<string, string>;
 };
 
 const styleLabels: Record<string, string> = {
