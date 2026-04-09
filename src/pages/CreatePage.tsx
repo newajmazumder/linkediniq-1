@@ -64,28 +64,56 @@ const CreatePage = () => {
   const [postPlan, setPostPlan] = useState<any>(null);
 
   useEffect(() => {
-    if (user) {
-      supabase.from("audience_personas").select("id, name").order("name").then(({ data }) => setPersonas((data || []) as PersonaOption[]));
-      supabase.from("campaigns").select("id, name, language").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
-      supabase.from("business_profiles").select("product_summary, product_features").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+    if (!user) return;
+    supabase.from("audience_personas").select("id, name").order("name").then(({ data }) => setPersonas((data || []) as PersonaOption[]));
+    supabase.from("campaigns").select("id, name, language").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
+    supabase.from("business_profiles").select("product_summary, product_features").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+      if (data) {
+        setKnowledge({
+          productDescription: data.product_summary || "",
+          features: Array.isArray(data.product_features) ? (data.product_features as string[]).join(", ") : "",
+        });
+      }
+    });
+
+    // Load idea if provided via query param
+    const ideaId = searchParams.get("idea");
+    if (ideaId) {
+      supabase.from("ideas").select("*").eq("id", ideaId).single().then(({ data }) => {
         if (data) {
-          setKnowledge({
-            productDescription: data.product_summary || "",
-            features: Array.isArray(data.product_features) ? (data.product_features as string[]).join(", ") : "",
+          setInstruction(data.instruction || "");
+          // Pre-fill idea brief
+          setIdea({
+            id: data.id,
+            idea_title: data.idea_title,
+            target_audience: data.target_audience,
+            objective: data.objective,
+            core_message: data.core_message,
+            suggested_cta: data.suggested_cta,
+            persona_fit: data.persona_fit,
+            emotional_trigger: data.emotional_trigger,
+            resonance_reason: data.resonance_reason,
+          });
+          // Load existing posts for this idea
+          supabase.from("posts").select("*").eq("idea_id", ideaId).order("variation_number").then(({ data: postsData }) => {
+            if (postsData && postsData.length > 0) {
+              setPosts(postsData as Post[]);
+            }
           });
         }
       });
-      // Load post plan if provided
-      const planId = searchParams.get("post_plan_id");
-      if (planId) {
-        supabase.from("campaign_post_plans").select("*").eq("id", planId).single().then(({ data }) => {
-          if (data) {
-            setPostPlan(data);
-            if (data.content_angle) setInstruction(data.content_angle);
-            if (data.recommended_format) setPostType(data.recommended_format as PostType);
-          }
-        });
-      }
+    }
+
+    // Load post plan if provided
+    const planId = searchParams.get("post_plan_id");
+    if (planId) {
+      supabase.from("campaign_post_plans").select("*").eq("id", planId).single().then(({ data }) => {
+        if (data) {
+          setPostPlan(data);
+          if (data.content_angle) setInstruction(data.content_angle);
+          if (data.recommended_format) setPostType(data.recommended_format as PostType);
+        }
+      });
     }
   }, [user]);
 
