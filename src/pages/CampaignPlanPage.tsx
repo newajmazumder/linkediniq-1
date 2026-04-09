@@ -212,38 +212,7 @@ const CampaignPlanPage = () => {
                         <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">CTA:</span> {week.cta_strategy}</p>
                       )}
                       {weekPosts.map((post: any) => (
-                        <div key={post.id} className="rounded-md border border-border bg-background p-3 space-y-1.5">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-medium text-foreground">Post {post.post_number}</span>
-                              <Badge variant="outline" className={cn("text-[10px]", statusColors[post.status] || "")}>
-                                {post.status === "planned" && <Clock className="mr-0.5 h-2.5 w-2.5" />}
-                                {post.status === "drafted" && <PenLine className="mr-0.5 h-2.5 w-2.5" />}
-                                {post.status === "published" && <Check className="mr-0.5 h-2.5 w-2.5" />}
-                                {post.status}
-                              </Badge>
-                            </div>
-                            {post.status === "planned" && (
-                              <Link
-                                to={`/create?campaign_id=${id}&post_plan_id=${post.id}`}
-                                className="flex items-center gap-1 text-xs text-primary hover:underline"
-                              >
-                                <PenLine className="h-3 w-3" /> Create
-                              </Link>
-                            )}
-                          </div>
-                          <p className="text-xs text-foreground">{post.post_objective}</p>
-                          <p className="text-[10px] text-muted-foreground">{post.content_angle}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {post.suggested_hook_type && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{post.suggested_hook_type}</span>}
-                            {post.suggested_tone && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">{post.suggested_tone}</span>}
-                            {post.suggested_cta_type && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">{post.suggested_cta_type} CTA</span>}
-                            {post.recommended_format && <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] text-accent-foreground">{post.recommended_format}</span>}
-                          </div>
-                          {post.strategic_rationale && (
-                            <p className="text-[10px] text-muted-foreground italic">📝 {post.strategic_rationale}</p>
-                          )}
-                        </div>
+                        <CampaignPostCard key={post.id} post={post} campaignId={id!} />
                       ))}
                     </div>
                   )}
