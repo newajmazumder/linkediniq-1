@@ -423,12 +423,72 @@ serve(async (req) => {
     try {
       parsed = JSON.parse(cleanContent);
     } catch {
-      // If AI didn't return valid JSON, wrap it
-      parsed = { message: cleanContent, step_complete: false };
+      // Try to repair truncated JSON
+      try {
+        let repaired = cleanContent.replace(/,\s*}/g, "}").replace(/,\s*]/g, "]").replace(/[\x00-\x1F\x7F]/g, "");
+        let braces = 0, brackets = 0;
+        for (const c of repaired) { if (c === '{') braces++; if (c === '}') braces--; if (c === '[') brackets++; if (c === ']') brackets--; }
+        while (brackets > 0) { repaired += ']'; brackets--; }
+        while (braces > 0) { repaired += '}'; braces--; }
+        parsed = JSON.parse(repaired);
+      } catch {
+        parsed = { message: cleanContent, step_complete: false };
+      }
     }
 
+    // Compose a human-readable message from structured JSON fields
+    function composeReadableMessage(p: any): string {
+      const parts: string[] = [];
+
+      // Main message
+      if (p.message && typeof p.message === "string") {
+        parts.push(p.message);
+      }
+
+      // Context check / strategic note
+      if (p.context_check && typeof p.context_check === "string") {
+        parts.push(`\n> **Strategic Note:** ${p.context_check}`);
+      }
+
+      // Plan calculation summary
+      if (p.plan_calculation && typeof p.plan_calculation === "object") {
+        const pc = p.plan_calculation;
+        const calcParts: string[] = [];
+        if (pc.total_weeks) calcParts.push(`**Duration:** ${pc.total_weeks} weeks`);
+        if (pc.posts_per_week) calcParts.push(`**Frequency:** ${pc.posts_per_week} posts/week`);
+        if (pc.total_post_count) calcParts.push(`**Total Posts:** ${pc.total_post_count}`);
+        if (pc.format_distribution) calcParts.push(`**Formats:** ${pc.format_distribution}`);
+        if (calcParts.length > 0) {
+          parts.push(`\n📊 **Campaign Structure**\n${calcParts.join("\n")}`);
+        }
+      }
+
+      // Questions
+      if (Array.isArray(p.questions) && p.questions.length > 0) {
+        const qList = p.questions.map((q: string, i: number) => `${i + 1}. ${q}`).join("\n");
+        parts.push(`\n${qList}`);
+      }
+
+      // Extracted data summary (show key decisions back to user)
+      if (p.extracted_data && typeof p.extracted_data === "object") {
+        const ed = p.extracted_data;
+        const summaryParts: string[] = [];
+        if (ed.objective) summaryParts.push(`Objective: **${ed.objective}**`);
+        if (ed.target_metric && ed.target_quantity) summaryParts.push(`Target: **${ed.target_quantity} ${ed.target_metric}**`);
+        if (ed.duration_weeks) summaryParts.push(`Duration: **${ed.duration_weeks} weeks**`);
+        if (ed.posts_per_week) summaryParts.push(`Frequency: **${ed.posts_per_week} posts/week**`);
+        if (summaryParts.length > 0) {
+          parts.push(`\n✅ **Captured:** ${summaryParts.join(" · ")}`);
+        }
+      }
+
+      return parts.length > 0 ? parts.join("\n") : (p.message || JSON.stringify(p));
+    }
+
+    const readableMessage = composeReadableMessage(parsed);
+
     // Add AI response to messages
-    messages.push({ role: "assistant", content: parsed.message || cleanContent });
+    messages.push({ role: "assistant", content: readableMessage });
 
     // Update collected data if extracted
     if (parsed.extracted_data) {
