@@ -11,17 +11,12 @@ import {
   BarChart3, FileText, Sparkles, ArrowRight, AlertTriangle, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import CampaignPostCard from "@/components/campaign/CampaignPostCard";
 
 type Campaign = any;
 type WeekPlan = any;
 type PostPlan = any;
 type Blueprint = any;
-
-const statusColors: Record<string, string> = {
-  planned: "bg-muted text-muted-foreground",
-  drafted: "bg-yellow-500/10 text-yellow-600",
-  published: "bg-green-500/10 text-green-600",
-};
 
 const CampaignPlanPage = () => {
   const { id } = useParams();
