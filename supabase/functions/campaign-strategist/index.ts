@@ -7,6 +7,26 @@ const corsHeaders = {
 };
 
 const STEPS = ["goal", "targets", "structure", "audience", "product", "style", "blueprint"] as const;
+type StepName = typeof STEPS[number];
+
+const STEP_REQUIREMENTS: Record<Exclude<StepName, "blueprint">, string[]> = {
+  goal: ["objective", "business_outcome"],
+  targets: ["target_metric", "target_quantity", "target_timeframe"],
+  structure: ["duration_weeks", "posts_per_week", "post_formats"],
+  audience: ["audience_description", "key_pain_points"],
+  product: ["product_angle", "campaign_theme"],
+  style: ["content_style", "cta_strength"],
+};
+
+const STEP_ALIASES: Record<StepName, string[]> = {
+  goal: ["goal", "business goal", "objective"],
+  targets: ["targets", "measurable targets", "metrics"],
+  structure: ["structure", "campaign structure"],
+  audience: ["audience", "audience & pain", "audience and pain", "pain"],
+  product: ["product", "offer", "product & offer", "message"],
+  style: ["style", "campaign style", "tone"],
+  blueprint: ["blueprint", "plan"],
+};
 
 const RESPONSE_KEYS = ["message", "suggested_options", "extracted_data", "blueprint", "step_complete", "questions", "plan_calculation", "context_check"];
 
@@ -179,6 +199,150 @@ function formatSection(title: string, value: any): string {
   return body ? `**${title}**\n${body}` : "";
 }
 
+function hasMeaningfulValue(value: any): boolean {
+  if (value === null || value === undefined) return false;
+  if (typeof value === "string") return value.trim().length > 0;
+  if (typeof value === "number") return !Number.isNaN(value);
+  if (typeof value === "boolean") return true;
+  if (Array.isArray(value)) return value.some(hasMeaningfulValue);
+  if (typeof value === "object") return Object.values(value).some(hasMeaningfulValue);
+  return false;
+}
+
+function normalizeStepData(step: StepName, data: any): any {
+  const normalized = { ...(data || {}) };
+
+  if (step === "structure") {
+    const durationWeeks = Number(normalized.duration_weeks);
+    const postsPerWeek = Number(normalized.posts_per_week);
+
+    if (Number.isFinite(durationWeeks) && durationWeeks > 0) normalized.duration_weeks = durationWeeks;
+    if (Number.isFinite(postsPerWeek) && postsPerWeek > 0) normalized.posts_per_week = postsPerWeek;
+
+    if (!hasMeaningfulValue(normalized.total_posts) && normalized.duration_weeks && normalized.posts_per_week) {
+      normalized.total_posts = normalized.duration_weeks * normalized.posts_per_week;
+    }
+
+    if (typeof normalized.post_formats === "string") {
+      normalized.post_formats = normalized.post_formats
+        .split(",")
+        .map((item: string) => item.trim())
+        .filter(Boolean);
+    }
+  }
+
+  return normalized;
+}
+
+function isStepDataComplete(step: StepName, data: any): boolean {
+  if (step === "blueprint") return hasMeaningfulValue(data);
+
+  const normalized = normalizeStepData(step, data);
+  const requiredKeys = STEP_REQUIREMENTS[step];
+
+  if (!requiredKeys.every((key) => hasMeaningfulValue(normalized?.[key]))) {
+    return false;
+  }
+
+  if (step === "structure") {
+    return Number(normalized.duration_weeks) > 0
+      && Number(normalized.posts_per_week) > 0
+      && Number(normalized.total_posts) > 0
+      && Array.isArray(normalized.post_formats)
+      && normalized.post_formats.length > 0;
+  }
+
+  if (step === "audience") {
+    return hasMeaningfulValue(normalized.audience_description)
+      && Array.isArray(normalized.key_pain_points)
+      && normalized.key_pain_points.length > 0;
+  }
+
+  if (step === "style") {
+    return hasMeaningfulValue(normalized.style_mix) || hasMeaningfulValue(normalized.tone);
+  }
+
+  return true;
+}
+
+function getNextStep(step: StepName): StepName | null {
+  const currentIdx = STEPS.indexOf(step);
+  return currentIdx >= 0 && currentIdx < STEPS.length - 1 ? STEPS[currentIdx + 1] : null;
+}
+
+function detectRequestedStep(message: string | null | undefined): StepName | null {
+  const normalizedMessage = message?.toLowerCase().trim();
+  if (!normalizedMessage) return null;
+
+  for (const step of STEPS) {
+    if (STEP_ALIASES[step].some((alias) => normalizedMessage.includes(alias))) {
+      return step;
+    }
+  }
+
+  return null;
+}
+
+function isAdvanceIntent(message: string | null | undefined): boolean {
+  const normalizedMessage = message?.toLowerCase().trim();
+  if (!normalizedMessage) return false;
+
+  return [
+    "move to next",
+    "next section",
+    "next step",
+    "continue",
+    "move on",
+    "go next",
+    "proceed",
+  ].some((phrase) => normalizedMessage.includes(phrase));
+}
+
+function getStepIntroMessage(step: StepName, personas: any[]): string {
+  switch (step) {
+    case "targets":
+      return "**Next: Measurable Targets**\n1. What result would make this campaign a clear win?\n2. What number are you targeting, and over what timeframe?";
+    case "structure":
+      return "**Next: Campaign Structure**\n1. How many weeks should this run?\n2. How many posts per week do you want?\n3. Which formats should we use: text, image + text, carousel, or a mix?";
+    case "audience": {
+      const personaNames = personas.map((persona: any) => persona.name).filter(Boolean);
+      const personaLine = personaNames.length > 0
+        ? `You already have personas like ${personaNames.slice(0, 3).join(", ")}. Want to use one of them or define a new audience?`
+        : "1. Who exactly are you trying to reach?";
+      return `**Next: Audience & Pain**\n${personaLine}\n2. What pain are they dealing with right now?\n3. What would make them take action?`;
+    }
+    case "product":
+      return "**Next: Product & Offer**\n1. Which product, feature, or offer is this campaign about?\n2. What makes it valuable, and what proof do you have?";
+    case "style":
+      return "**Next: Campaign Style**\n1. Should this feel educational, story-driven, authority-led, or promotional?\n2. Should the CTA stay soft, medium, or direct?";
+    case "blueprint":
+      return "**Next: Blueprint**\nI have enough to generate the campaign blueprint.";
+    default:
+      return "";
+  }
+}
+
+function getStepSuggestedOptions(step: StepName, personas: any[]): string[] {
+  switch (step) {
+    case "targets":
+      return ["100 leads in 30 days", "500 signups this month", "200 demo bookings this quarter"];
+    case "structure":
+      return ["4 weeks / 3 posts per week / mixed formats", "6 weeks / 2 posts per week / carousel-heavy", "8 weeks / 1 post per week / text-only"];
+    case "audience": {
+      const personaOptions = personas.map((persona: any) => persona.name).filter(Boolean).slice(0, 3);
+      return personaOptions.length > 0
+        ? [...personaOptions, "Define a new audience"]
+        : ["Ecommerce founders", "Marketing managers", "Support team leads"];
+    }
+    case "product":
+      return ["Highlight one flagship feature", "Promote a free trial", "Focus on proof and differentiators"];
+    case "style":
+      return ["Educational + soft CTA", "Authority-led + medium CTA", "Story-driven + direct CTA"];
+    default:
+      return [];
+  }
+}
+
 function parseStrategistResponse(rawContent: string): any {
   const cleaned = stripCodeFences(rawContent.trim()).trim();
   const directParse = tryParseJson(cleaned);
@@ -282,9 +446,10 @@ You are having a guided conversation. You are on step: "${step}".
 ${contextBlock}${personaBlock}${collectedBlock}
 
 CRITICAL RULES:
-- Ask 2-4 focused questions per step. Not more.
+- Ask 1-2 focused questions per step. Never ask more than 2.
 - Challenge weak or vague inputs. If the user says something unrealistic, push back gently.
 - Use the business context to ask smarter, more specific questions.
+- If enough information is already available for the current step, do NOT ask more questions. Set step_complete to true.
 - Always respond with VALID JSON (no markdown fences).`;
 
   const stepPrompts: Record<string, string> = {
@@ -331,12 +496,16 @@ When complete, extracted_data should have: { "target_metric": "...", "target_qua
     structure: `${base}
 
 STEP: DEFINE CAMPAIGN STRUCTURE
-Ask:
+Only capture structure in this step. Do NOT ask about audience, pain points, messaging, product, offer, or CTA here.
+
+Ask only for the missing structure inputs:
 1. How long should the campaign run? (2, 4, 6, 8 weeks)
 2. How many posts per week? (1, 2, 3)
 3. Post format preference: text only, image+text, carousel, or mix?
 
 Calculate and confirm: total weeks, posts per week, total post count, format distribution.
+
+If duration_weeks, posts_per_week, and at least one post_format are known, calculate total_posts and set step_complete to true immediately.
 
 When complete, extracted_data: { "duration_weeks": N, "posts_per_week": N, "total_posts": N, "post_formats": ["text", "image_text", "carousel"] }`,
 
@@ -610,9 +779,27 @@ serve(async (req) => {
       supabase.from("audience_personas").select("id, name, industry, awareness_level").eq("user_id", user.id),
     ]);
 
+    let redirectedStep = false;
+    let aiUserMessage = user_message;
+
     // Add user message if provided
     if (user_message) {
       messages.push({ role: "user", content: user_message });
+
+      const currentStepName = currentStep as StepName;
+      const nextStepName = getNextStep(currentStepName);
+      const requestedStep = detectRequestedStep(user_message);
+      const currentStepData = normalizeStepData(currentStepName, collectedData[currentStepName] || {});
+
+      if (
+        nextStepName
+        && isStepDataComplete(currentStepName, currentStepData)
+        && (requestedStep === nextStepName || (requestedStep === null && isAdvanceIntent(user_message)))
+      ) {
+        currentStep = nextStepName;
+        redirectedStep = true;
+        aiUserMessage = `Let's continue to the ${humanizeKey(nextStepName)} step. Ask only the essential questions needed for this step.`;
+      }
     }
 
     // Build AI messages
@@ -621,6 +808,10 @@ serve(async (req) => {
       { role: "system", content: systemPrompt },
       ...messages.map((m: any) => ({ role: m.role, content: m.content })),
     ];
+
+    if (redirectedStep && aiMessages.length > 1) {
+      aiMessages[aiMessages.length - 1] = { role: "user", content: aiUserMessage };
+    }
 
     // If no user message yet (first load), add a starter
     if (!user_message && messages.length === 0) {
@@ -664,15 +855,15 @@ serve(async (req) => {
     if (!rawContent) throw new Error("No AI response");
 
     const parsed = parseStrategistResponse(rawContent);
-    const readableMessage = composeReadableMessage(parsed);
-    const normalizedSuggestedOptions = normalizeSuggestedOptions(parsed.suggested_options);
-
-    // Add AI response to messages
-    messages.push({ role: "assistant", content: readableMessage });
 
     // Update collected data if extracted
     if (parsed.extracted_data) {
-      collectedData[currentStep] = { ...(collectedData[currentStep] || {}), ...parsed.extracted_data };
+      collectedData[currentStep] = normalizeStepData(currentStep as StepName, {
+        ...(collectedData[currentStep] || {}),
+        ...parsed.extracted_data,
+      });
+    } else if (collectedData[currentStep]) {
+      collectedData[currentStep] = normalizeStepData(currentStep as StepName, collectedData[currentStep]);
     }
 
     // Store blueprint if generated
@@ -682,12 +873,46 @@ serve(async (req) => {
 
     // Advance step if complete
     let nextStep = currentStep;
-    if (parsed.step_complete) {
+    let effectiveStepComplete = Boolean(parsed.step_complete);
+    let autoCompletedStep = false;
+
+    if (!effectiveStepComplete && currentStep !== "blueprint" && isStepDataComplete(currentStep as StepName, collectedData[currentStep])) {
+      effectiveStepComplete = true;
+      autoCompletedStep = true;
+    }
+
+    if (effectiveStepComplete) {
       const currentIdx = STEPS.indexOf(currentStep as any);
       if (currentIdx < STEPS.length - 1) {
         nextStep = STEPS[currentIdx + 1];
       }
     }
+
+    const completionNote = autoCompletedStep && nextStep !== currentStep
+      ? `Great — I have enough to lock the ${humanizeKey(currentStep)} and move to ${humanizeKey(nextStep)}.`
+      : "";
+
+    const readablePayload = completionNote
+      ? {
+          ...parsed,
+          message: [safeStr(parsed.message), completionNote].filter(Boolean).join("\n\n"),
+          questions: [],
+          suggested_options: [],
+        }
+      : parsed;
+
+    let readableMessage = composeReadableMessage(readablePayload);
+    let normalizedSuggestedOptions = normalizeSuggestedOptions(readablePayload.suggested_options);
+
+    if (autoCompletedStep && nextStep !== currentStep && !parsed.blueprint) {
+      readableMessage = [readableMessage, getStepIntroMessage(nextStep as StepName, personasRes.data || [])]
+        .filter(Boolean)
+        .join("\n\n");
+      normalizedSuggestedOptions = getStepSuggestedOptions(nextStep as StepName, personasRes.data || []);
+    }
+
+    // Add AI response to messages
+    messages.push({ role: "assistant", content: readableMessage });
 
     // Save conversation state
     await supabase
@@ -706,7 +931,7 @@ serve(async (req) => {
       message: readableMessage,
       suggested_options: normalizedSuggestedOptions,
       blueprint: parsed.blueprint || null,
-      step_complete: parsed.step_complete || false,
+        step_complete: effectiveStepComplete,
       collected_data: collectedData,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
