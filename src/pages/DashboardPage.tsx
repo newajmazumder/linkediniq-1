@@ -64,6 +64,19 @@ const DashboardPage = () => {
     } catch (err: any) { toast.error(err.message || "Failed"); } finally { setLoadingRecs(false); }
   };
 
+  const deleteIdea = async (ideaId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase.from("ideas").delete().eq("id", ideaId);
+      if (error) throw error;
+      setRecentIdeas(prev => prev.filter(i => i.id !== ideaId));
+      setStats(prev => ({ ...prev, ideas: Math.max(0, prev.ideas - 1) }));
+      toast.success("Idea deleted");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete");
+    }
+  };
+
   return (
     <div className="content-fade-in space-y-8">
       <div>
