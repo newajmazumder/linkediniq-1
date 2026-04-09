@@ -308,10 +308,16 @@ const StrategyPage = () => {
           <p className="mt-1 text-sm text-muted-foreground">Define campaigns with measurable targets and get AI recommendations.</p>
         </div>
         {tab === "campaigns" && (
-          <Button size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); }}>
-            <Plus className="mr-1 h-3.5 w-3.5" />
-            New Campaign
-          </Button>
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={() => navigate("/campaign/new")}>
+              <Sparkles className="mr-1 h-3.5 w-3.5" />
+              AI Strategist
+            </Button>
+            <Button size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyForm); }}>
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              New Campaign
+            </Button>
+          </div>
         )}
         {tab === "recommendations" && (
           <Button size="sm" onClick={generateRecommendations} disabled={loadingRecs}>
