@@ -59,7 +59,8 @@ const CreatePage = () => {
   const [personas, setPersonas] = useState<PersonaOption[]>([]);
   const [campaigns, setCampaigns] = useState<CampaignOption[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
-  const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>(searchParams.get("campaign_id") || "");
+  const [postPlan, setPostPlan] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
