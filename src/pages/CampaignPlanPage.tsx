@@ -7,8 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import {
-  Loader2, Target, ChevronDown, ChevronUp, PenLine, Check, Clock,
-  BarChart3, FileText, Sparkles, ArrowRight, AlertTriangle, TrendingUp,
+  Loader2, Target, ChevronDown, ChevronUp, Sparkles,
+  BarChart3, FileText, AlertTriangle, TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
