@@ -436,53 +436,65 @@ serve(async (req) => {
       }
     }
 
+    // Safely convert any value to a displayable string
+    function safeStr(val: any): string {
+      if (val === null || val === undefined) return "";
+      if (typeof val === "string") return val;
+      if (typeof val === "number" || typeof val === "boolean") return String(val);
+      if (Array.isArray(val)) return val.map(safeStr).join(", ");
+      if (typeof val === "object") {
+        if (val.text) return safeStr(val.text);
+        if (val.question) return safeStr(val.question);
+        if (val.label) return safeStr(val.label);
+        if (val.name) return safeStr(val.name);
+        if (val.value) return safeStr(val.value);
+        return Object.entries(val).map(([k, v]) => `${k}: ${safeStr(v)}`).join(", ");
+      }
+      return String(val);
+    }
+
     // Compose a human-readable message from structured JSON fields
     function composeReadableMessage(p: any): string {
+      if (!p || typeof p !== "object") return typeof p === "string" ? p : "I'm processing your request...";
+
       const parts: string[] = [];
 
-      // Main message
-      if (p.message && typeof p.message === "string") {
-        parts.push(p.message);
-      }
+      if (p.message) parts.push(safeStr(p.message));
 
-      // Context check / strategic note
-      if (p.context_check && typeof p.context_check === "string") {
-        parts.push(`\n> **Strategic Note:** ${p.context_check}`);
-      }
+      if (p.context_check) parts.push(`\n> **Strategic Note:** ${safeStr(p.context_check)}`);
 
-      // Plan calculation summary
       if (p.plan_calculation && typeof p.plan_calculation === "object") {
         const pc = p.plan_calculation;
         const calcParts: string[] = [];
-        if (pc.total_weeks) calcParts.push(`**Duration:** ${pc.total_weeks} weeks`);
-        if (pc.posts_per_week) calcParts.push(`**Frequency:** ${pc.posts_per_week} posts/week`);
-        if (pc.total_post_count) calcParts.push(`**Total Posts:** ${pc.total_post_count}`);
-        if (pc.format_distribution) calcParts.push(`**Formats:** ${pc.format_distribution}`);
-        if (calcParts.length > 0) {
-          parts.push(`\n📊 **Campaign Structure**\n${calcParts.join("\n")}`);
-        }
+        if (pc.total_weeks) calcParts.push(`**Duration:** ${safeStr(pc.total_weeks)} weeks`);
+        if (pc.posts_per_week) calcParts.push(`**Frequency:** ${safeStr(pc.posts_per_week)} posts/week`);
+        if (pc.total_post_count) calcParts.push(`**Total Posts:** ${safeStr(pc.total_post_count)}`);
+        if (pc.format_distribution) calcParts.push(`**Formats:** ${safeStr(pc.format_distribution)}`);
+        if (calcParts.length > 0) parts.push(`\n📊 **Campaign Structure**\n${calcParts.join("\n")}`);
       }
 
-      // Questions
       if (Array.isArray(p.questions) && p.questions.length > 0) {
-        const qList = p.questions.map((q: string, i: number) => `${i + 1}. ${q}`).join("\n");
+        const qList = p.questions.map((q: any, i: number) => `${i + 1}. ${safeStr(q)}`).join("\n");
         parts.push(`\n${qList}`);
       }
 
-      // Extracted data summary (show key decisions back to user)
       if (p.extracted_data && typeof p.extracted_data === "object") {
         const ed = p.extracted_data;
         const summaryParts: string[] = [];
-        if (ed.objective) summaryParts.push(`Objective: **${ed.objective}**`);
-        if (ed.target_metric && ed.target_quantity) summaryParts.push(`Target: **${ed.target_quantity} ${ed.target_metric}**`);
-        if (ed.duration_weeks) summaryParts.push(`Duration: **${ed.duration_weeks} weeks**`);
-        if (ed.posts_per_week) summaryParts.push(`Frequency: **${ed.posts_per_week} posts/week**`);
-        if (summaryParts.length > 0) {
-          parts.push(`\n✅ **Captured:** ${summaryParts.join(" · ")}`);
-        }
+        if (ed.objective) summaryParts.push(`Objective: **${safeStr(ed.objective)}**`);
+        if (ed.target_metric && ed.target_quantity) summaryParts.push(`Target: **${safeStr(ed.target_quantity)} ${safeStr(ed.target_metric)}**`);
+        if (ed.duration_weeks) summaryParts.push(`Duration: **${safeStr(ed.duration_weeks)} weeks**`);
+        if (ed.posts_per_week) summaryParts.push(`Frequency: **${safeStr(ed.posts_per_week)} posts/week**`);
+        if (summaryParts.length > 0) parts.push(`\n✅ **Captured:** ${summaryParts.join(" · ")}`);
       }
 
-      return parts.length > 0 ? parts.join("\n") : (p.message || JSON.stringify(p));
+      if (parts.length === 0) {
+        const fallbackParts = Object.values(p).filter(v => typeof v === "string" && (v as string).length > 10);
+        if (fallbackParts.length > 0) return (fallbackParts as string[]).join("\n\n");
+        return "I'm ready to continue. What would you like to share?";
+      }
+
+      return parts.join("\n");
     }
 
     const readableMessage = composeReadableMessage(parsed);
