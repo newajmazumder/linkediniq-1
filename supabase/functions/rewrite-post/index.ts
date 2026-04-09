@@ -30,7 +30,7 @@ serve(async (req) => {
       });
     }
 
-    const { post_id, action, context } = await req.json();
+    const { post_id, action, context, language } = await req.json();
     if (!post_id || !action) {
       return new Response(JSON.stringify({ error: "post_id and action are required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -143,6 +143,14 @@ ${currentPost}
 Focus on improving the LOWEST scoring dimensions. Preserve what works (strongest element). Apply LinkedIn formatting best practices.${jsonInstruction}`,
     };
 
+    // Detect language: explicit param, or auto-detect from post content (Bangla Unicode range)
+    const isBanglaContent = /[\u0980-\u09FF]/.test(post.hook + post.body);
+    const effectiveLanguage = language || (isBanglaContent ? "bangla" : "english");
+
+    const banglaSystemAddition = effectiveLanguage === "bangla"
+      ? " You MUST write ALL output (hook, body, cta) in native conversational Bangla. Do NOT translate from English. Think in Bangla. Use business-friendly, conversational Bangla tone. Keep English product terms (AI Agent, WhatsApp, etc.) in English. CTAs must feel natural in Bangla."
+      : "";
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -152,7 +160,7 @@ Focus on improving the LOWEST scoring dimensions. Preserve what works (strongest
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: "You are a LinkedIn post rewriter for B2B SaaS. Respond with ONLY valid JSON, no markdown fences, no explanation." },
+          { role: "system", content: "You are a LinkedIn post rewriter for B2B SaaS. Respond with ONLY valid JSON, no markdown fences, no explanation." + banglaSystemAddition },
           { role: "user", content: prompts[action] },
         ],
       }),

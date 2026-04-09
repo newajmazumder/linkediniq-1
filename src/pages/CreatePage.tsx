@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, LayoutGrid, List, FileText, Image, Layers } from "lucide-react";
+import { Loader2, Sparkles, LayoutGrid, List, FileText, Image, Layers, Globe } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -31,7 +31,7 @@ type Idea = {
 };
 
 type PersonaOption = { id: string; name: string };
-type CampaignOption = { id: string; name: string };
+type CampaignOption = { id: string; name: string; language?: string };
 
 type PostType = "text" | "image_text" | "carousel";
 
@@ -51,6 +51,7 @@ const CreatePage = () => {
   const [viewMode, setViewMode] = useState<"list" | "compare">("list");
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [postType, setPostType] = useState<PostType>("text");
+  const [language, setLanguage] = useState<"english" | "bangla">("english");
   const [knowledge, setKnowledge] = useState<KnowledgeContext>({
     productDescription: "",
     features: "",
@@ -65,7 +66,7 @@ const CreatePage = () => {
   useEffect(() => {
     if (user) {
       supabase.from("audience_personas").select("id, name").order("name").then(({ data }) => setPersonas((data || []) as PersonaOption[]));
-      supabase.from("campaigns").select("id, name").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
+      supabase.from("campaigns").select("id, name, language").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
       supabase.from("business_profiles").select("product_summary, product_features").eq("user_id", user.id).maybeSingle().then(({ data }) => {
         if (data) {
           setKnowledge({
@@ -117,6 +118,7 @@ const CreatePage = () => {
           persona_id: selectedPersonaId || undefined,
           campaign_id: selectedCampaignId || undefined,
           post_type: postType,
+          language,
         },
       });
 
@@ -183,7 +185,11 @@ const CreatePage = () => {
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium text-foreground">Campaign <span className="text-destructive">*</span></label>
-            <Select value={selectedCampaignId} onValueChange={setSelectedCampaignId}>
+            <Select value={selectedCampaignId} onValueChange={(v) => {
+              setSelectedCampaignId(v);
+              const camp = campaigns.find((c) => c.id === v);
+              if (camp?.language) setLanguage(camp.language as "english" | "bangla");
+            }}>
               <SelectTrigger className={`text-sm ${!selectedCampaignId || selectedCampaignId === "none" ? "border-destructive/50" : ""}`}>
                 <SelectValue placeholder="Select campaign" />
               </SelectTrigger>
@@ -195,6 +201,31 @@ const CreatePage = () => {
                 )}
               </SelectContent>
             </Select>
+          </div>
+
+          {/* Language Selector */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
+              <Globe className="h-3.5 w-3.5" /> Language
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { value: "english" as const, label: "🇺🇸 English" },
+                { value: "bangla" as const, label: "🇧🇩 Bangla" },
+              ]).map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setLanguage(opt.value)}
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
+                    language === opt.value
+                      ? "border-primary bg-primary/5 text-foreground"
+                      : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Post Type Selector */}

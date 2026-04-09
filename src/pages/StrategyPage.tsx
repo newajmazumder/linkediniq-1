@@ -103,6 +103,7 @@ const emptyForm = {
   target_quantity: "",
   target_timeframe: "monthly",
   target_priority: "medium",
+  language: "english",
 };
 
 type Recommendation = {
@@ -226,6 +227,7 @@ const StrategyPage = () => {
         target_quantity: form.target_quantity ? parseInt(form.target_quantity) : null,
         target_timeframe: form.target_timeframe,
         target_priority: form.target_priority,
+        language: form.language,
       };
 
       if (editingId) {
@@ -273,6 +275,7 @@ const StrategyPage = () => {
       target_quantity: c.target_quantity?.toString() || "",
       target_timeframe: c.target_timeframe || "monthly",
       target_priority: c.target_priority || "medium",
+      language: (c as any).language || "english",
     });
     setEditingId(c.id);
     setShowForm(true);
@@ -348,7 +351,7 @@ const StrategyPage = () => {
           {showForm && (
             <div className="rounded-lg border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-medium text-foreground">{editingId ? "Edit" : "Create"} Campaign</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-foreground">Campaign Name *</label>
                   <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Q2 Lead Gen" className="text-sm" />
@@ -358,6 +361,16 @@ const StrategyPage = () => {
                   <Select value={form.goal} onValueChange={(v) => setForm({ ...form, goal: v })}>
                     <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>{goals.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Language</label>
+                  <Select value={form.language} onValueChange={(v) => setForm({ ...form, language: v })}>
+                    <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="english">🇺🇸 English</SelectItem>
+                      <SelectItem value="bangla">🇧🇩 Bangla</SelectItem>
+                    </SelectContent>
                   </Select>
                 </div>
               </div>

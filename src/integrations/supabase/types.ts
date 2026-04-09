@@ -543,6 +543,7 @@ export type Database = {
           goal: string | null
           id: string
           is_active: boolean | null
+          language: string | null
           name: string
           offer: string | null
           primary_objective: string | null
@@ -568,6 +569,7 @@ export type Database = {
           goal?: string | null
           id?: string
           is_active?: boolean | null
+          language?: string | null
           name: string
           offer?: string | null
           primary_objective?: string | null
@@ -593,6 +595,7 @@ export type Database = {
           goal?: string | null
           id?: string
           is_active?: boolean | null
+          language?: string | null
           name?: string
           offer?: string | null
           primary_objective?: string | null
