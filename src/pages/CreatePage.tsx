@@ -5,7 +5,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Sparkles, LayoutGrid, List, FileText, Image, Layers } from "lucide-react";
+import { Loader2, Sparkles, LayoutGrid, List, FileText, Image, Layers, Globe } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -31,7 +31,7 @@ type Idea = {
 };
 
 type PersonaOption = { id: string; name: string };
-type CampaignOption = { id: string; name: string };
+type CampaignOption = { id: string; name: string; language?: string };
 
 type PostType = "text" | "image_text" | "carousel";
 
@@ -51,6 +51,7 @@ const CreatePage = () => {
   const [viewMode, setViewMode] = useState<"list" | "compare">("list");
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [postType, setPostType] = useState<PostType>("text");
+  const [language, setLanguage] = useState<"english" | "bangla">("english");
   const [knowledge, setKnowledge] = useState<KnowledgeContext>({
     productDescription: "",
     features: "",
@@ -65,7 +66,7 @@ const CreatePage = () => {
   useEffect(() => {
     if (user) {
       supabase.from("audience_personas").select("id, name").order("name").then(({ data }) => setPersonas((data || []) as PersonaOption[]));
-      supabase.from("campaigns").select("id, name").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
+      supabase.from("campaigns").select("id, name, language").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
       supabase.from("business_profiles").select("product_summary, product_features").eq("user_id", user.id).maybeSingle().then(({ data }) => {
         if (data) {
           setKnowledge({
