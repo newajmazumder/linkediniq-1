@@ -6,7 +6,6 @@ import { ChevronDown, ChevronUp, Brain } from "lucide-react";
 export type KnowledgeContext = {
   productDescription: string;
   features: string;
-  targetAudience: string;
 };
 
 type Props = {
@@ -17,7 +16,7 @@ type Props = {
 const KnowledgeInput = ({ value, onChange }: Props) => {
   const [expanded, setExpanded] = useState(false);
 
-  const hasContent = value.productDescription || value.features || value.targetAudience;
+  const hasContent = value.productDescription || value.features;
 
   return (
     <div className="rounded-lg border border-border bg-card">
@@ -59,15 +58,6 @@ const KnowledgeInput = ({ value, onChange }: Props) => {
               placeholder="e.g. AI chatbot, WhatsApp integration, analytics"
               value={value.features}
               onChange={(e) => onChange({ ...value, features: e.target.value })}
-              className="text-sm"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-foreground">Target Audience</label>
-            <Input
-              placeholder="e.g. Ecommerce brands, SaaS founders, CX leaders"
-              value={value.targetAudience}
-              onChange={(e) => onChange({ ...value, targetAudience: e.target.value })}
               className="text-sm"
             />
           </div>

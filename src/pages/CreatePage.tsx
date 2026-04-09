@@ -52,7 +52,6 @@ const CreatePage = () => {
   const [knowledge, setKnowledge] = useState<KnowledgeContext>({
     productDescription: "",
     features: "",
-    targetAudience: "",
   });
 
   const [personas, setPersonas] = useState<PersonaOption[]>([]);
@@ -64,6 +63,14 @@ const CreatePage = () => {
     if (user) {
       supabase.from("audience_personas").select("id, name").order("name").then(({ data }) => setPersonas((data || []) as PersonaOption[]));
       supabase.from("campaigns").select("id, name").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
+      supabase.from("business_profiles").select("product_summary, product_features").eq("user_id", user.id).maybeSingle().then(({ data }) => {
+        if (data) {
+          setKnowledge({
+            productDescription: data.product_summary || "",
+            features: Array.isArray(data.product_features) ? (data.product_features as string[]).join(", ") : "",
+          });
+        }
+      });
     }
   }, [user]);
 
@@ -77,6 +84,10 @@ const CreatePage = () => {
       toast.error("Please select a campaign");
       return;
     }
+    if (!instruction.trim()) {
+      toast.error("Please add specific instructions");
+      return;
+    }
     setLoading(true);
     setIdea(null);
     setPosts([]);
@@ -86,7 +97,7 @@ const CreatePage = () => {
       const { data, error } = await supabase.functions.invoke("generate-content", {
         body: {
           instruction: instruction.trim(),
-          knowledge: knowledge.productDescription || knowledge.features || knowledge.targetAudience
+          knowledge: knowledge.productDescription || knowledge.features
             ? knowledge
             : undefined,
           persona_id: selectedPersonaId || undefined,
@@ -191,16 +202,19 @@ const CreatePage = () => {
 
         {/* Instruction Input */}
         <div className="rounded-lg border border-border bg-card p-4">
+          <div className="mb-1">
+            <label className="text-xs font-medium text-foreground">Specific Instructions <span className="text-destructive">*</span></label>
+          </div>
           <Textarea
-            placeholder='Optional: add specific instructions (e.g. "Focus on reducing support tickets")'
+            placeholder='e.g. "Focus on reducing support tickets" or "Highlight the AI chatbot feature for ecommerce brands"'
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             rows={3}
-            className="resize-none border-0 bg-transparent p-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0"
+            className={`resize-none border-0 bg-transparent p-0 text-sm placeholder:text-muted-foreground focus-visible:ring-0 ${!instruction.trim() ? "border-destructive/50" : ""}`}
           />
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{instruction.length}/600</span>
-            <Button onClick={handleGenerate} disabled={loading || !selectedPersonaId || selectedPersonaId === "none" || !selectedCampaignId || selectedCampaignId === "none"} size="sm">
+            <Button onClick={handleGenerate} disabled={loading || !instruction.trim() || !selectedPersonaId || selectedPersonaId === "none" || !selectedCampaignId || selectedCampaignId === "none"} size="sm">
               {loading ? (
                 <>
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
