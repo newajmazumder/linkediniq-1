@@ -525,7 +525,7 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(true, true, post_type);
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
-    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + businessContextBlock + performanceBlock;
+    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + outcomeStrategyBlock + businessContextBlock + performanceBlock;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
