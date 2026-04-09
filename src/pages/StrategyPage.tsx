@@ -130,6 +130,7 @@ const priorityColors: Record<string, string> = {
 
 const StrategyPage = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [loading, setLoading] = useState(true);
