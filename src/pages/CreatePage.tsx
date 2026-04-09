@@ -43,6 +43,7 @@ const postTypeOptions: { value: PostType; label: string; icon: any; description:
 
 const CreatePage = () => {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const [instruction, setInstruction] = useState("");
   const [loading, setLoading] = useState(false);
   const [idea, setIdea] = useState<Idea | null>(null);
