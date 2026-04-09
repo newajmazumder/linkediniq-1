@@ -436,21 +436,6 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
         </div>
       )}
 
-      {/* First comment */}
-      {post.first_comment && !compact && (
-        <div className="rounded-md bg-secondary p-3">
-          <p className="text-xs text-muted-foreground mb-1">Suggested first comment</p>
-          <p className="text-xs text-secondary-foreground">{post.first_comment}</p>
-        </div>
-      )}
-
-      {/* Context rationale */}
-      {post.context_rationale && !compact && (
-        <div className="rounded-md bg-accent/10 border border-accent/20 p-3">
-          <p className="text-xs text-muted-foreground mb-1">Business context used</p>
-          <p className="text-xs text-foreground">{post.context_rationale}</p>
-        </div>
-      )}
 
       {/* Generation Influences */}
       {post.generation_influences && !compact && (
