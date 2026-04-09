@@ -447,6 +447,31 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
             )}
           </div>
 
+          {/* Outcome Probability + Stage Breakdown */}
+          {(prediction.outcome_probability !== undefined || prediction.attention_potential !== undefined) && (
+            <div className="space-y-2">
+              {prediction.outcome_probability !== undefined && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted-foreground">Outcome Probability</span>
+                  <span className={cn("text-sm font-bold", prediction.outcome_probability >= 70 ? "text-green-600" : prediction.outcome_probability >= 40 ? "text-yellow-600" : "text-destructive")}>{prediction.outcome_probability}%</span>
+                </div>
+              )}
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { label: "Attention", value: prediction.attention_potential, key: "attention" },
+                  { label: "Engage", value: prediction.engagement_potential, key: "engagement" },
+                  { label: "Action", value: prediction.action_potential, key: "action" },
+                  { label: "Outcome", value: prediction.outcome_potential, key: "outcome" },
+                ].map(({ label, value, key }) => (
+                  <div key={key} className={cn("text-center rounded-md p-1.5 border", prediction.weak_stage === key ? "border-destructive/30 bg-destructive/5" : "border-border bg-secondary/30")}>
+                    <p className={cn("text-xs font-semibold", (value || 0) >= 70 ? "text-green-600" : (value || 0) >= 40 ? "text-yellow-600" : "text-destructive")}>{value || 0}</p>
+                    <p className={cn("text-[9px]", prediction.weak_stage === key ? "text-destructive font-medium" : "text-muted-foreground")}>{label}{prediction.weak_stage === key ? " ⚠" : ""}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* 6 Scoring Dimensions */}
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
             {[
