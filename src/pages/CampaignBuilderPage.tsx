@@ -47,6 +47,8 @@ const CampaignBuilderPage = () => {
   const [creating, setCreating] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const [stepPopover, setStepPopover] = useState<{
     step: string;
     step_label: string;
