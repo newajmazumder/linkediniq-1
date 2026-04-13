@@ -43,6 +43,7 @@ serve(async (req) => {
       "rewrite_story", "rewrite_educational", "rewrite_hybrid",
       "hook_curiosity", "hook_contrarian", "hook_pain", "hook_data",
       "regenerate_from_suggestions", "regenerate_from_prediction",
+      "apply_quick_fix",
     ];
     if (!validActions.includes(action)) {
       return new Response(JSON.stringify({ error: `Invalid action. Must be one of: ${validActions.join(", ")}` }), {
