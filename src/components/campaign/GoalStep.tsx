@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
-import { Send, Check } from "lucide-react";
+import { Sparkles, ArrowRight } from "lucide-react";
 
 const GOAL_OPTIONS = [
   { label: "Generate Demo Bookings", value: "demo_bookings" },
