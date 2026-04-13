@@ -536,11 +536,23 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
 
               {prediction.improved_hooks && prediction.improved_hooks.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-primary flex items-center gap-1"><Zap className="h-3 w-3" /> Better hook options</p>
+                  <p className="text-[10px] font-medium text-primary flex items-center gap-1"><Zap className="h-3 w-3" /> Better hook options <span className="text-muted-foreground font-normal">(click to apply)</span></p>
                   {prediction.improved_hooks.map((h, i) => (
-                    <div key={i} className="flex items-start gap-1.5 pl-1">
+                    <div key={i} className="flex items-start gap-1.5 pl-1 group/hook">
                       <span className="mt-1 h-1 w-1 rounded-full bg-primary shrink-0" />
-                      <p className="text-xs text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => { navigator.clipboard.writeText(h); toast.success("Hook copied"); }}>{h}</p>
+                      <button
+                        className="text-xs text-foreground text-left cursor-pointer hover:text-primary transition-colors group-hover/hook:underline"
+                        onClick={async () => {
+                          try {
+                            const { error } = await supabase.from("posts").update({ hook: h }).eq("id", post.id);
+                            if (error) throw error;
+                            onPostUpdate({ ...post, hook: h });
+                            toast.success("Hook replaced");
+                          } catch (err: any) {
+                            toast.error(err.message || "Failed to update hook");
+                          }
+                        }}
+                      >{h}</button>
                     </div>
                   ))}
                 </div>
@@ -548,11 +560,23 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
 
               {prediction.improved_ctas && prediction.improved_ctas.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-primary flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Better CTA options</p>
+                  <p className="text-[10px] font-medium text-primary flex items-center gap-1"><Lightbulb className="h-3 w-3" /> Better CTA options <span className="text-muted-foreground font-normal">(click to apply)</span></p>
                   {prediction.improved_ctas.map((c, i) => (
-                    <div key={i} className="flex items-start gap-1.5 pl-1">
+                    <div key={i} className="flex items-start gap-1.5 pl-1 group/cta">
                       <span className="mt-1 h-1 w-1 rounded-full bg-primary shrink-0" />
-                      <p className="text-xs text-foreground cursor-pointer hover:text-primary transition-colors" onClick={() => { navigator.clipboard.writeText(c); toast.success("CTA copied"); }}>{c}</p>
+                      <button
+                        className="text-xs text-foreground text-left cursor-pointer hover:text-primary transition-colors group-hover/cta:underline"
+                        onClick={async () => {
+                          try {
+                            const { error } = await supabase.from("posts").update({ cta: c }).eq("id", post.id);
+                            if (error) throw error;
+                            onPostUpdate({ ...post, cta: c });
+                            toast.success("CTA replaced");
+                          } catch (err: any) {
+                            toast.error(err.message || "Failed to update CTA");
+                          }
+                        }}
+                      >{c}</button>
                     </div>
                   ))}
                 </div>
@@ -560,9 +584,15 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
 
               {prediction.suggestions && prediction.suggestions.length > 0 && (
                 <div className="space-y-1">
-                  <p className="text-[10px] font-medium text-foreground flex items-center gap-1"><Lightbulb className="h-3 w-3 text-primary" /> Quick fixes</p>
+                  <p className="text-[10px] font-medium text-foreground flex items-center gap-1"><Lightbulb className="h-3 w-3 text-primary" /> Quick fixes <span className="text-muted-foreground font-normal">(click to apply)</span></p>
                   {prediction.suggestions.map((s, i) => (
-                    <p key={i} className="text-xs text-muted-foreground flex items-start gap-1.5 pl-1"><span className="mt-1 h-1 w-1 rounded-full bg-primary shrink-0" />{s}</p>
+                    <button
+                      key={i}
+                      className="text-xs text-muted-foreground flex items-start gap-1.5 pl-1 text-left hover:text-primary transition-colors cursor-pointer"
+                      onClick={() => rewritePost("apply_quick_fix", { fix: s, strongest_element: prediction.strongest_element })}
+                    >
+                      <span className="mt-1 h-1 w-1 rounded-full bg-primary shrink-0" />{s}
+                    </button>
                   ))}
                 </div>
               )}
