@@ -8,9 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import DashboardPage from "@/pages/DashboardPage";
 import CreatePage from "@/pages/CreatePage";
 import DraftsPage from "@/pages/DraftsPage";
-import CompetitorsPage from "@/pages/CompetitorsPage";
 import CalendarPage from "@/pages/CalendarPage";
-import AnalyticsPage from "@/pages/AnalyticsPage";
 import AudiencePage from "@/pages/AudiencePage";
 import StrategyPage from "@/pages/StrategyPage";
 import PerformancePage from "@/pages/PerformancePage";
@@ -48,9 +46,7 @@ const AppRoutes = () => {
           <Route path="/context" element={<BusinessContextPage />} />
           <Route path="/create" element={<CreatePage />} />
           <Route path="/drafts" element={<DraftsPage />} />
-          <Route path="/competitors" element={<CompetitorsPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/audience" element={<AudiencePage />} />
           <Route path="/strategy" element={<StrategyPage />} />
           <Route path="/performance" element={<PerformancePage />} />

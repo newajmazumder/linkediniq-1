@@ -3,7 +3,7 @@ import AppSidebar from "@/components/AppSidebar";
 
 const AppLayout = () => {
   const location = useLocation();
-  const isFullWidth = ["/create", "/competitors", "/performance", "/campaign/new"].some(
+  const isFullWidth = ["/create", "/performance", "/campaign/new"].some(
     p => location.pathname === p || location.pathname.startsWith("/performance/")
   );
 
