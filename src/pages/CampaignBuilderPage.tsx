@@ -467,6 +467,8 @@ const CampaignBuilderPage = () => {
                       recognition.onerror = (event: any) => {
                         if (event.error === "not-allowed") {
                           toast.error("Microphone access denied. Please allow microphone access in your browser settings.");
+                        } else if (event.error === "network") {
+                          toast.error("Voice input blocked by your browser. In Brave, go to brave://settings/privacy and enable 'Use Google services for push messaging' or try Chrome/Edge instead.", { duration: 8000 });
                         } else if (event.error !== "aborted") {
                           toast.error("Voice input error: " + event.error);
                         }
