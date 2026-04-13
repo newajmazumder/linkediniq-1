@@ -12,6 +12,7 @@ import {
   Rocket,
   PanelLeftClose,
   PanelLeft,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const navItems = [
   { to: "/campaign/new", icon: Rocket, label: "Campaign Builder" },
   { to: "/strategy", icon: Target, label: "Strategy" },
   { to: "/posts", icon: FileText, label: "Posts" },
+  { to: "/performance", icon: BarChart3, label: "Performance" },
 ];
 
 const bottomItems = [
