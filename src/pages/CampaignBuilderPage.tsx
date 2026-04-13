@@ -152,11 +152,15 @@ const CampaignBuilderPage = () => {
         setBlueprint(data.blueprint);
         setMessages((prev) => [...prev, { role: "assistant", content: "Here's your campaign blueprint. Review it and click **Create Campaign & Generate Plan** to launch." }]);
       } else if (data.current_step === "blueprint" && !data.blueprint) {
-        // All steps complete, auto-generate blueprint
         setMessages((prev) => [...prev, { role: "assistant", content: "All information gathered! Generating your campaign blueprint..." }]);
         await generateBlueprint();
       } else {
         setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      }
+
+      // Show step popover if AI generated questions for next step
+      if (data.step_questions) {
+        setStepPopover(data.step_questions);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to send");
