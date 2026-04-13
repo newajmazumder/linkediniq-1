@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle, Loader2, BarChart3, AlertTriangle, CheckCircle, Lightbulb, ShieldAlert, ShieldCheck, Zap, ArrowUp, ArrowDown } from "lucide-react";
 import { format } from "date-fns";
@@ -135,19 +136,21 @@ const DraftsPage = () => {
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-sm text-muted-foreground">Loading...</p></div>;
 
   return (
-    <div className="content-fade-in space-y-6">
+    <div className="content-fade-in space-y-6 px-6 py-8 max-w-5xl">
       <div>
-        <h1 className="text-2xl font-semibold text-foreground">Drafts & Workflow</h1>
-        <p className="mt-1 text-sm text-muted-foreground">{drafts.length} saved {drafts.length === 1 ? "draft" : "drafts"}</p>
+        <h1 className="text-2xl font-semibold text-foreground">Posts</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{drafts.length} saved {drafts.length === 1 ? "post" : "posts"}</p>
       </div>
 
-      <div className="flex gap-1.5 flex-wrap">
-        {(["all", ...statusOptions] as const).map((s) => (
-          <button key={s} onClick={() => setFilter(s)} className={cn("rounded-md px-3 py-1.5 text-xs font-medium transition-colors capitalize", filter === s ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground")}>
-            {s}{s !== "all" && <span className="ml-1 text-muted-foreground">{drafts.filter((d) => d.status === s).length}</span>}
-          </button>
-        ))}
-      </div>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as any)}>
+        <TabsList>
+          {(["all", ...statusOptions] as const).map((s) => (
+            <TabsTrigger key={s} value={s} className="capitalize">
+              {s}{s !== "all" ? ` ${drafts.filter((d) => d.status === s).length}` : ""}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-16 text-center">
@@ -169,7 +172,7 @@ const DraftsPage = () => {
                       <span className="text-xs text-muted-foreground">{new Date(draft.created_at).toLocaleDateString()}</span>
                       <div className="flex gap-1">
                         {statusOptions.map((s) => (
-                          <button key={s} onClick={() => updateStatus(draft.id, s)} className={cn("rounded px-2 py-0.5 text-[10px] font-medium capitalize transition-colors", draft.status === s ? statusColors[s] : "bg-transparent text-muted-foreground hover:bg-secondary")}>{s}</button>
+                          <button key={s} onClick={() => updateStatus(draft.id, s)} className={cn("rounded-md border px-2.5 py-1 text-[11px] font-medium capitalize transition-all", draft.status === s ? statusColors[s] + " border-transparent shadow-sm" : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:border-accent")}>{s}</button>
                         ))}
                       </div>
                       {draft.scheduled_at && <span className="text-[10px] text-muted-foreground flex items-center gap-1"><CalendarIcon className="h-3 w-3" />{format(new Date(draft.scheduled_at), "MMM d, yyyy")}</span>}
