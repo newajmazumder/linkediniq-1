@@ -142,6 +142,17 @@ CURRENT POST:
 ${currentPost}
 
 Focus on improving the LOWEST scoring dimensions. Preserve what works (strongest element). Apply LinkedIn formatting best practices.${jsonInstruction}`,
+      apply_quick_fix: `You are applying a specific quick fix to a LinkedIn post. Apply ONLY this fix while keeping the rest of the post as close to the original as possible.
+
+QUICK FIX TO APPLY:
+${context?.fix || "No fix specified"}
+
+${context?.strongest_element ? `STRONGEST ELEMENT (do NOT change this): ${context.strongest_element}` : ""}
+
+CURRENT POST:
+${currentPost}
+
+Apply the fix precisely. Do NOT rewrite the entire post — make the minimum changes needed to implement the fix.${jsonInstruction}`,
     };
 
     // Detect language: explicit param, or auto-detect from post content (Bangla Unicode range)
