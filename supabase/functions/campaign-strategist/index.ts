@@ -991,11 +991,48 @@ serve(async (req) => {
     let readableMessage = composeReadableMessage(readablePayload);
     let normalizedSuggestedOptions = normalizeSuggestedOptions(readablePayload.suggested_options);
 
-    if (autoCompletedStep && nextStep !== currentStep && !parsed.blueprint) {
-      readableMessage = [readableMessage, getStepIntroMessage(nextStep as StepName, personasRes.data || [])]
-        .filter(Boolean)
-        .join("\n\n");
-      normalizedSuggestedOptions = getStepSuggestedOptions(nextStep as StepName, personasRes.data || []);
+    // When step auto-advances, generate dynamic AI questions for the next step
+    let stepQuestions: any = null;
+    if (autoCompletedStep && nextStep !== currentStep && nextStep !== "blueprint" && !parsed.blueprint) {
+      try {
+        const nextStepPrompt = getStepSystemPrompt(nextStep, collectedData, profileRes.data, personasRes.data || []);
+        const nextStepAiMessages = [
+          { role: "system", content: nextStepPrompt },
+          { role: "user", content: `We've completed the ${humanizeKey(currentStep)} step. Now start the ${humanizeKey(nextStep)} step. Based on everything we've collected so far, ask your most strategic and contextual questions. Be specific to this campaign — no generic questions.` },
+        ];
+
+        const nextStepResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            messages: nextStepAiMessages,
+          }),
+        });
+
+        if (nextStepResponse.ok) {
+          const nextStepAiData = await nextStepResponse.json();
+          const nextStepRawContent = nextStepAiData.choices?.[0]?.message?.content;
+          if (nextStepRawContent) {
+            const nextStepParsed = parseStrategistResponse(nextStepRawContent);
+            const nextStepMessage = composeReadableMessage(nextStepParsed);
+            const nextStepOptions = normalizeSuggestedOptions(nextStepParsed.suggested_options);
+            stepQuestions = {
+              step: nextStep,
+              step_label: humanizeKey(nextStep),
+              message: nextStepMessage,
+              suggested_options: nextStepOptions,
+            };
+            // Also store this AI intro in messages
+            messages.push({ role: "assistant", content: nextStepMessage });
+          }
+        }
+      } catch (e) {
+        console.error("Error generating next step questions:", e);
+      }
     }
 
     // Add AI response to messages
@@ -1018,8 +1055,9 @@ serve(async (req) => {
       message: readableMessage,
       suggested_options: normalizedSuggestedOptions,
       blueprint: parsed.blueprint || null,
-        step_complete: effectiveStepComplete,
+      step_complete: effectiveStepComplete,
       collected_data: collectedData,
+      step_questions: stepQuestions,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

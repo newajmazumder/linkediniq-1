@@ -47,6 +47,12 @@ const CampaignBuilderPage = () => {
   const [creating, setCreating] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [stepPopover, setStepPopover] = useState<{
+    step: string;
+    step_label: string;
+    message: string;
+    suggested_options: string[];
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -146,11 +152,15 @@ const CampaignBuilderPage = () => {
         setBlueprint(data.blueprint);
         setMessages((prev) => [...prev, { role: "assistant", content: "Here's your campaign blueprint. Review it and click **Create Campaign & Generate Plan** to launch." }]);
       } else if (data.current_step === "blueprint" && !data.blueprint) {
-        // All steps complete, auto-generate blueprint
         setMessages((prev) => [...prev, { role: "assistant", content: "All information gathered! Generating your campaign blueprint..." }]);
         await generateBlueprint();
       } else {
         setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      }
+
+      // Show step popover if AI generated questions for next step
+      if (data.step_questions) {
+        setStepPopover(data.step_questions);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to send");
@@ -267,6 +277,49 @@ const CampaignBuilderPage = () => {
           )}
           <div ref={messagesEndRef} />
         </div>
+
+        {/* Step Questions Popover */}
+        {stepPopover && (
+          <div className="shrink-0 mx-4 mb-2 rounded-xl border border-border bg-card shadow-lg overflow-hidden animate-in slide-in-from-bottom-2 fade-in duration-300">
+            <div className="px-4 py-3 border-b border-border bg-muted/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <span className="text-xs font-semibold text-foreground">{stepPopover.step_label}</span>
+                </div>
+                <button
+                  onClick={() => setStepPopover(null)}
+                  className="h-6 w-6 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+            <div className="px-4 py-3 max-h-[200px] overflow-y-auto">
+              <div className="text-sm text-foreground">
+                <CampaignRichText content={stepPopover.message} variant="assistant" />
+              </div>
+            </div>
+            {stepPopover.suggested_options.length > 0 && (
+              <div className="px-4 pb-3 flex flex-wrap gap-1.5">
+                {stepPopover.suggested_options.map((opt, i) => (
+                  <button
+                    key={i}
+                    onClick={() => {
+                      setStepPopover(null);
+                      sendMessage(opt);
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-full border border-border bg-background hover:bg-accent text-foreground transition-colors"
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Footer - Chat Input */}
         <div className="shrink-0 px-4 py-3">
