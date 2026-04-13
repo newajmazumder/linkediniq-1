@@ -991,9 +991,9 @@ serve(async (req) => {
     let readableMessage = composeReadableMessage(readablePayload);
     let normalizedSuggestedOptions = normalizeSuggestedOptions(readablePayload.suggested_options);
 
-    // When step auto-advances, generate dynamic AI questions for the next step
+    // When step advances (either auto or AI-explicit), generate dynamic AI questions for the next step
     let stepQuestions: any = null;
-    if (autoCompletedStep && nextStep !== currentStep && nextStep !== "blueprint" && !parsed.blueprint) {
+    if (effectiveStepComplete && nextStep !== currentStep && nextStep !== "blueprint" && !parsed.blueprint) {
       try {
         const nextStepPrompt = getStepSystemPrompt(nextStep, collectedData, profileRes.data, personasRes.data || []);
         const nextStepAiMessages = [
