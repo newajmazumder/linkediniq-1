@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Send, Check, ArrowRight, Sparkles, MessageSquare, Mic } from "lucide-react";
+import { Loader2, Check, ArrowRight, Sparkles, MessageSquare, Mic, GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignRichText from "@/components/campaign/CampaignRichText";
 import GoalStep from "@/components/campaign/GoalStep";
@@ -28,6 +27,9 @@ type ChatMessageItem = {
   content: unknown;
 };
 
+const MIN_CHAT_WIDTH = 320;
+const MIN_BLUEPRINT_WIDTH = 280;
+
 const CampaignBuilderPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -39,10 +41,14 @@ const CampaignBuilderPage = () => {
   const [blueprint, setBlueprint] = useState<any>(null);
   const [creating, setCreating] = useState(false);
   const [goalSubmitted, setGoalSubmitted] = useState(false);
-  // Track which inline step card to show (0 = targets, 1 = structure, etc.)
   const [inlineStepIdx, setInlineStepIdx] = useState<number | null>(null);
   const [completedStepKeys, setCompletedStepKeys] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Resizable panel state
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [chatWidthPercent, setChatWidthPercent] = useState(65); // percentage
+  const isDragging = useRef(false);
 
   useEffect(() => {
     if (user && !conversationId) startConversation();
@@ -51,6 +57,36 @@ const CampaignBuilderPage = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, inlineStepIdx]);
+
+  // Drag handlers for resizable divider
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const totalWidth = rect.width;
+      const newChatWidth = ev.clientX - rect.left;
+      const percent = (newChatWidth / totalWidth) * 100;
+      const minChatPct = (MIN_CHAT_WIDTH / totalWidth) * 100;
+      const maxChatPct = 100 - (MIN_BLUEPRINT_WIDTH / totalWidth) * 100;
+      setChatWidthPercent(Math.min(Math.max(percent, minChatPct), maxChatPct));
+    };
+
+    const onMouseUp = () => {
+      isDragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  }, []);
 
   const startConversation = async () => {
     setLoading(true);
@@ -98,14 +134,12 @@ const CampaignBuilderPage = () => {
   const handleGoalSubmit = async (_goalValue: string, message: string) => {
     setGoalSubmitted(true);
     await sendMessage(message, true);
-    // Show first inline step card (targets)
     setInlineStepIdx(0);
   };
 
   const handleStepSubmit = async (stepConfigIdx: number, answers: Record<string, string | string[]>, customText: string) => {
     const config = STEP_CONFIGS[stepConfigIdx];
     
-    // Build message from answers
     const parts: string[] = [];
     for (const q of config.questions) {
       const val = answers[q.id];
@@ -136,16 +170,36 @@ const CampaignBuilderPage = () => {
         setBlueprint(data.blueprint);
         setInlineStepIdx(null);
       } else {
-        // Move to next step
         const nextIdx = stepConfigIdx + 1;
         if (nextIdx < STEP_CONFIGS.length) {
           setInlineStepIdx(nextIdx);
         } else {
+          // Last structured step done — auto-generate blueprint
           setInlineStepIdx(null);
+          generateBlueprint();
         }
       }
     } catch (err: any) {
       toast.error(err.message || "Failed processing step");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateBlueprint = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("campaign-strategist", {
+        body: { conversation_id: conversationId, user_message: "All steps completed. Generate the campaign blueprint now." },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setCurrentStep(data.current_step);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      if (data.blueprint) setBlueprint(data.blueprint);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate blueprint");
     } finally {
       setLoading(false);
     }
@@ -177,9 +231,9 @@ const CampaignBuilderPage = () => {
   const currentStepIdx = STEPS.indexOf(currentStep);
 
   return (
-    <div className="content-fade-in flex h-full overflow-hidden">
+    <div ref={containerRef} className="content-fade-in flex h-full overflow-hidden">
       {/* Left: Chat */}
-      <div className="flex flex-col flex-1 min-w-0 border-r border-border h-full overflow-hidden">
+      <div className="flex flex-col min-w-0 h-full overflow-hidden" style={{ width: `${chatWidthPercent}%` }}>
         {/* Step indicator */}
         <div className="shrink-0 flex items-center gap-1 px-5 py-3 border-b border-border bg-card/50 overflow-x-auto">
           {STEPS.map((step, i) => (
@@ -216,12 +270,10 @@ const CampaignBuilderPage = () => {
 
         {/* Footer */}
         <div className="shrink-0 bg-card px-4 py-3 space-y-3">
-          {/* Goal step inline card */}
           {!goalSubmitted && !loading && conversationId && (
             <GoalStep onSubmit={handleGoalSubmit} loading={loading} />
           )}
 
-          {/* Inline step cards for steps 2-6 */}
           {goalSubmitted && inlineStepIdx !== null && !loading && !blueprint && (
             <StepCard
               key={STEP_CONFIGS[inlineStepIdx].key}
@@ -278,8 +330,19 @@ const CampaignBuilderPage = () => {
         </div>
       </div>
 
+      {/* Resizable divider */}
+      <div
+        onMouseDown={handleMouseDown}
+        className="shrink-0 w-1.5 cursor-col-resize bg-border hover:bg-primary/30 transition-colors relative group flex items-center justify-center"
+      >
+        <div className="absolute inset-y-0 -left-1 -right-1" />
+        <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
+
       {/* Right: Blueprint Preview */}
-      <BlueprintPanel blueprint={blueprint} />
+      <div className="flex-1 min-w-0 overflow-hidden">
+        <BlueprintPanel blueprint={blueprint} />
+      </div>
     </div>
   );
 };
@@ -301,7 +364,7 @@ const ChatMessage = ({ role, content }: { role: string; content: unknown }) => {
 
 /* ── Blueprint Panel ── */
 const BlueprintPanel = ({ blueprint }: { blueprint: any }) => (
-  <div className="w-[380px] min-w-[320px] shrink-0 overflow-y-auto bg-card/30 px-5 py-6 space-y-5">
+  <div className="h-full overflow-y-auto bg-card/30 px-5 py-6 space-y-5">
     <div className="flex items-center gap-2">
       <MessageSquare className="h-4 w-4 text-primary" />
       <h2 className="text-sm font-semibold text-foreground">Campaign Blueprint</h2>
