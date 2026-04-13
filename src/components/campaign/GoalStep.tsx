@@ -33,47 +33,54 @@ const GoalStep = ({ onSubmit, loading }: GoalStepProps) => {
 
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-      <div>
-        <h3 className="text-sm font-semibold text-foreground">What's the main goal for this campaign?</h3>
-        <p className="text-xs text-muted-foreground mt-1">Select one objective. You can add context below.</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">Business Goal</span>
+          <span className="text-xs text-muted-foreground">Step 1 of 7</span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <Progress value={(1 / 7) * 100} className="h-1.5" />
+
+      <div>
+        <h3 className="text-sm font-medium text-foreground">What's the main goal for this campaign?</h3>
+      </div>
+
+      <div className="grid grid-cols-1 gap-2">
         {GOAL_OPTIONS.map((opt) => (
           <button
             key={opt.value}
             onClick={() => setSelectedGoal(opt.value)}
             className={cn(
-              "rounded-lg border px-3.5 py-2.5 text-sm text-left transition-all",
+              "rounded-lg border px-4 py-3 text-sm text-left transition-all flex items-center gap-3",
               selectedGoal === opt.value
                 ? "border-primary bg-primary/10 text-primary font-medium ring-1 ring-primary/20"
                 : "border-border bg-background text-foreground hover:border-primary/40 hover:bg-accent"
             )}
           >
-            {selectedGoal === opt.value && <Check className="inline h-3.5 w-3.5 mr-1.5 -mt-0.5" />}
+            <div className={cn(
+              "h-4 w-4 rounded-full border-2 shrink-0 flex items-center justify-center",
+              selectedGoal === opt.value ? "border-primary" : "border-muted-foreground/40"
+            )}>
+              {selectedGoal === opt.value && <div className="h-2 w-2 rounded-full bg-primary" />}
+            </div>
             {opt.label}
           </button>
         ))}
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-xs font-medium text-muted-foreground">Add context (optional)</label>
-        <Textarea
-          value={customText}
-          onChange={(e) => setCustomText(e.target.value)}
-          placeholder="e.g., We're launching a new feature next month and want to drive signups..."
-          rows={2}
-          className="resize-none text-sm"
-        />
+      <div className="flex items-center justify-between pt-2">
+        <div />
+        <Button
+          onClick={handleSubmit}
+          disabled={!selectedGoal || loading}
+          size="sm"
+          className="gap-1.5"
+        >
+          Next <ArrowRight className="h-3.5 w-3.5" />
+        </Button>
       </div>
-
-      <Button
-        onClick={handleSubmit}
-        disabled={!selectedGoal || loading}
-        className="w-full gap-2"
-      >
-        <Send className="h-3.5 w-3.5" /> Continue
-      </Button>
     </div>
   );
 };
