@@ -427,10 +427,61 @@ const CampaignBuilderPage = () => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                    onClick={() => toast.info("Voice input coming soon!")}
+                    className={cn(
+                      "h-8 w-8 rounded-full transition-colors",
+                      isListening
+                        ? "bg-destructive/10 text-destructive hover:bg-destructive/20 animate-pulse"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => {
+                      if (isListening) {
+                        recognitionRef.current?.stop();
+                        setIsListening(false);
+                        return;
+                      }
+                      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+                      if (!SpeechRecognition) {
+                        toast.error("Your browser doesn't support voice input. Try Chrome or Edge.");
+                        return;
+                      }
+                      const recognition = new SpeechRecognition();
+                      recognition.continuous = true;
+                      recognition.interimResults = true;
+                      recognition.lang = "en-US";
+                      let finalTranscript = "";
+                      recognition.onresult = (event: any) => {
+                        let interim = "";
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                          const transcript = event.results[i][0].transcript;
+                          if (event.results[i].isFinal) {
+                            finalTranscript += transcript + " ";
+                          } else {
+                            interim += transcript;
+                          }
+                        }
+                        setInput((prev) => {
+                          const base = finalTranscript.trim();
+                          return base + (interim ? (base ? " " : "") + interim : "");
+                        });
+                      };
+                      recognition.onerror = (event: any) => {
+                        if (event.error === "not-allowed") {
+                          toast.error("Microphone access denied. Please allow microphone access in your browser settings.");
+                        } else if (event.error !== "aborted") {
+                          toast.error("Voice input error: " + event.error);
+                        }
+                        setIsListening(false);
+                      };
+                      recognition.onend = () => {
+                        setIsListening(false);
+                        recognitionRef.current = null;
+                      };
+                      recognitionRef.current = recognition;
+                      recognition.start();
+                      setIsListening(true);
+                    }}
                   >
-                    <Mic className="h-4 w-4" />
+                    {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                   </Button>
                   <button
                     className={cn(
