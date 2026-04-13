@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Send, Check, ArrowRight, Sparkles, MessageSquare } from "lucide-react";
+import { Loader2, Send, Check, ArrowRight, Sparkles, MessageSquare, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignRichText from "@/components/campaign/CampaignRichText";
 import GoalStep from "@/components/campaign/GoalStep";
