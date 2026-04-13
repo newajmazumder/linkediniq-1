@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Check, ArrowRight, ArrowUp, Sparkles, MessageSquare, Mic, GripVertical, Plus, X, FileText, Image as ImageIcon } from "lucide-react";
+import { Loader2, Check, ArrowRight, ArrowUp, Sparkles, MessageSquare, Mic, MicOff, GripVertical, Plus, X, FileText, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignRichText from "@/components/campaign/CampaignRichText";
 
