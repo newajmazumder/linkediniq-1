@@ -201,16 +201,19 @@ const CampaignBuilderPage = () => {
       if (data?.error) throw new Error(data.error);
 
       setCurrentStep(data.current_step);
-      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
       if (data.blueprint) {
         setBlueprint(data.blueprint);
         setInlineStepIdx(null);
+        setMessages((prev) => [...prev, { role: "assistant", content: "Here's your campaign blueprint. Review it and click Create to launch." }]);
       } else {
         const nextIdx = stepConfigIdx + 1;
         if (nextIdx < STEP_CONFIGS.length) {
+          setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
           setInlineStepIdx(nextIdx);
         } else {
+          // Last structured step done — auto-generate blueprint
           setInlineStepIdx(null);
+          setMessages((prev) => [...prev, { role: "assistant", content: "All steps completed! Generating your campaign blueprint..." }]);
           generateBlueprint();
         }
       }
@@ -510,55 +513,109 @@ const ChatMessage = ({ role, content }: { role: string; content: unknown }) => {
 
 /* ── Blueprint Panel ── */
 const BlueprintPanel = ({ blueprint }: { blueprint: any }) => (
-  <div className="h-full overflow-y-auto bg-card/30 px-5 py-6 space-y-5">
-    <div className="flex items-center gap-2">
-      <MessageSquare className="h-4 w-4 text-primary" />
-      <h2 className="text-sm font-semibold text-foreground">Campaign Blueprint</h2>
+  <div className="h-full overflow-y-auto bg-background px-6 py-8">
+    <div className="flex items-center gap-2.5 mb-6">
+      <MessageSquare className="h-5 w-5 text-primary" />
+      <h2 className="text-base font-bold text-foreground">Campaign Blueprint</h2>
     </div>
 
     {!blueprint ? (
-      <div className="rounded-lg border border-dashed border-border py-12 text-center">
-        <Sparkles className="mx-auto h-6 w-6 text-muted-foreground/40" />
-        <p className="mt-2 text-xs text-muted-foreground">Your blueprint will appear here as you build the campaign.</p>
-        <p className="mt-1 text-[10px] text-muted-foreground">Complete all steps to generate it.</p>
+      <div className="rounded-xl border-2 border-dashed border-border py-16 text-center">
+        <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/30 mb-3" />
+        <p className="text-sm text-muted-foreground">Your blueprint will appear here</p>
+        <p className="mt-1 text-xs text-muted-foreground/70">Complete all steps to generate it.</p>
       </div>
     ) : (
-      <div className="space-y-4">
+      <div className="space-y-5">
         {blueprint.campaign_summary && (
           <BlueprintSection title="Campaign Summary">
-            <KV label="Name" value={blueprint.campaign_summary.name} />
-            <KV label="Objective" value={blueprint.campaign_summary.objective} />
-            <KV label="Target" value={`${blueprint.campaign_summary.target_quantity || "?"} ${blueprint.campaign_summary.target_metric || ""}`} />
-            <KV label="Duration" value={`${blueprint.campaign_summary.duration_weeks || "?"} weeks`} />
-            <KV label="Posts" value={`${blueprint.campaign_summary.total_posts || "?"} total (${blueprint.campaign_summary.posts_per_week || "?"}/week)`} />
+            <div className="space-y-2.5">
+              <BPField label="Name" value={blueprint.campaign_summary.name} bold />
+              <BPField label="Objective" value={blueprint.campaign_summary.objective} />
+              <BPField label="Target" value={`${blueprint.campaign_summary.target_quantity || "?"} ${blueprint.campaign_summary.target_metric || ""}`} />
+              <BPField label="Duration" value={`${blueprint.campaign_summary.duration_weeks || "?"} weeks`} />
+              <BPField label="Posts" value={`${blueprint.campaign_summary.total_posts || "?"} total (${blueprint.campaign_summary.posts_per_week || "?"}/week)`} />
+            </div>
           </BlueprintSection>
         )}
         {blueprint.business_rationale && (
           <BlueprintSection title="Business Rationale">
-            <p className="text-xs text-muted-foreground">{blueprint.business_rationale.why_this_campaign}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{blueprint.business_rationale.why_this_campaign}</p>
             {blueprint.business_rationale.success_definition && (
-              <KV label="Success" value={blueprint.business_rationale.success_definition} />
+              <div className="mt-3 pt-3 border-t border-border">
+                <BPField label="Success" value={blueprint.business_rationale.success_definition} />
+              </div>
             )}
           </BlueprintSection>
         )}
         {blueprint.messaging_strategy && (
           <BlueprintSection title="Messaging">
-            <KV label="Core Message" value={blueprint.messaging_strategy.core_message} />
-            <KV label="Tone" value={blueprint.messaging_strategy.tone} />
-            <KV label="Differentiator" value={blueprint.messaging_strategy.top_differentiator} />
+            <div className="space-y-2.5">
+              <BPField label="Core Message" value={blueprint.messaging_strategy.core_message} bold />
+              <BPField label="Tone" value={blueprint.messaging_strategy.tone} />
+              <BPField label="Differentiator" value={blueprint.messaging_strategy.top_differentiator} />
+            </div>
           </BlueprintSection>
         )}
         {blueprint.cta_strategy && (
           <BlueprintSection title="CTA Strategy">
-            <KV label="Type" value={blueprint.cta_strategy.cta_type} />
-            <KV label="Primary CTA" value={blueprint.cta_strategy.primary_cta} />
+            <div className="space-y-2.5">
+              <BPField label="Type" value={blueprint.cta_strategy.cta_type} />
+              <BPField label="Primary CTA" value={blueprint.cta_strategy.primary_cta} />
+            </div>
+          </BlueprintSection>
+        )}
+        {blueprint.content_strategy && (
+          <BlueprintSection title="Content Strategy">
+            <div className="space-y-2.5">
+              <BPField label="Style" value={blueprint.content_strategy.content_style} />
+              <BPField label="Formats" value={Array.isArray(blueprint.content_strategy.formats) ? blueprint.content_strategy.formats.join(", ") : blueprint.content_strategy.formats} />
+              {blueprint.content_strategy.style_mix && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-xs font-medium text-foreground mb-2">Style Mix</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {Object.entries(blueprint.content_strategy.style_mix).map(([key, val]) => (
+                      <div key={key} className="flex items-center justify-between rounded-lg bg-muted/50 px-3 py-1.5">
+                        <span className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, " ")}</span>
+                        <span className="text-xs font-semibold text-foreground">{String(val)}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </BlueprintSection>
+        )}
+        {blueprint.audience_summary && (
+          <BlueprintSection title="Audience">
+            <div className="space-y-2.5">
+              <BPField label="Primary" value={blueprint.audience_summary.primary_audience} />
+              <BPField label="Awareness" value={blueprint.audience_summary.awareness_level} />
+              {blueprint.audience_summary.pain_points && (
+                <div className="mt-2">
+                  <p className="text-xs font-medium text-foreground mb-1.5">Pain Points</p>
+                  <ul className="space-y-1">
+                    {(Array.isArray(blueprint.audience_summary.pain_points) ? blueprint.audience_summary.pain_points : [blueprint.audience_summary.pain_points]).map((p: string, i: number) => (
+                      <li key={i} className="text-xs text-muted-foreground flex gap-1.5">
+                        <span className="text-primary mt-0.5">•</span> {p}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           </BlueprintSection>
         )}
         {blueprint.ai_recommendations && blueprint.ai_recommendations.length > 0 && (
           <BlueprintSection title="AI Recommendations">
-            {blueprint.ai_recommendations.map((rec: string, i: number) => (
-              <p key={i} className="text-xs text-muted-foreground">• {rec}</p>
-            ))}
+            <ul className="space-y-2.5">
+              {blueprint.ai_recommendations.map((rec: string, i: number) => (
+                <li key={i} className="text-sm text-muted-foreground flex gap-2 leading-relaxed">
+                  <span className="text-primary mt-0.5 shrink-0">•</span>
+                  <span>{rec}</span>
+                </li>
+              ))}
+            </ul>
           </BlueprintSection>
         )}
       </div>
@@ -567,18 +624,18 @@ const BlueprintPanel = ({ blueprint }: { blueprint: any }) => (
 );
 
 const BlueprintSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div className="rounded-lg border border-border bg-card p-3 space-y-2">
-    <h3 className="text-xs font-medium text-foreground">{title}</h3>
+  <div className="rounded-xl border border-border bg-card p-4 space-y-3 shadow-sm">
+    <h3 className="text-sm font-semibold text-foreground">{title}</h3>
     {children}
   </div>
 );
 
-const KV = ({ label, value }: { label: string; value?: string | null }) => {
+const BPField = ({ label, value, bold }: { label: string; value?: string | null; bold?: boolean }) => {
   if (!value) return null;
   return (
-    <div className="flex gap-2 text-xs">
-      <span className="text-muted-foreground shrink-0">{label}:</span>
-      <span className="text-foreground">{value}</span>
+    <div className="flex gap-2 text-sm">
+      <span className="text-muted-foreground shrink-0 min-w-[80px]">{label}:</span>
+      <span className={cn("text-foreground", bold && "font-semibold")}>{value}</span>
     </div>
   );
 };
