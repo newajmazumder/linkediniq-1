@@ -204,20 +204,6 @@ const CampaignBuilderPage = () => {
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-4">
-          {/* Show Goal Step UI if not yet submitted */}
-          {!goalSubmitted && !loading && conversationId && (
-            <div className="max-w-lg mx-auto mt-4">
-              <div className="text-center mb-6">
-                <Sparkles className="mx-auto h-8 w-8 text-primary mb-2" />
-                <h2 className="text-lg font-semibold text-foreground">Build Your Campaign</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Start by selecting your primary business goal. We'll guide you through the rest.
-                </p>
-              </div>
-              <GoalStep onSubmit={handleGoalSubmit} loading={loading} />
-            </div>
-          )}
-
           {/* Chat messages */}
           {messages.map((msg, i) => (
             <ChatMessage key={i} role={msg.role} content={msg.content} />
@@ -233,34 +219,37 @@ const CampaignBuilderPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Footer input */}
-        {goalSubmitted && (
-          <div className="shrink-0 border-t border-border bg-card">
-            <div className="px-5 py-3">
-              {blueprint ? (
-                <Button onClick={handleCreateCampaign} disabled={creating} className="w-full">
-                  {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                  Create Campaign & Generate Plan
+        {/* Footer: Goal step card + chat input always visible */}
+        <div className="shrink-0 border-t border-border bg-card">
+          <div className="px-5 py-3 space-y-3">
+            {/* Goal step inline card above input */}
+            {!goalSubmitted && !loading && conversationId && (
+              <GoalStep onSubmit={handleGoalSubmit} loading={loading} />
+            )}
+
+            {blueprint ? (
+              <Button onClick={handleCreateCampaign} disabled={creating} className="w-full">
+                {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                Create Campaign & Generate Plan
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+                  placeholder="Add more context or ask a question..."
+                  rows={2}
+                  className="resize-none text-sm flex-1"
+                  disabled={loading}
+                />
+                <Button size="icon" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}>
+                  <Send className="h-4 w-4" />
                 </Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-                    placeholder="Add more context or ask a question..."
-                    rows={2}
-                    className="resize-none text-sm flex-1"
-                    disabled={loading}
-                  />
-                  <Button size="icon" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}>
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       {/* Right: Blueprint Preview */}
