@@ -47,6 +47,12 @@ const CampaignBuilderPage = () => {
   const [creating, setCreating] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
+  const [stepPopover, setStepPopover] = useState<{
+    step: string;
+    step_label: string;
+    message: string;
+    suggested_options: string[];
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
