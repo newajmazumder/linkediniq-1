@@ -47,8 +47,6 @@ const CampaignBuilderPage = () => {
   const [creating, setCreating] = useState(false);
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
-  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +63,7 @@ const CampaignBuilderPage = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, inlineStepIdx]);
+  }, [messages]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -259,24 +257,6 @@ const CampaignBuilderPage = () => {
             <ChatMessage key={i} role={msg.role} content={msg.content} />
           ))}
 
-          {/* Inline structured step card (step 2+) */}
-          {goalSubmitted && inlineStepIdx !== null && !loading && !blueprint && (
-            <div className="flex justify-start">
-              <div className="max-w-[90%]">
-                <StepCard
-                  key={STEP_CONFIGS[inlineStepIdx].key}
-                  stepIndex={inlineStepIdx + 2}
-                  totalSteps={7}
-                  config={STEP_CONFIGS[inlineStepIdx]}
-                  onSubmit={(answers, customText) => handleStepSubmit(inlineStepIdx, answers, customText)}
-                  onBack={inlineStepIdx > 0 ? () => setInlineStepIdx(inlineStepIdx - 1) : undefined}
-                  onSkip={handleSkipAndGenerate}
-                  loading={loading}
-                  isLast={inlineStepIdx === STEP_CONFIGS.length - 1}
-                />
-              </div>
-            </div>
-          )}
 
           {loading && (
             <div className="flex justify-start">
