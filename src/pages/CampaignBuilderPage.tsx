@@ -4,10 +4,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, Check, ArrowRight, Sparkles, MessageSquare, Mic, GripVertical } from "lucide-react";
+import { Loader2, Check, ArrowRight, ArrowUp, Sparkles, MessageSquare, Mic, GripVertical, Plus, X, FileText, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignRichText from "@/components/campaign/CampaignRichText";
-import GoalStep from "@/components/campaign/GoalStep";
 import StepCard, { STEP_CONFIGS } from "@/components/campaign/StepCard";
 
 const STEP_LABELS: Record<string, string> = {
@@ -27,8 +26,15 @@ type ChatMessageItem = {
   content: unknown;
 };
 
+type AttachedFile = {
+  file: File;
+  preview?: string;
+  type: "image" | "document";
+};
+
 const MIN_CHAT_WIDTH = 320;
 const MIN_BLUEPRINT_WIDTH = 280;
+const MAX_TEXTAREA_HEIGHT = 160;
 
 const CampaignBuilderPage = () => {
   const { user } = useAuth();
@@ -43,11 +49,16 @@ const CampaignBuilderPage = () => {
   const [goalSubmitted, setGoalSubmitted] = useState(false);
   const [inlineStepIdx, setInlineStepIdx] = useState<number | null>(null);
   const [completedStepKeys, setCompletedStepKeys] = useState<Set<string>>(new Set());
+  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
+  const [showAttachMenu, setShowAttachMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Resizable panel state
   const containerRef = useRef<HTMLDivElement>(null);
-  const [chatWidthPercent, setChatWidthPercent] = useState(65); // percentage
+  const [chatWidthPercent, setChatWidthPercent] = useState(65);
   const isDragging = useRef(false);
 
   useEffect(() => {
@@ -57,6 +68,14 @@ const CampaignBuilderPage = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, inlineStepIdx]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, MAX_TEXTAREA_HEIGHT) + "px";
+    }
+  }, [input]);
 
   // Drag handlers for resizable divider
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -98,6 +117,9 @@ const CampaignBuilderPage = () => {
       if (data?.error) throw new Error(data.error);
       setConversationId(data.conversation_id);
       setCurrentStep(data.current_step);
+      if (data.message) {
+        setMessages([{ role: "assistant", content: data.message }]);
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to start");
     } finally {
@@ -109,6 +131,7 @@ const CampaignBuilderPage = () => {
     if (!text.trim() || loading) return;
     const userMsg = text.trim();
     setInput("");
+    setAttachedFiles([]);
     if (showInChat) {
       setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
     }
@@ -123,7 +146,26 @@ const CampaignBuilderPage = () => {
 
       setCurrentStep(data.current_step);
       setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
-      if (data.blueprint) setBlueprint(data.blueprint);
+      if (data.blueprint) {
+        setBlueprint(data.blueprint);
+        setInlineStepIdx(null);
+      }
+
+      // If goal step and not yet submitted, the chat response counts as goal submission
+      if (!goalSubmitted && data.current_step !== "goal") {
+        setGoalSubmitted(true);
+        setInlineStepIdx(0); // Show first structured step (targets)
+      }
+      // If user typed in chat while a structured step was showing, advance to next step
+      else if (goalSubmitted && inlineStepIdx !== null && !data.blueprint) {
+        const nextIdx = inlineStepIdx + 1;
+        if (nextIdx < STEP_CONFIGS.length) {
+          setInlineStepIdx(nextIdx);
+        } else {
+          setInlineStepIdx(null);
+          generateBlueprint();
+        }
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to send");
     } finally {
@@ -131,15 +173,9 @@ const CampaignBuilderPage = () => {
     }
   };
 
-  const handleGoalSubmit = async (_goalValue: string, message: string) => {
-    setGoalSubmitted(true);
-    await sendMessage(message, true);
-    setInlineStepIdx(0);
-  };
-
   const handleStepSubmit = async (stepConfigIdx: number, answers: Record<string, string | string[]>, customText: string) => {
     const config = STEP_CONFIGS[stepConfigIdx];
-    
+
     const parts: string[] = [];
     for (const q of config.questions) {
       const val = answers[q.id];
@@ -174,7 +210,6 @@ const CampaignBuilderPage = () => {
         if (nextIdx < STEP_CONFIGS.length) {
           setInlineStepIdx(nextIdx);
         } else {
-          // Last structured step done — auto-generate blueprint
           setInlineStepIdx(null);
           generateBlueprint();
         }
@@ -228,7 +263,33 @@ const CampaignBuilderPage = () => {
     }
   };
 
+  // Attachment handlers
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: "image" | "document") => {
+    const files = e.target.files;
+    if (!files) return;
+    const newAttachments: AttachedFile[] = [];
+    Array.from(files).forEach((file) => {
+      const attached: AttachedFile = { file, type };
+      if (type === "image" && file.type.startsWith("image/")) {
+        attached.preview = URL.createObjectURL(file);
+      }
+      newAttachments.push(attached);
+    });
+    setAttachedFiles((prev) => [...prev, ...newAttachments]);
+    setShowAttachMenu(false);
+    e.target.value = "";
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachedFiles((prev) => {
+      const file = prev[index];
+      if (file.preview) URL.revokeObjectURL(file.preview);
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   const currentStepIdx = STEPS.indexOf(currentStep);
+  const hasInput = input.trim().length > 0 || attachedFiles.length > 0;
 
   return (
     <div ref={containerRef} className="content-fade-in flex h-full overflow-hidden">
@@ -258,6 +319,25 @@ const CampaignBuilderPage = () => {
             <ChatMessage key={i} role={msg.role} content={msg.content} />
           ))}
 
+          {/* Inline structured step card (step 2+) */}
+          {goalSubmitted && inlineStepIdx !== null && !loading && !blueprint && (
+            <div className="flex justify-start">
+              <div className="max-w-[90%]">
+                <StepCard
+                  key={STEP_CONFIGS[inlineStepIdx].key}
+                  stepIndex={inlineStepIdx + 2}
+                  totalSteps={7}
+                  config={STEP_CONFIGS[inlineStepIdx]}
+                  onSubmit={(answers, customText) => handleStepSubmit(inlineStepIdx, answers, customText)}
+                  onBack={inlineStepIdx > 0 ? () => setInlineStepIdx(inlineStepIdx - 1) : undefined}
+                  onSkip={handleSkipAndGenerate}
+                  loading={loading}
+                  isLast={inlineStepIdx === STEP_CONFIGS.length - 1}
+                />
+              </div>
+            </div>
+          )}
+
           {loading && (
             <div className="flex justify-start">
               <div className="bg-muted rounded-2xl px-4 py-3">
@@ -268,62 +348,128 @@ const CampaignBuilderPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Footer */}
-        <div className="shrink-0 bg-card px-4 py-3 space-y-3">
-          {!goalSubmitted && !loading && conversationId && (
-            <GoalStep onSubmit={handleGoalSubmit} loading={loading} />
-          )}
-
-          {goalSubmitted && inlineStepIdx !== null && !loading && !blueprint && (
-            <StepCard
-              key={STEP_CONFIGS[inlineStepIdx].key}
-              stepIndex={inlineStepIdx + 2}
-              totalSteps={7}
-              config={STEP_CONFIGS[inlineStepIdx]}
-              onSubmit={(answers, customText) => handleStepSubmit(inlineStepIdx, answers, customText)}
-              onBack={inlineStepIdx > 0 ? () => setInlineStepIdx(inlineStepIdx - 1) : undefined}
-              onSkip={handleSkipAndGenerate}
-              loading={loading}
-              isLast={inlineStepIdx === STEP_CONFIGS.length - 1}
-            />
-          )}
-
+        {/* Footer - Chat Input */}
+        <div className="shrink-0 px-4 py-3">
           {blueprint ? (
             <Button onClick={handleCreateCampaign} disabled={creating} className="w-full">
               {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
               Create Campaign & Generate Plan
             </Button>
           ) : (
-            <div className="rounded-2xl border border-border bg-muted/40 px-4 pt-3 pb-2 shadow-sm">
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-                placeholder="Ask about your campaign..."
-                rows={1}
-                className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
-                disabled={loading}
-              />
-              <div className="flex items-center justify-end gap-1 mt-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
-                  onClick={() => toast.info("Voice input coming soon!")}
-                >
-                  <Mic className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  className={cn(
-                    "h-8 w-8 rounded-full transition-colors",
-                    input.trim() ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
+            <div className="rounded-2xl border border-border bg-muted/40 shadow-sm">
+              {/* Attachment previews */}
+              {attachedFiles.length > 0 && (
+                <div className="flex gap-2 px-4 pt-3 pb-1 overflow-x-auto">
+                  {attachedFiles.map((att, i) => (
+                    <div key={i} className="relative shrink-0 group">
+                      {att.type === "image" && att.preview ? (
+                        <img src={att.preview} alt={att.file.name} className="h-16 w-16 rounded-lg object-cover border border-border" />
+                      ) : (
+                        <div className="h-16 w-16 rounded-lg border border-border bg-background flex flex-col items-center justify-center gap-1">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <span className="text-[8px] text-muted-foreground truncate max-w-[56px]">{att.file.name}</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => removeAttachment(i)}
+                        className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-foreground text-background flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Textarea */}
+              <div className="px-4 pt-3 pb-1">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage(input);
+                    }
+                  }}
+                  placeholder="Ask about your campaign..."
+                  rows={1}
+                  style={{ maxHeight: MAX_TEXTAREA_HEIGHT }}
+                  className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none overflow-y-auto"
+                  disabled={loading}
+                />
+              </div>
+
+              {/* Bottom bar: plus, voice, send */}
+              <div className="flex items-center justify-between px-3 pb-2">
+                {/* Left: Plus button */}
+                <div className="relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowAttachMenu(!showAttachMenu)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                  {showAttachMenu && (
+                    <div className="absolute bottom-full left-0 mb-2 rounded-lg border border-border bg-card shadow-lg py-1 min-w-[160px] z-50">
+                      <button
+                        onClick={() => imageInputRef.current?.click()}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent w-full text-left"
+                      >
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" /> Image
+                      </button>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-foreground hover:bg-accent w-full text-left"
+                      >
+                        <FileText className="h-4 w-4 text-muted-foreground" /> Document
+                      </button>
+                    </div>
                   )}
-                  onClick={() => sendMessage(input)}
-                  disabled={loading || !input.trim()}
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e, "image")}
+                  />
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt,.md,.csv"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFileSelect(e, "document")}
+                  />
+                </div>
+
+                {/* Right: Voice + Send */}
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                    onClick={() => toast.info("Voice input coming soon!")}
+                  >
+                    <Mic className="h-4 w-4" />
+                  </Button>
+                  <button
+                    className={cn(
+                      "h-8 w-8 rounded-full flex items-center justify-center transition-colors",
+                      hasInput
+                        ? "bg-foreground text-background"
+                        : "bg-muted-foreground/20 text-muted-foreground cursor-not-allowed"
+                    )}
+                    onClick={() => sendMessage(input)}
+                    disabled={loading || !hasInput}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
           )}
