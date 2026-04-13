@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Loader2, Check, ArrowRight, ArrowUp, Sparkles, MessageSquare, Mic, GripVertical, Plus, X, FileText, Image as ImageIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignRichText from "@/components/campaign/CampaignRichText";
-import StepCard, { STEP_CONFIGS } from "@/components/campaign/StepCard";
 
 const STEP_LABELS: Record<string, string> = {
   goal: "Business Goal",
@@ -46,9 +45,6 @@ const CampaignBuilderPage = () => {
   const [currentStep, setCurrentStep] = useState("goal");
   const [blueprint, setBlueprint] = useState<any>(null);
   const [creating, setCreating] = useState(false);
-  const [goalSubmitted, setGoalSubmitted] = useState(false);
-  const [inlineStepIdx, setInlineStepIdx] = useState<number | null>(null);
-  const [completedStepKeys, setCompletedStepKeys] = useState<Set<string>>(new Set());
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
   const [showAttachMenu, setShowAttachMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -67,7 +63,7 @@ const CampaignBuilderPage = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, inlineStepIdx]);
+  }, [messages]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -145,26 +141,16 @@ const CampaignBuilderPage = () => {
       if (data?.error) throw new Error(data.error);
 
       setCurrentStep(data.current_step);
-      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      
       if (data.blueprint) {
         setBlueprint(data.blueprint);
-        setInlineStepIdx(null);
-      }
-
-      // If goal step and not yet submitted, the chat response counts as goal submission
-      if (!goalSubmitted && data.current_step !== "goal") {
-        setGoalSubmitted(true);
-        setInlineStepIdx(0); // Show first structured step (targets)
-      }
-      // If user typed in chat while a structured step was showing, advance to next step
-      else if (goalSubmitted && inlineStepIdx !== null && !data.blueprint) {
-        const nextIdx = inlineStepIdx + 1;
-        if (nextIdx < STEP_CONFIGS.length) {
-          setInlineStepIdx(nextIdx);
-        } else {
-          setInlineStepIdx(null);
-          generateBlueprint();
-        }
+        setMessages((prev) => [...prev, { role: "assistant", content: "Here's your campaign blueprint. Review it and click **Create Campaign & Generate Plan** to launch." }]);
+      } else if (data.current_step === "blueprint" && !data.blueprint) {
+        // All steps complete, auto-generate blueprint
+        setMessages((prev) => [...prev, { role: "assistant", content: "All information gathered! Generating your campaign blueprint..." }]);
+        await generateBlueprint();
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
       }
     } catch (err: any) {
       toast.error(err.message || "Failed to send");
@@ -173,59 +159,7 @@ const CampaignBuilderPage = () => {
     }
   };
 
-  const handleStepSubmit = async (stepConfigIdx: number, answers: Record<string, string | string[]>, customText: string) => {
-    const config = STEP_CONFIGS[stepConfigIdx];
-
-    const parts: string[] = [];
-    for (const q of config.questions) {
-      const val = answers[q.id];
-      if (val) {
-        const display = Array.isArray(val) ? val.join(", ") : val;
-        parts.push(`${q.label}: ${display}`);
-      }
-    }
-    if (customText.trim()) {
-      parts.push(`Additional context: ${customText.trim()}`);
-    }
-
-    const compositeMessage = parts.join(". ");
-    setMessages((prev) => [...prev, { role: "user", content: `**${config.title}:** ${compositeMessage}` }]);
-    setCompletedStepKeys((prev) => new Set(prev).add(config.key));
-    setLoading(true);
-
-    try {
-      const { data, error } = await supabase.functions.invoke("campaign-strategist", {
-        body: { conversation_id: conversationId, user_message: compositeMessage },
-      });
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      setCurrentStep(data.current_step);
-      if (data.blueprint) {
-        setBlueprint(data.blueprint);
-        setInlineStepIdx(null);
-        setMessages((prev) => [...prev, { role: "assistant", content: "Here's your campaign blueprint. Review it and click Create to launch." }]);
-      } else {
-        const nextIdx = stepConfigIdx + 1;
-        if (nextIdx < STEP_CONFIGS.length) {
-          setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
-          setInlineStepIdx(nextIdx);
-        } else {
-          // Last structured step done — auto-generate blueprint
-          setInlineStepIdx(null);
-          setMessages((prev) => [...prev, { role: "assistant", content: "All steps completed! Generating your campaign blueprint..." }]);
-          generateBlueprint();
-        }
-      }
-    } catch (err: any) {
-      toast.error(err.message || "Failed processing step");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const generateBlueprint = async () => {
-    setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("campaign-strategist", {
         body: { conversation_id: conversationId, user_message: "All steps completed. Generate the campaign blueprint now." },
@@ -234,17 +168,18 @@ const CampaignBuilderPage = () => {
       if (data?.error) throw new Error(data.error);
 
       setCurrentStep(data.current_step);
-      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
-      if (data.blueprint) setBlueprint(data.blueprint);
+      if (data.blueprint) {
+        setBlueprint(data.blueprint);
+        setMessages((prev) => [...prev, { role: "assistant", content: "Your blueprint is ready! Review it on the right and click **Create Campaign & Generate Plan** to launch." }]);
+      } else {
+        setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to generate blueprint");
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleSkipAndGenerate = async () => {
-    setInlineStepIdx(null);
     await sendMessage("Skip remaining steps and generate the blueprint now.", true);
   };
 
@@ -322,24 +257,6 @@ const CampaignBuilderPage = () => {
             <ChatMessage key={i} role={msg.role} content={msg.content} />
           ))}
 
-          {/* Inline structured step card (step 2+) */}
-          {goalSubmitted && inlineStepIdx !== null && !loading && !blueprint && (
-            <div className="flex justify-start">
-              <div className="max-w-[90%]">
-                <StepCard
-                  key={STEP_CONFIGS[inlineStepIdx].key}
-                  stepIndex={inlineStepIdx + 2}
-                  totalSteps={7}
-                  config={STEP_CONFIGS[inlineStepIdx]}
-                  onSubmit={(answers, customText) => handleStepSubmit(inlineStepIdx, answers, customText)}
-                  onBack={inlineStepIdx > 0 ? () => setInlineStepIdx(inlineStepIdx - 1) : undefined}
-                  onSkip={handleSkipAndGenerate}
-                  loading={loading}
-                  isLast={inlineStepIdx === STEP_CONFIGS.length - 1}
-                />
-              </div>
-            </div>
-          )}
 
           {loading && (
             <div className="flex justify-start">
