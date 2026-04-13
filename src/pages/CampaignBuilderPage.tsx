@@ -215,50 +215,66 @@ const CampaignBuilderPage = () => {
         </div>
 
         {/* Footer */}
-        <div className="shrink-0 border-t border-border bg-card">
-          <div className="px-5 py-3 space-y-3">
-            {/* Goal step inline card */}
-            {!goalSubmitted && !loading && conversationId && (
-              <GoalStep onSubmit={handleGoalSubmit} loading={loading} />
-            )}
+        <div className="shrink-0 bg-card px-4 py-3 space-y-3">
+          {/* Goal step inline card */}
+          {!goalSubmitted && !loading && conversationId && (
+            <GoalStep onSubmit={handleGoalSubmit} loading={loading} />
+          )}
 
-            {/* Inline step cards for steps 2-6 */}
-            {goalSubmitted && inlineStepIdx !== null && !loading && !blueprint && (
-              <StepCard
-                key={STEP_CONFIGS[inlineStepIdx].key}
-                stepIndex={inlineStepIdx + 2}
-                totalSteps={7}
-                config={STEP_CONFIGS[inlineStepIdx]}
-                onSubmit={(answers, customText) => handleStepSubmit(inlineStepIdx, answers, customText)}
-                onBack={inlineStepIdx > 0 ? () => setInlineStepIdx(inlineStepIdx - 1) : undefined}
-                onSkip={handleSkipAndGenerate}
-                loading={loading}
-                isLast={inlineStepIdx === STEP_CONFIGS.length - 1}
+          {/* Inline step cards for steps 2-6 */}
+          {goalSubmitted && inlineStepIdx !== null && !loading && !blueprint && (
+            <StepCard
+              key={STEP_CONFIGS[inlineStepIdx].key}
+              stepIndex={inlineStepIdx + 2}
+              totalSteps={7}
+              config={STEP_CONFIGS[inlineStepIdx]}
+              onSubmit={(answers, customText) => handleStepSubmit(inlineStepIdx, answers, customText)}
+              onBack={inlineStepIdx > 0 ? () => setInlineStepIdx(inlineStepIdx - 1) : undefined}
+              onSkip={handleSkipAndGenerate}
+              loading={loading}
+              isLast={inlineStepIdx === STEP_CONFIGS.length - 1}
+            />
+          )}
+
+          {blueprint ? (
+            <Button onClick={handleCreateCampaign} disabled={creating} className="w-full">
+              {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Create Campaign & Generate Plan
+            </Button>
+          ) : (
+            <div className="rounded-2xl border border-border bg-muted/40 px-4 pt-3 pb-2 shadow-sm">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
+                placeholder="Ask about your campaign..."
+                rows={1}
+                className="w-full resize-none bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                disabled={loading}
               />
-            )}
-
-            {blueprint ? (
-              <Button onClick={handleCreateCampaign} disabled={creating} className="w-full">
-                {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-                Create Campaign & Generate Plan
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-                  placeholder="Add more context or ask a question..."
-                  rows={2}
-                  className="resize-none text-sm flex-1"
-                  disabled={loading}
-                />
-                <Button size="icon" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}>
-                  <Send className="h-4 w-4" />
+              <div className="flex items-center justify-end gap-1 mt-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                  onClick={() => toast.info("Voice input coming soon!")}
+                >
+                  <Mic className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="icon"
+                  className={cn(
+                    "h-8 w-8 rounded-full transition-colors",
+                    input.trim() ? "bg-primary text-primary-foreground" : "bg-muted-foreground/20 text-muted-foreground"
+                  )}
+                  onClick={() => sendMessage(input)}
+                  disabled={loading || !input.trim()}
+                >
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
