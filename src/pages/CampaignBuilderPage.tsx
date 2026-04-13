@@ -9,7 +9,7 @@ import { Loader2, Send, Check, ArrowRight, Sparkles, MessageSquare } from "lucid
 import { cn } from "@/lib/utils";
 import CampaignRichText from "@/components/campaign/CampaignRichText";
 import GoalStep from "@/components/campaign/GoalStep";
-import StepModal, { STEP_CONFIGS } from "@/components/campaign/StepModal";
+import StepCard, { STEP_CONFIGS } from "@/components/campaign/StepCard";
 
 const STEP_LABELS: Record<string, string> = {
   goal: "Business Goal",
@@ -39,8 +39,9 @@ const CampaignBuilderPage = () => {
   const [blueprint, setBlueprint] = useState<any>(null);
   const [creating, setCreating] = useState(false);
   const [goalSubmitted, setGoalSubmitted] = useState(false);
-  const [showStepModal, setShowStepModal] = useState(false);
-  const [stepModalCompleted, setStepModalCompleted] = useState(false);
+  // Track which inline step card to show (0 = targets, 1 = structure, etc.)
+  const [inlineStepIdx, setInlineStepIdx] = useState<number | null>(null);
+  const [completedStepKeys, setCompletedStepKeys] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -49,7 +50,7 @@ const CampaignBuilderPage = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, inlineStepIdx]);
 
   const startConversation = async () => {
     setLoading(true);
@@ -61,7 +62,6 @@ const CampaignBuilderPage = () => {
       if (data?.error) throw new Error(data.error);
       setConversationId(data.conversation_id);
       setCurrentStep(data.current_step);
-      // Don't show initial AI message - show goal step UI instead
     } catch (err: any) {
       toast.error(err.message || "Failed to start");
     } finally {
@@ -98,66 +98,62 @@ const CampaignBuilderPage = () => {
   const handleGoalSubmit = async (_goalValue: string, message: string) => {
     setGoalSubmitted(true);
     await sendMessage(message, true);
-    // After goal is processed, open the step modal for steps 2-6
-    setTimeout(() => setShowStepModal(true), 600);
+    // Show first inline step card (targets)
+    setInlineStepIdx(0);
   };
 
-  const handleStepModalComplete = async (answers: Record<string, Record<string, string | string[]>>) => {
-    setShowStepModal(false);
-    setStepModalCompleted(true);
-
-    // Send all structured answers as sequential messages
-    for (const stepConfig of STEP_CONFIGS) {
-      const stepAnswers = answers[stepConfig.key];
-      if (!stepAnswers) continue;
-
-      // Build a structured message from the answers
-      const parts: string[] = [];
-      for (const q of stepConfig.questions) {
-        const val = stepAnswers[q.id];
-        if (val) {
-          const display = Array.isArray(val) ? val.join(", ") : val;
-          parts.push(`${q.label}: ${display}`);
-        }
-      }
-
-      const customKey = `${stepConfig.key}_custom`;
-      // Check custom inputs (stored in the modal's local state, passed via answers)
-      const customText = stepAnswers[customKey];
-      if (customText && typeof customText === "string" && customText.trim()) {
-        parts.push(`Additional context: ${customText.trim()}`);
-      }
-
-      if (parts.length > 0) {
-        const compositeMessage = parts.join(". ");
-        // Show a summary in chat
-        setMessages((prev) => [
-          ...prev,
-          { role: "user", content: `**${stepConfig.title}:** ${compositeMessage}` },
-        ]);
-        setLoading(true);
-
-        try {
-          const { data, error } = await supabase.functions.invoke("campaign-strategist", {
-            body: { conversation_id: conversationId, user_message: compositeMessage },
-          });
-          if (error) throw error;
-          if (data?.error) throw new Error(data.error);
-
-          setCurrentStep(data.current_step);
-          setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
-          if (data.blueprint) {
-            setBlueprint(data.blueprint);
-            break; // Blueprint generated, stop sending
-          }
-        } catch (err: any) {
-          toast.error(err.message || "Failed processing step");
-          break;
-        } finally {
-          setLoading(false);
-        }
+  const handleStepSubmit = async (stepConfigIdx: number, answers: Record<string, string | string[]>, customText: string) => {
+    const config = STEP_CONFIGS[stepConfigIdx];
+    
+    // Build message from answers
+    const parts: string[] = [];
+    for (const q of config.questions) {
+      const val = answers[q.id];
+      if (val) {
+        const display = Array.isArray(val) ? val.join(", ") : val;
+        parts.push(`${q.label}: ${display}`);
       }
     }
+    if (customText.trim()) {
+      parts.push(`Additional context: ${customText.trim()}`);
+    }
+
+    const compositeMessage = parts.join(". ");
+    setMessages((prev) => [...prev, { role: "user", content: `**${config.title}:** ${compositeMessage}` }]);
+    setCompletedStepKeys((prev) => new Set(prev).add(config.key));
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("campaign-strategist", {
+        body: { conversation_id: conversationId, user_message: compositeMessage },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setCurrentStep(data.current_step);
+      setMessages((prev) => [...prev, { role: "assistant", content: data.message }]);
+      if (data.blueprint) {
+        setBlueprint(data.blueprint);
+        setInlineStepIdx(null);
+      } else {
+        // Move to next step
+        const nextIdx = stepConfigIdx + 1;
+        if (nextIdx < STEP_CONFIGS.length) {
+          setInlineStepIdx(nextIdx);
+        } else {
+          setInlineStepIdx(null);
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Failed processing step");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSkipAndGenerate = async () => {
+    setInlineStepIdx(null);
+    await sendMessage("Skip remaining steps and generate the blueprint now.", true);
   };
 
   const handleCreateCampaign = async () => {
@@ -204,7 +200,6 @@ const CampaignBuilderPage = () => {
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto min-h-0 px-5 py-4 space-y-4">
-          {/* Chat messages */}
           {messages.map((msg, i) => (
             <ChatMessage key={i} role={msg.role} content={msg.content} />
           ))}
@@ -219,12 +214,27 @@ const CampaignBuilderPage = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Footer: Goal step card + chat input always visible */}
+        {/* Footer */}
         <div className="shrink-0 border-t border-border bg-card">
           <div className="px-5 py-3 space-y-3">
-            {/* Goal step inline card above input */}
+            {/* Goal step inline card */}
             {!goalSubmitted && !loading && conversationId && (
               <GoalStep onSubmit={handleGoalSubmit} loading={loading} />
+            )}
+
+            {/* Inline step cards for steps 2-6 */}
+            {goalSubmitted && inlineStepIdx !== null && !loading && !blueprint && (
+              <StepCard
+                key={STEP_CONFIGS[inlineStepIdx].key}
+                stepIndex={inlineStepIdx + 2}
+                totalSteps={7}
+                config={STEP_CONFIGS[inlineStepIdx]}
+                onSubmit={(answers, customText) => handleStepSubmit(inlineStepIdx, answers, customText)}
+                onBack={inlineStepIdx > 0 ? () => setInlineStepIdx(inlineStepIdx - 1) : undefined}
+                onSkip={handleSkipAndGenerate}
+                loading={loading}
+                isLast={inlineStepIdx === STEP_CONFIGS.length - 1}
+              />
             )}
 
             {blueprint ? (
@@ -254,13 +264,6 @@ const CampaignBuilderPage = () => {
 
       {/* Right: Blueprint Preview */}
       <BlueprintPanel blueprint={blueprint} />
-
-      {/* Step Modal for steps 2-6 */}
-      <StepModal
-        open={showStepModal}
-        onClose={() => setShowStepModal(false)}
-        onComplete={handleStepModalComplete}
-      />
     </div>
   );
 };
