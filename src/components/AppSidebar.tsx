@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   PanelLeft,
   BarChart3,
+  Swords,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,7 @@ const navItems = [
   { to: "/strategy", icon: Target, label: "Strategy" },
   { to: "/posts", icon: FileText, label: "Posts" },
   { to: "/performance", icon: BarChart3, label: "Performance" },
+  { to: "/competitors", icon: Swords, label: "Competitors" },
 ];
 
 const bottomItems = [
