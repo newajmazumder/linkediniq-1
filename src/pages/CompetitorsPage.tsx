@@ -33,8 +33,16 @@ import { QuickActionsPanel } from "@/components/competitor/QuickActionsPanel";
 import { DecisionHeader } from "@/components/competitor/DecisionHeader";
 import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 
+import { BestMoveCard } from "@/components/competitor/BestMoveCard";
+
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
+};
+
+type BusinessProfile = {
+  product_summary: string | null;
+  target_audience: string | null;
+  company_summary: string | null;
 };
 
 type CompetitorPost = {
