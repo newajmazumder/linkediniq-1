@@ -656,7 +656,7 @@ serve(async (req) => {
       });
     }
 
-    const { instruction, knowledge, persona_id, campaign_id, post_type = "text", language: requestLanguage } = await req.json();
+    const { instruction, knowledge, persona_id, campaign_id, post_type = "text", language: requestLanguage, market_context_id: requestMarketContextId } = await req.json();
 
     if (!persona_id || persona_id === "none") {
       return new Response(JSON.stringify({ error: "Please select a target persona" }), {
