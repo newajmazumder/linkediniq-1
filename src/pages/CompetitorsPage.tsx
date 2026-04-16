@@ -25,7 +25,10 @@ import { OpportunityScoringCards } from "@/components/competitor/OpportunityScor
 import { PredictedOutcomePanel } from "@/components/competitor/PredictedOutcomePanel";
 import { CampaignFromCompetitor } from "@/components/competitor/CampaignFromCompetitor";
 import { WinningPositionCard } from "@/components/competitor/WinningPositionCard";
-
+import { ExecutionPlanTimeline } from "@/components/competitor/ExecutionPlanTimeline";
+import { WhyPostsWorkPanel } from "@/components/competitor/WhyPostsWorkPanel";
+import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator";
+import { QuickActionsPanel } from "@/components/competitor/QuickActionsPanel";
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
 };
