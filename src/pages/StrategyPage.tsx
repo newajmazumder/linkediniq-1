@@ -277,6 +277,7 @@ const StrategyPage = () => {
       target_timeframe: c.target_timeframe || "monthly",
       target_priority: c.target_priority || "medium",
       language: (c as any).language || "english",
+      market_context_id: (c as any).market_context_id || "",
     });
     setEditingId(c.id);
     setShowForm(true);
