@@ -37,9 +37,10 @@ const bottomItems = [
 interface AppSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  onNavigate?: () => void;
 }
 
-const AppSidebar = ({ collapsed, onToggle }: AppSidebarProps) => {
+const AppSidebar = ({ collapsed, onToggle, onNavigate }: AppSidebarProps) => {
   const { signOut } = useAuth();
   const location = useLocation();
   const [logoHovered, setLogoHovered] = useState(false);
