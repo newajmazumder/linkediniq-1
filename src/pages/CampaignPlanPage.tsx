@@ -353,19 +353,32 @@ const CampaignPlanPage = () => {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">{drafted}/{weekPosts.length}</span>
+                            <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                              {drafted}<span className="text-border">/</span>{weekPosts.length}
+                            </span>
                             {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                           </div>
                         </button>
 
                         {isExpanded && (
-                          <div className="border-t border-border px-4 py-3 space-y-2 bg-muted/20">
+                          <div className="border-t border-border px-4 py-3 space-y-3 bg-muted/20">
                             {week.cta_strategy && (
                               <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">CTA:</span> {week.cta_strategy}</p>
                             )}
                             {weekPosts.map((post: any) => (
                               <CampaignPostCard key={post.id} post={post} campaignId={id!} />
                             ))}
+                            {weekPosts.length - drafted > 0 && (
+                              <button
+                                onClick={() => navigate(`/create?campaign_id=${id}`)}
+                                className="group/p w-full flex items-center justify-between gap-3 rounded-md bg-card border border-border px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
+                              >
+                                <span className="text-xs text-foreground font-medium">
+                                  Generate {weekPosts.length - drafted} post{weekPosts.length - drafted > 1 ? "s" : ""} for this phase
+                                </span>
+                                <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover/p:text-foreground group-hover/p:translate-x-0.5 transition-all" />
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>
