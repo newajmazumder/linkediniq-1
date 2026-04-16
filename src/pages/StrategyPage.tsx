@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor,
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
+  scoreInterpretation, scoreSeverity, computeVelocity,
 } from "@/lib/strategy";
 
 type Persona = { id: string; name: string };
