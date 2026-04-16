@@ -71,7 +71,8 @@ const CreatePage = () => {
   useEffect(() => {
     if (!user) return;
     supabase.from("audience_personas").select("id, name").order("name").then(({ data }) => setPersonas((data || []) as PersonaOption[]));
-    supabase.from("campaigns").select("id, name, language").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as CampaignOption[]));
+    supabase.from("campaigns").select("id, name, language, market_context_id").eq("is_active", true).order("name").then(({ data }) => setCampaigns((data || []) as unknown as CampaignOption[]));
+    supabase.from("market_contexts").select("id, region_code, region_name, audience_type, language_defaults").eq("is_preset", true).then(({ data }) => setMarketContexts((data || []) as MarketContext[]));
     supabase.from("business_profiles").select("product_summary, product_features").eq("user_id", user.id).maybeSingle().then(({ data }) => {
       if (data) {
         setKnowledge({
