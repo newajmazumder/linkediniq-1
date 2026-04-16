@@ -16,13 +16,14 @@ import {
 } from "@/components/ui/select";
 import {
   Loader2, Plus, Trash2, Target, Sparkles, ArrowRight,
-  AlertTriangle, TrendingUp, ChevronRight, Zap, Flame, Edit2,
+  AlertTriangle, ChevronRight, Zap, Flame, Edit2, AlertCircle, Wrench,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor,
+  diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
 } from "@/lib/strategy";
 
 type Persona = { id: string; name: string };
@@ -56,7 +57,7 @@ type CampaignProgress = {
   gap_analysis: string | null;
 };
 
-type PostingStat = { campaign_id: string; total: number; drafted: number };
+type PostingStat = { campaign_id: string; total: number; drafted: number; week1Remaining: number; weeks: number };
 
 const objectives = [
   "awareness", "engagement", "followers", "profile_visits",
@@ -179,14 +180,18 @@ const StrategyPage = () => {
   const fetchPostingStats = async () => {
     const { data } = await supabase
       .from("campaign_post_plans")
-      .select("campaign_id, status")
+      .select("campaign_id, status, week_number")
       .eq("user_id", user!.id);
     if (data) {
       const map: Record<string, PostingStat> = {};
       for (const row of data as any[]) {
-        if (!map[row.campaign_id]) map[row.campaign_id] = { campaign_id: row.campaign_id, total: 0, drafted: 0 };
-        map[row.campaign_id].total += 1;
-        if (row.status && row.status !== "planned") map[row.campaign_id].drafted += 1;
+        if (!map[row.campaign_id]) map[row.campaign_id] = { campaign_id: row.campaign_id, total: 0, drafted: 0, week1Remaining: 0, weeks: 0 };
+        const stat = map[row.campaign_id];
+        stat.total += 1;
+        if (row.week_number > stat.weeks) stat.weeks = row.week_number;
+        const isDrafted = row.status && row.status !== "planned";
+        if (isDrafted) stat.drafted += 1;
+        if (row.week_number === 1 && !isDrafted) stat.week1Remaining += 1;
       }
       setPostingStats(map);
     }
@@ -556,39 +561,66 @@ const StrategyPage = () => {
                   outcomePct,
                 });
 
-                // Strategy hook (verdict line)
-                const verdict = state === "winning"
-                  ? "Outperforming the plan — double down."
-                  : state === "on_track"
-                  ? "On pace. Keep cadence steady."
-                  : state === "at_risk"
-                  ? prog?.gap_analysis || "Behind on outcome — strengthen hooks and CTAs."
-                  : state === "off_track"
-                  ? "Execution is the bottleneck. Ship posts now."
-                  : "Generate the plan to start executing.";
+                // Diagnostic verdict for Strategy Score
+                const diag = diagnoseScore(score, {
+                  hasCoreMessage: !!c.core_message,
+                  hasPersona: !!c.primary_persona_id,
+                  hasOffer: !!c.offer,
+                  hasMeasurableTarget: !!(c.target_metric && c.target_quantity),
+                  postingPct,
+                  outcomePct,
+                });
 
-                // Primary action
-                const primaryAction = state === "draft"
-                  ? { label: "Generate plan", onClick: () => navigate(`/campaign/${c.id}`) }
-                  : (postingPct ?? 0) < 50
-                  ? { label: "Create next post", onClick: () => navigate(`/create?campaign_id=${c.id}`) }
-                  : { label: "Open campaign", onClick: () => navigate(`/campaign/${c.id}`) };
+                // Primary action — the single "do this now"
+                const action = buildPrimaryAction(c.id, state, {
+                  totalPlanned: posting?.total,
+                  postingPct,
+                  firstWeekPostsRemaining: posting?.week1Remaining,
+                });
+
+                // Narrative summary
+                const summary = buildNarrativeSummary(c, posting?.weeks ?? 0);
+
+                const sevAccent =
+                  diag.severity === "critical" ? { bg: "bg-destructive/10", text: "text-destructive", border: "border-destructive/30", icon: AlertCircle, prefix: "🚨 CRITICAL" }
+                  : diag.severity === "warning" ? { bg: "bg-yellow-500/10", text: "text-yellow-600", border: "border-yellow-500/30", icon: AlertTriangle, prefix: "⚠️ WARNING" }
+                  : diag.severity === "good" ? { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-500/30", icon: Zap, prefix: "✓ GOOD" }
+                  : { bg: "bg-green-500/15", text: "text-green-700", border: "border-green-500/40", icon: Zap, prefix: "🚀 EXCELLENT" };
+                const SevIcon = sevAccent.icon;
 
                 return (
                   <div
                     key={c.id}
                     className={cn(
-                      "rounded-lg border border-border bg-card border-l-4 overflow-hidden",
+                      "rounded-xl border-2 border-border bg-card border-l-[6px] overflow-hidden shadow-sm",
                       meta.borderClass,
                     )}
                   >
+                    {/* PRIMARY ACTION BANNER — top, urgent, impossible to miss */}
+                    {action.urgent && (
+                      <button
+                        onClick={() => navigate(action.href)}
+                        className={cn(
+                          "w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors",
+                          state === "off_track" || state === "at_risk"
+                            ? "bg-destructive/10 hover:bg-destructive/15 text-destructive"
+                            : "bg-primary/10 hover:bg-primary/15 text-primary",
+                        )}
+                      >
+                        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide">
+                          <Flame className="h-3.5 w-3.5" />
+                          Do this now: <span className="font-semibold normal-case tracking-normal">{action.label}</span>
+                        </span>
+                        <ChevronRight className="h-4 w-4 shrink-0" />
+                      </button>
+                    )}
+
                     <div className="p-4 sm:p-5 space-y-4">
-                      {/* LEVEL 1 — Title + status */}
-                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                      {/* LEVEL 1 — HERO: title + status + BIG score */}
+                      <div className="flex items-start justify-between gap-4 flex-wrap">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h2 className="text-base sm:text-lg font-semibold text-foreground truncate">{c.name}</h2>
-                            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", meta.bgClass, meta.textClass)}>
+                            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", meta.bgClass, meta.textClass)}>
                               <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
                               {meta.label}
                             </span>
@@ -598,99 +630,115 @@ const StrategyPage = () => {
                               </Badge>
                             )}
                           </div>
+                          <h2 className="mt-1.5 text-lg sm:text-xl font-bold text-foreground leading-tight">{c.name}</h2>
                           <p className="mt-1 text-xs text-muted-foreground capitalize">
                             {(c.primary_objective || c.goal || "").replace("_", " ")}
                             {c.target_timeframe && ` · ${c.target_timeframe.replace("_", " ")}`}
                           </p>
                         </div>
 
-                        {/* Strategy Score */}
-                        <div className="flex items-center gap-3 shrink-0">
-                          <div className="text-right">
-                            <div className={cn("text-lg font-bold leading-none", scoreColor(score.total))}>
-                              {score.total.toFixed(1)}
-                              <span className="text-xs font-normal text-muted-foreground">/10</span>
-                            </div>
-                            <p className="text-[10px] text-muted-foreground mt-0.5">Strategy Score</p>
+                        {/* BIG Strategy Score */}
+                        <div className={cn("shrink-0 rounded-lg border-2 px-3 py-2 text-center", sevAccent.border, sevAccent.bg)}>
+                          <div className={cn("text-3xl font-black leading-none", scoreColor(score.total))}>
+                            {score.total.toFixed(1)}
+                          </div>
+                          <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+                            Strategy /10
                           </div>
                         </div>
                       </div>
 
-                      {/* LEVEL 2 — Goal + progress */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="rounded-md bg-muted/40 p-3">
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">🎯 Goal</p>
-                          <p className="mt-1 text-sm font-medium text-foreground">
-                            {c.target_quantity && c.target_metric
-                              ? `${c.target_quantity} ${metricLabels[c.target_metric] || c.target_metric}`
-                              : "No measurable target set"}
-                          </p>
-                          {outcomePct !== null && (
-                            <div className="mt-2 space-y-1">
-                              <Progress value={outcomePct} className="h-1.5" />
-                              <p className="text-[10px] text-muted-foreground">
-                                {prog!.current_value}/{prog!.target_value} ({outcomePct}%)
-                              </p>
+                      {/* HERO Strategy Hook — tinted, large, the campaign brain */}
+                      <div className={cn("rounded-lg border-l-4 p-3 sm:p-4", meta.borderClass, meta.bgClass)}>
+                        <p className={cn("text-[10px] font-bold uppercase tracking-wider", meta.textClass)}>
+                          💡 Strategy hook
+                        </p>
+                        <p className="mt-1 text-sm sm:text-base font-medium text-foreground leading-snug">
+                          {c.core_message || summary}
+                        </p>
+                      </div>
+
+                      {/* Score diagnostic — turns score into a decision */}
+                      {(diag.why.length > 0 || diag.severity === "critical" || diag.severity === "warning") && (
+                        <div className={cn("rounded-md border p-3 space-y-2", sevAccent.border, sevAccent.bg)}>
+                          <div className="flex items-center gap-1.5">
+                            <SevIcon className={cn("h-3.5 w-3.5", sevAccent.text)} />
+                            <span className={cn("text-[11px] font-bold uppercase tracking-wide", sevAccent.text)}>
+                              {sevAccent.prefix}
+                            </span>
+                            <span className="text-xs text-foreground">{diag.verdict}</span>
+                          </div>
+                          {diag.why.length > 0 && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Why low</p>
+                                <ul className="mt-0.5 space-y-0.5">
+                                  {diag.why.slice(0, 3).map((w) => (
+                                    <li key={w} className="text-[11px] text-foreground flex gap-1"><span className="text-destructive">×</span>{w}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                              {diag.fixes.length > 0 && (
+                                <div>
+                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Wrench className="h-2.5 w-2.5" /> Fix</p>
+                                  <ul className="mt-0.5 space-y-0.5">
+                                    {diag.fixes.slice(0, 3).map((f) => (
+                                      <li key={f} className="text-[11px] text-foreground flex gap-1"><span className="text-green-600">→</span>{f}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
+                      )}
 
-                        <div className="rounded-md bg-muted/40 p-3">
-                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">⚙️ Execution</p>
+                      {/* LEVEL 2 — SECONDARY: Goal + Execution metrics */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="rounded-md bg-muted/50 p-2.5">
+                          <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">🎯 Goal</p>
+                          <p className="mt-0.5 text-sm font-semibold text-foreground">
+                            {c.target_quantity && c.target_metric
+                              ? `${c.target_quantity} ${metricLabels[c.target_metric] || c.target_metric}`
+                              : "No measurable target"}
+                          </p>
+                          {outcomePct !== null && (
+                            <div className="mt-1.5 space-y-0.5">
+                              <Progress value={outcomePct} className="h-1" />
+                              <p className="text-[10px] text-muted-foreground">{prog!.current_value}/{prog!.target_value} ({outcomePct}%)</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="rounded-md bg-muted/50 p-2.5">
+                          <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">⚙️ Execution</p>
                           {posting ? (
                             <>
-                              <p className="mt-1 text-sm font-medium text-foreground">
-                                {posting.drafted}/{posting.total} posts created
-                              </p>
-                              <div className="mt-2 space-y-1">
-                                <Progress value={postingPct ?? 0} className="h-1.5" />
-                                <p className="text-[10px] text-muted-foreground">
-                                  {postingPct !== null && postingPct < 30 ? "Behind schedule" : postingPct! >= 70 ? "On cadence" : "Catching up"}
+                              <p className="mt-0.5 text-sm font-semibold text-foreground">{posting.drafted}/{posting.total} posts</p>
+                              <div className="mt-1.5 space-y-0.5">
+                                <Progress value={postingPct ?? 0} className="h-1" />
+                                <p className={cn("text-[10px] font-medium", (postingPct ?? 0) < 30 ? "text-destructive" : (postingPct ?? 0) >= 70 ? "text-green-600" : "text-yellow-600")}>
+                                  {(postingPct ?? 0) < 30 ? "Behind schedule" : (postingPct ?? 0) >= 70 ? "On cadence" : "Catching up"}
                                 </p>
                               </div>
                             </>
                           ) : (
-                            <p className="mt-1 text-sm text-muted-foreground">Plan not generated</p>
+                            <p className="mt-0.5 text-sm text-muted-foreground">Plan not generated</p>
                           )}
                         </div>
                       </div>
 
-                      {/* Strategy Hook (verdict) */}
-                      <div className={cn("rounded-md border p-3 flex gap-2 items-start", meta.bgClass, "border-current/10", meta.textClass)}>
-                        <Zap className="h-4 w-4 mt-0.5 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[10px] uppercase tracking-wide opacity-80">💡 Strategy hook</p>
-                          <p className="text-xs text-foreground mt-0.5">
-                            {c.core_message || verdict}
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* LEVEL 3 — Compact context strip */}
-                      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                      {/* LEVEL 3 — SUPPORTING: tags + actions */}
+                      <div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
                         <span className="rounded-full bg-secondary px-2 py-0.5">👤 {personaName(c.primary_persona_id)}</span>
                         {c.tone && <span className="rounded-full bg-secondary px-2 py-0.5">🎙 {c.tone}</span>}
                         {c.cta_type && <span className="rounded-full bg-secondary px-2 py-0.5">🎯 {c.cta_type} CTA</span>}
                         {c.offer && <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">🎁 {c.offer}</span>}
                       </div>
 
-                      {/* Primary action row */}
-                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border flex-wrap">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Button size="sm" onClick={primaryAction.onClick} className="gap-1">
-                            {primaryAction.label} <ChevronRight className="h-3.5 w-3.5" />
-                          </Button>
-                          {state !== "draft" && primaryAction.label !== "Open campaign" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => navigate(`/campaign/${c.id}`)}
-                              className="gap-1"
-                            >
-                              <Target className="h-3.5 w-3.5" /> View Plan
-                            </Button>
-                          )}
-                        </div>
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border flex-wrap">
+                        <Button size="sm" variant="outline" onClick={() => navigate(`/campaign/${c.id}`)} className="gap-1">
+                          <Target className="h-3.5 w-3.5" /> View Plan
+                        </Button>
                         <div className="flex items-center gap-1">
                           <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>
                             <Edit2 className="h-3 w-3" />

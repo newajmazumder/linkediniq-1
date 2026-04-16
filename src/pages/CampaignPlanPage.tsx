@@ -9,12 +9,13 @@ import { toast } from "sonner";
 import {
   Loader2, Target, ChevronDown, ChevronUp, Sparkles,
   BarChart3, FileText, AlertTriangle, TrendingUp,
-  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle,
+  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
+  diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
 } from "@/lib/strategy";
 
 type Campaign = any;
@@ -32,7 +33,7 @@ const CampaignPlanPage = () => {
   const [postPlans, setPostPlans] = useState<PostPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [expandedWeek, setExpandedWeek] = useState<number | null>(1);
+  const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const [tab, setTab] = useState<"plan" | "analytics" | "report">("plan");
   const [analytics, setAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
@@ -118,6 +119,7 @@ const CampaignPlanPage = () => {
   const totalPosts = postPlans.length;
   const draftedPosts = postPlans.filter((p: any) => p.status !== "planned").length;
   const postingPct = totalPosts > 0 ? Math.round((draftedPosts / totalPosts) * 100) : null;
+  const week1Remaining = postPlans.filter((p: any) => p.week_number === 1 && (!p.status || p.status === "planned")).length;
 
   const outcomePct = analytics?.outcome_progress?.progress_pct ?? null;
 
@@ -129,111 +131,185 @@ const CampaignPlanPage = () => {
   });
   const meta = STATE_META[state];
 
-  const score = computeStrategyScore({
+  const scoreInputs = {
     hasCoreMessage: !!campaign.core_message,
     hasPersona: !!campaign.primary_persona_id,
     hasOffer: !!campaign.offer,
     hasMeasurableTarget: !!(campaign.target_metric && campaign.target_quantity),
     postingPct,
     outcomePct,
+  };
+  const score = computeStrategyScore(scoreInputs);
+  const diag = diagnoseScore(score, scoreInputs);
+
+  const action = buildPrimaryAction(id!, state, {
+    totalPlanned: totalPosts,
+    postingPct,
+    firstWeekPostsRemaining: week1Remaining,
   });
+
+  const summary = buildNarrativeSummary(campaign, weekPlans.length);
+
+  const sevAccent =
+    diag.severity === "critical" ? { bg: "bg-destructive/10", text: "text-destructive", border: "border-destructive/30", icon: AlertCircle, prefix: "🚨 CRITICAL" }
+    : diag.severity === "warning" ? { bg: "bg-yellow-500/10", text: "text-yellow-600", border: "border-yellow-500/30", icon: AlertTriangle, prefix: "⚠️ WARNING" }
+    : diag.severity === "good" ? { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-500/30", icon: Zap, prefix: "✓ GOOD" }
+    : { bg: "bg-green-500/15", text: "text-green-700", border: "border-green-500/40", icon: Zap, prefix: "🚀 EXCELLENT" };
+  const SevIcon = sevAccent.icon;
 
   return (
     <div className="content-fade-in space-y-5 px-4 sm:px-6 py-4">
       {/* HERO — verdict-first header */}
-      <div className={cn("rounded-xl border border-border bg-card border-l-4 p-4 sm:p-5 space-y-4", meta.borderClass)}>
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <button onClick={() => navigate("/strategy")} className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-              ← Strategy
-            </button>
-            <div className="mt-1 flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl sm:text-2xl font-semibold text-foreground">{campaign.name}</h1>
-              <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold", meta.bgClass, meta.textClass)}>
-                <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
-                {meta.label}
-              </span>
-              {campaign.target_priority === "high" && (
-                <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">
-                  <Flame className="mr-0.5 h-2.5 w-2.5" /> High priority
-                </Badge>
+      <div className={cn("rounded-xl border-2 border-border bg-card border-l-[6px] overflow-hidden shadow-sm", meta.borderClass)}>
+        {/* PRIMARY ACTION BANNER */}
+        {action.urgent && (
+          <button
+            onClick={() => navigate(action.href)}
+            className={cn(
+              "w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors",
+              state === "off_track" || state === "at_risk"
+                ? "bg-destructive/10 hover:bg-destructive/15 text-destructive"
+                : "bg-primary/10 hover:bg-primary/15 text-primary",
+            )}
+          >
+            <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide">
+              <Flame className="h-3.5 w-3.5" />
+              Do this now: <span className="font-semibold normal-case tracking-normal">{action.label}</span>
+            </span>
+            <ArrowRight className="h-4 w-4 shrink-0" />
+          </button>
+        )}
+
+        <div className="p-4 sm:p-5 space-y-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <button onClick={() => navigate("/strategy")} className="text-[11px] text-muted-foreground hover:text-foreground transition-colors">
+                ← Strategy
+              </button>
+              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", meta.bgClass, meta.textClass)}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
+                  {meta.label}
+                </span>
+                {campaign.target_priority === "high" && (
+                  <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">
+                    <Flame className="mr-0.5 h-2.5 w-2.5" /> High priority
+                  </Badge>
+                )}
+              </div>
+              <h1 className="mt-1.5 text-xl sm:text-2xl font-bold text-foreground leading-tight">{campaign.name}</h1>
+              <p className="mt-1 text-xs text-muted-foreground capitalize">
+                {(campaign.primary_objective || campaign.goal || "").replace("_", " ")}
+                {campaign.target_timeframe && ` · ${campaign.target_timeframe.replace("_", " ")}`}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <div className={cn("rounded-lg border-2 px-3 py-2 text-center", sevAccent.border, sevAccent.bg)}>
+                <div className={cn("text-3xl font-black leading-none", scoreColor(score.total))}>
+                  {score.total.toFixed(1)}
+                </div>
+                <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
+                  Strategy /10
+                </div>
+              </div>
+              {weekPlans.length === 0 && (
+                <Button size="sm" onClick={generatePlan} disabled={generating}>
+                  {generating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
+                  Generate Plan
+                </Button>
               )}
             </div>
-            <p className="mt-1 text-xs text-muted-foreground capitalize">
-              {(campaign.primary_objective || campaign.goal || "").replace("_", " ")}
-              {campaign.target_timeframe && ` · ${campaign.target_timeframe.replace("_", " ")}`}
-            </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-right">
-              <div className={cn("text-2xl font-bold leading-none", scoreColor(score.total))}>
-                {score.total.toFixed(1)}
-                <span className="text-sm font-normal text-muted-foreground">/10</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-0.5">Strategy Score</p>
-            </div>
-            {weekPlans.length === 0 && (
-              <Button size="sm" onClick={generatePlan} disabled={generating}>
-                {generating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
-                Generate Plan
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Goal + Execution metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="rounded-md bg-muted/40 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">🎯 Goal</p>
-            <p className="mt-1 text-sm font-medium text-foreground">
-              {campaign.target_quantity && campaign.target_metric
-                ? `${campaign.target_quantity} ${campaign.target_metric.replace("_", " ")}`
-                : "No measurable target"}
+          {/* HERO Strategy Hook — campaign brain */}
+          <div className={cn("rounded-lg border-l-4 p-3 sm:p-4", meta.borderClass, meta.bgClass)}>
+            <p className={cn("text-[10px] font-bold uppercase tracking-wider", meta.textClass)}>
+              💡 Strategy hook
             </p>
-            {outcomePct !== null && (
-              <div className="mt-2 space-y-1">
-                <Progress value={outcomePct} className="h-1.5" />
-                <p className="text-[10px] text-muted-foreground">{outcomePct}% complete</p>
-              </div>
+            <p className="mt-1 text-base sm:text-lg font-semibold text-foreground leading-snug">
+              {campaign.core_message || summary}
+            </p>
+            {campaign.core_message && weekPlans.length > 0 && (
+              <p className="mt-2 text-xs text-muted-foreground italic">{summary}</p>
             )}
           </div>
-          <div className="rounded-md bg-muted/40 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">⚙️ Execution</p>
-            {totalPosts > 0 ? (
-              <>
-                <p className="mt-1 text-sm font-medium text-foreground">{draftedPosts}/{totalPosts} posts created</p>
-                <div className="mt-2 space-y-1">
-                  <Progress value={postingPct ?? 0} className="h-1.5" />
-                  <p className="text-[10px] text-muted-foreground">
-                    {postingPct! < 30 ? "Behind schedule" : postingPct! >= 70 ? "On cadence" : "Catching up"}
-                  </p>
+
+          {/* Score diagnostic */}
+          {(diag.why.length > 0 || diag.severity === "critical" || diag.severity === "warning") && (
+            <div className={cn("rounded-md border p-3 space-y-2", sevAccent.border, sevAccent.bg)}>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <SevIcon className={cn("h-3.5 w-3.5", sevAccent.text)} />
+                <span className={cn("text-[11px] font-bold uppercase tracking-wide", sevAccent.text)}>{sevAccent.prefix}</span>
+                <span className="text-xs text-foreground">{diag.verdict}</span>
+              </div>
+              {diag.why.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Why low</p>
+                    <ul className="mt-0.5 space-y-0.5">
+                      {diag.why.slice(0, 4).map((w) => (
+                        <li key={w} className="text-[11px] text-foreground flex gap-1"><span className="text-destructive">×</span>{w}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  {diag.fixes.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Wrench className="h-2.5 w-2.5" /> Fix</p>
+                      <ul className="mt-0.5 space-y-0.5">
+                        {diag.fixes.slice(0, 4).map((f) => (
+                          <li key={f} className="text-[11px] text-foreground flex gap-1"><span className="text-green-600">→</span>{f}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              </>
-            ) : (
-              <p className="mt-1 text-sm text-muted-foreground">No posts planned</p>
-            )}
-          </div>
-          <div className="rounded-md bg-muted/40 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">📊 Score Breakdown</p>
-            <div className="mt-1.5 space-y-1 text-[11px]">
-              <div className="flex justify-between"><span className="text-muted-foreground">Positioning</span><span className="text-foreground font-medium">{score.positioning}/10</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Execution</span><span className="text-foreground font-medium">{score.execution}/10</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Conversion</span><span className="text-foreground font-medium">{score.conversion}/10</span></div>
+              )}
+            </div>
+          )}
+
+          {/* SECONDARY — Goal + Execution + Score Breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="rounded-md bg-muted/50 p-2.5">
+              <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">🎯 Goal</p>
+              <p className="mt-0.5 text-sm font-semibold text-foreground">
+                {campaign.target_quantity && campaign.target_metric
+                  ? `${campaign.target_quantity} ${campaign.target_metric.replace("_", " ")}`
+                  : "No measurable target"}
+              </p>
+              {outcomePct !== null && (
+                <div className="mt-1.5 space-y-0.5">
+                  <Progress value={outcomePct} className="h-1" />
+                  <p className="text-[10px] text-muted-foreground">{outcomePct}% complete</p>
+                </div>
+              )}
+            </div>
+            <div className="rounded-md bg-muted/50 p-2.5">
+              <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">⚙️ Execution</p>
+              {totalPosts > 0 ? (
+                <>
+                  <p className="mt-0.5 text-sm font-semibold text-foreground">{draftedPosts}/{totalPosts} posts</p>
+                  <div className="mt-1.5 space-y-0.5">
+                    <Progress value={postingPct ?? 0} className="h-1" />
+                    <p className={cn("text-[10px] font-medium", (postingPct ?? 0) < 30 ? "text-destructive" : (postingPct ?? 0) >= 70 ? "text-green-600" : "text-yellow-600")}>
+                      {(postingPct ?? 0) < 30 ? "Behind schedule" : (postingPct ?? 0) >= 70 ? "On cadence" : "Catching up"}
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <p className="mt-0.5 text-sm text-muted-foreground">No posts planned</p>
+              )}
+            </div>
+            <div className="rounded-md bg-muted/50 p-2.5">
+              <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">📊 Score Breakdown</p>
+              <div className="mt-1 space-y-0.5 text-[11px]">
+                <div className="flex justify-between"><span className="text-muted-foreground">Positioning</span><span className="text-foreground font-semibold">{score.positioning}/10</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Execution</span><span className="text-foreground font-semibold">{score.execution}/10</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Conversion</span><span className="text-foreground font-semibold">{score.conversion}/10</span></div>
+              </div>
             </div>
           </div>
         </div>
-
-        {/* Strategy hook */}
-        {campaign.core_message && (
-          <div className={cn("rounded-md border p-3 flex gap-2 items-start", meta.bgClass, "border-current/10")}>
-            <Zap className={cn("h-4 w-4 mt-0.5 shrink-0", meta.textClass)} />
-            <div className="min-w-0">
-              <p className={cn("text-[10px] uppercase tracking-wide opacity-80", meta.textClass)}>💡 Strategy hook</p>
-              <p className="text-sm text-foreground mt-0.5">{campaign.core_message}</p>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Tabs */}
