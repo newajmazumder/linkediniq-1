@@ -517,15 +517,17 @@ function ScreenshotPostFlow({
   // Step 1: Upload
   if (!screenshotPreview) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" onPaste={onPaste}>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} className="hidden" />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full border-2 border-dashed border-border rounded-lg p-8 hover:border-primary/50 hover:bg-muted/30 transition-colors flex flex-col items-center gap-2"
+          className="w-full border-2 border-dashed border-border rounded-lg p-8 hover:border-primary/50 hover:bg-muted/30 transition-colors flex flex-col items-center gap-2 focus:outline-none focus:border-primary/50"
+          tabIndex={0}
         >
           <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">Upload Screenshot</p>
-          <p className="text-xs text-muted-foreground">PNG, JPG, WebP — Max 10MB</p>
+          <p className="text-sm font-medium text-foreground">Upload or Paste Screenshot</p>
+          <p className="text-xs text-muted-foreground">Click to browse, or paste from clipboard (Ctrl+V / ⌘V)</p>
+          <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP — Max 10MB</p>
         </button>
         <div className="flex justify-end">
           <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
