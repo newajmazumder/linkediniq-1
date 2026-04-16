@@ -358,7 +358,7 @@ const StrategyPage = () => {
           {showForm && (
             <div className="rounded-lg border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-medium text-foreground">{editingId ? "Edit" : "Create"} Campaign</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-foreground">Campaign Name *</label>
                   <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Q2 Lead Gen" className="text-sm" />
@@ -400,7 +400,7 @@ const StrategyPage = () => {
                 <p className="text-xs font-medium text-primary flex items-center gap-1.5">
                   <Target className="h-3.5 w-3.5" /> Measurable Target
                 </p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
                     <label className="text-xs font-medium text-foreground">Primary Objective</label>
                     <Select value={form.primary_objective} onValueChange={(v) => setForm({ ...form, primary_objective: v, target_metric: "" })}>
@@ -436,7 +436,7 @@ const StrategyPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-medium text-foreground">Primary Persona</label>
                   <Select value={form.primary_persona_id} onValueChange={(v) => setForm({ ...form, primary_persona_id: v })}>
@@ -546,7 +546,7 @@ const StrategyPage = () => {
                     </button>
                     {expandedId === c.id && (
                       <div className="border-t border-border px-4 py-3 space-y-2 text-xs text-muted-foreground">
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div><span className="font-medium text-foreground">Primary Persona:</span> {personaName(c.primary_persona_id)}</div>
                           <div><span className="font-medium text-foreground">Secondary Persona:</span> {personaName(c.secondary_persona_id)}</div>
                           <div className="col-span-2"><span className="font-medium text-foreground">Core Message:</span> {c.core_message || "—"}</div>
@@ -557,7 +557,7 @@ const StrategyPage = () => {
                         {c.primary_objective && (
                           <div className="rounded-md bg-primary/5 border border-primary/10 p-2 space-y-1">
                             <p className="text-[10px] font-medium text-primary flex items-center gap-1"><Target className="h-3 w-3" /> Campaign Target</p>
-                            <div className="grid grid-cols-2 gap-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                               <span>Objective: <span className="text-foreground capitalize">{c.primary_objective.replace("_", " ")}</span></span>
                               {c.target_metric && <span>Metric: <span className="text-foreground">{metricLabels[c.target_metric] || c.target_metric}</span></span>}
                               {c.target_quantity && <span>Target: <span className="text-foreground">{c.target_quantity}</span></span>}

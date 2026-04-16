@@ -242,9 +242,11 @@ const CampaignBuilderPage = () => {
   const hasInput = input.trim().length > 0 || attachedFiles.length > 0;
 
   return (
-    <div ref={containerRef} className="content-fade-in flex h-full overflow-hidden">
+    <div ref={containerRef} className="content-fade-in flex flex-col md:flex-row h-full overflow-hidden">
       {/* Left: Chat */}
-      <div className="flex flex-col min-w-0 h-full overflow-hidden" style={{ width: `${chatWidthPercent}%` }}>
+      <div className="flex flex-col min-w-0 h-[60vh] md:h-full overflow-hidden" style={{ width: undefined }} 
+        {...(typeof window !== 'undefined' && window.innerWidth >= 768 ? { style: { width: `${chatWidthPercent}%` } } : {})}
+      >
         {/* Step indicator */}
         <div className="shrink-0 flex items-center gap-1 px-5 py-3 border-b border-border bg-card/50 overflow-x-auto">
           {STEPS.map((step, i) => (
@@ -504,17 +506,17 @@ const CampaignBuilderPage = () => {
         </div>
       </div>
 
-      {/* Resizable divider */}
+      {/* Resizable divider - desktop only */}
       <div
         onMouseDown={handleMouseDown}
-        className="shrink-0 w-1.5 cursor-col-resize bg-border hover:bg-primary/30 transition-colors relative group flex items-center justify-center"
+        className="shrink-0 w-1.5 cursor-col-resize bg-border hover:bg-primary/30 transition-colors relative group hidden md:flex items-center justify-center"
       >
         <div className="absolute inset-y-0 -left-1 -right-1" />
         <GripVertical className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
       </div>
 
       {/* Right: Blueprint Preview */}
-      <div className="flex-1 min-w-0 overflow-hidden">
+      <div className="flex-1 min-w-0 overflow-hidden border-t md:border-t-0 border-border">
         <BlueprintPanel blueprint={blueprint} />
       </div>
     </div>

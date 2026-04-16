@@ -189,7 +189,7 @@ const AudiencePage = () => {
       {showForm && (
         <div className="rounded-lg border border-border bg-card p-5 space-y-4">
           <h3 className="text-sm font-medium text-foreground">{editingId ? "Edit" : "Create"} Persona</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Persona Name *</label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder='e.g. "Ecommerce Founder – BD"' className="text-sm" /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Industry</label><Input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="e.g. Ecommerce, SaaS" className="text-sm" /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Business Size</label><Select value={form.business_size} onValueChange={(v) => setForm({ ...form, business_size: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{businessSizes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
