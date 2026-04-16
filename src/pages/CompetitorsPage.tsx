@@ -1176,14 +1176,8 @@ function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded
   );
 }
 
-function AnalysisSection({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">{icon} {title}</p>
-      <div className="pl-5 space-y-0.5">{children}</div>
-    </div>
-  );
-}
+
+
 
 function InsightsPanel({ insight }: { insight: CompetitorInsight }) {
   return (
