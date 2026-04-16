@@ -637,10 +637,12 @@ export type Database = {
           audience_strategy: Json | null
           campaign_blueprint: Json | null
           competitor_id: string | null
+          confidence_layer: Json | null
           content_angles: Json | null
           content_gap_matrix: Json | null
           content_strategy_overview: Json | null
           created_at: string
+          execution_plan: Json | null
           gaps: Json | null
           id: string
           messaging_patterns: Json | null
@@ -654,6 +656,7 @@ export type Database = {
           suggested_angles: Json | null
           user_id: string
           weaknesses_analysis: Json | null
+          why_posts_work: Json | null
           win_strategy: Json | null
           winning_position: Json | null
         }
@@ -662,10 +665,12 @@ export type Database = {
           audience_strategy?: Json | null
           campaign_blueprint?: Json | null
           competitor_id?: string | null
+          confidence_layer?: Json | null
           content_angles?: Json | null
           content_gap_matrix?: Json | null
           content_strategy_overview?: Json | null
           created_at?: string
+          execution_plan?: Json | null
           gaps?: Json | null
           id?: string
           messaging_patterns?: Json | null
@@ -679,6 +684,7 @@ export type Database = {
           suggested_angles?: Json | null
           user_id: string
           weaknesses_analysis?: Json | null
+          why_posts_work?: Json | null
           win_strategy?: Json | null
           winning_position?: Json | null
         }
@@ -687,10 +693,12 @@ export type Database = {
           audience_strategy?: Json | null
           campaign_blueprint?: Json | null
           competitor_id?: string | null
+          confidence_layer?: Json | null
           content_angles?: Json | null
           content_gap_matrix?: Json | null
           content_strategy_overview?: Json | null
           created_at?: string
+          execution_plan?: Json | null
           gaps?: Json | null
           id?: string
           messaging_patterns?: Json | null
@@ -704,6 +712,7 @@ export type Database = {
           suggested_angles?: Json | null
           user_id?: string
           weaknesses_analysis?: Json | null
+          why_posts_work?: Json | null
           win_strategy?: Json | null
           winning_position?: Json | null
         }
