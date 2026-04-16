@@ -676,9 +676,21 @@ const StrategyPage = () => {
 
                       {/* Primary action row */}
                       <div className="flex items-center justify-between gap-2 pt-1 border-t border-border flex-wrap">
-                        <Button size="sm" onClick={primaryAction.onClick} className="gap-1">
-                          {primaryAction.label} <ChevronRight className="h-3.5 w-3.5" />
-                        </Button>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Button size="sm" onClick={primaryAction.onClick} className="gap-1">
+                            {primaryAction.label} <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
+                          {state !== "draft" && primaryAction.label !== "Open campaign" && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => navigate(`/campaign/${c.id}`)}
+                              className="gap-1"
+                            >
+                              <Target className="h-3.5 w-3.5" /> View Plan
+                            </Button>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1">
                           <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>
                             <Edit2 className="h-3 w-3" />
