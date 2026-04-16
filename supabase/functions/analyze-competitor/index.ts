@@ -19,7 +19,15 @@ async function callAI(prompt: string, temperature = 0.4): Promise<string> {
       temperature,
     }),
   });
-  if (!resp.ok) throw new Error(`AI error ${resp.status}`);
+  if (!resp.ok) {
+    if (resp.status === 402) {
+      throw new Error("AI credits exhausted. Please add funds.");
+    }
+    if (resp.status === 429) {
+      throw new Error("Rate limited. Please try again in a moment.");
+    }
+    throw new Error(`AI error ${resp.status}`);
+  }
   const data = await resp.json();
   const raw = data.choices?.[0]?.message?.content || "{}";
   return raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
@@ -46,31 +54,22 @@ serve(async (req) => {
     const { competitor_id, competitor_name, posts, action } = await req.json();
     if (!competitor_id) throw new Error("Missing competitor_id");
 
-    // Fetch user's business context for context-aware analysis
     const { data: businessProfile } = await supabase
-      .from("business_profiles")
-      .select("*")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
+      .from("business_profiles").select("*").eq("user_id", user.id).maybeSingle();
     const { data: personas } = await supabase
-      .from("audience_personas")
-      .select("*")
-      .eq("user_id", user.id)
-      .limit(3);
+      .from("audience_personas").select("*").eq("user_id", user.id).limit(3);
+    const { data: campaigns } = await supabase
+      .from("campaigns").select("*").eq("user_id", user.id).eq("is_active", true).limit(1);
 
-    const userContext = buildUserContext(businessProfile, personas || []);
+    const userContext = buildUserContext(businessProfile, personas || [], campaigns || []);
 
     // ===== SINGLE POST ANALYSIS =====
     if (action === "analyze_post") {
-      const { post } = await req.json().catch(() => ({ post: null }));
-      // post is passed in the original body
-      const targetPost = posts?.[0]; // single post passed as array of 1
+      const targetPost = posts?.[0];
       if (!targetPost) throw new Error("No post provided");
 
       const analysis = await analyzePostLevel(targetPost, competitor_name, userContext);
 
-      // Save analysis to the post
       await supabase.from("competitor_posts").update({
         post_analysis: analysis,
         hook_style: analysis.post_breakdown?.hook_type || null,
@@ -94,8 +93,6 @@ serve(async (req) => {
       try {
         const analysis = await analyzePostLevel(post, competitor_name, userContext);
         postAnalyses.push({ post_id: post.id, ...analysis });
-
-        // Save per-post analysis
         await supabase.from("competitor_posts").update({
           post_analysis: analysis,
           hook_style: analysis.post_breakdown?.hook_type || null,
@@ -108,27 +105,32 @@ serve(async (req) => {
       }
     }
 
-    // Step 2: Generate aggregate report
-    const aggregateReport = await generateAggregateReport(
-      posts, postAnalyses, competitor_name, userContext
-    );
+    // Step 2: Generate comprehensive competitive strategy report
+    const report = await generateStrategyReport(posts, postAnalyses, competitor_name, userContext, businessProfile, campaigns?.[0]);
 
-    // Save aggregate insights
+    // Save all insights
     await supabase.from("competitor_insights").upsert({
       user_id: user.id,
       competitor_id,
-      patterns: aggregateReport.patterns || [],
-      gaps: aggregateReport.gaps || [],
-      overused_themes: aggregateReport.overused_themes || [],
-      suggested_angles: aggregateReport.suggested_angles || [],
-      content_strategy_overview: aggregateReport.content_strategy_overview || {},
-      messaging_patterns: aggregateReport.messaging_patterns || {},
-      audience_strategy: aggregateReport.audience_strategy || {},
-      strengths_analysis: aggregateReport.strengths_analysis || [],
-      weaknesses_analysis: aggregateReport.weaknesses_analysis || [],
-      performance_insights: aggregateReport.performance_insights || {},
-      strategic_opportunities: aggregateReport.strategic_opportunities || [],
-      actionable_recommendations: aggregateReport.actionable_recommendations || [],
+      patterns: report.patterns || [],
+      gaps: report.gaps || [],
+      overused_themes: report.overused_themes || [],
+      suggested_angles: report.suggested_angles || [],
+      content_strategy_overview: report.content_strategy_overview || {},
+      messaging_patterns: report.messaging_patterns || {},
+      audience_strategy: report.audience_strategy || {},
+      strengths_analysis: report.strengths_analysis || [],
+      weaknesses_analysis: report.weaknesses_analysis || [],
+      performance_insights: report.performance_insights || {},
+      strategic_opportunities: report.strategic_opportunities || [],
+      actionable_recommendations: report.actionable_recommendations || [],
+      win_strategy: report.win_strategy || {},
+      content_gap_matrix: report.content_gap_matrix || [],
+      content_angles: report.content_angles || [],
+      opportunity_scores: report.opportunity_scores || [],
+      predicted_outcomes: report.predicted_outcomes || {},
+      campaign_blueprint: report.campaign_blueprint || {},
+      winning_position: report.winning_position || {},
     }, { onConflict: "competitor_id" });
 
     return new Response(JSON.stringify({ success: true, post_analyses: postAnalyses }), {
@@ -136,16 +138,18 @@ serve(async (req) => {
     });
   } catch (err: any) {
     console.error("Error:", err);
+    const status = err.message?.includes("credits exhausted") ? 402
+      : err.message?.includes("Rate limited") ? 429 : 500;
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
+      status,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
 
-function buildUserContext(profile: any, personas: any[]): string {
+function buildUserContext(profile: any, personas: any[], campaigns: any[]): string {
   if (!profile && personas.length === 0) return "No user business context available.";
-  let ctx = "USER'S BUSINESS CONTEXT (use this to make analysis relative):\n";
+  let ctx = "USER'S BUSINESS CONTEXT:\n";
   if (profile) {
     if (profile.company_summary) ctx += `Company: ${profile.company_summary}\n`;
     if (profile.product_summary) ctx += `Product: ${profile.product_summary}\n`;
@@ -159,37 +163,41 @@ function buildUserContext(profile: any, personas: any[]): string {
   if (personas.length > 0) {
     ctx += `Personas: ${personas.map(p => `${p.name} (${p.industry || "general"}, ${p.awareness_level || "unaware"})`).join("; ")}\n`;
   }
+  if (campaigns.length > 0) {
+    const c = campaigns[0];
+    ctx += `Active Campaign: "${c.name}" — Goal: ${c.primary_objective || c.goal}, Target: ${c.target_quantity || "N/A"} ${c.target_metric || ""}\n`;
+  }
   return ctx;
 }
 
 async function analyzePostLevel(post: any, competitorName: string, userContext: string): Promise<any> {
   const metricsInfo = (post.likes || post.comments || post.reposts || post.impressions)
-    ? `\nEngagement Metrics: ${post.likes || 0} likes, ${post.comments || 0} comments, ${post.reposts || 0} reposts, ${post.impressions || 0} impressions`
-    : "\nNo engagement metrics provided.";
+    ? `\nEngagement: ${post.likes || 0} likes, ${post.comments || 0} comments, ${post.reposts || 0} reposts, ${post.impressions || 0} impressions`
+    : "\nNo engagement metrics.";
 
   const hasVisualData = post.post_format || post.visual_summary;
   const visualInfo = hasVisualData
-    ? `\nVisual/Creative Info:\n- Post Format: ${post.post_format || "unknown"}\n- Visual Summary: ${post.visual_summary || "none"}\n- Source: ${post.source_type || "manual"}`
+    ? `\nVisual: Format=${post.post_format || "unknown"}, Summary=${post.visual_summary || "none"}`
     : "";
 
-  const creativeAnalysisBlock = hasVisualData ? `
+  const creativeBlock = hasVisualData ? `
   "creative_analysis": {
-    "visual_assessment": "<what kind of visual they used and how it relates to the content>",
-    "message_alignment": "<does the visual support or weaken the message? Be specific>",
-    "performance_impact": "<is the visual likely helping or hurting engagement? Explain why>"
+    "visual_assessment": "<what visual they used and how it relates to content>",
+    "message_alignment": "<does visual support or weaken the message?>",
+    "performance_impact": "<is visual helping or hurting engagement?>"
   },` : "";
 
-  const prompt = `You are an elite LinkedIn content strategist doing competitive intelligence analysis. Analyze this competitor post from "${competitorName || "Unknown"}".
+  const prompt = `You are an elite LinkedIn content strategist. Analyze this post from "${competitorName || "Unknown"}".
 
 ${userContext}
 
-POST CONTENT:
+POST:
 ${post.content}
 ${metricsInfo}${visualInfo}
 
-Provide DEEP, SPECIFIC analysis. Reference actual lines from the post. NO generic phrases like "engaging content" or "good post".
+Be SPECIFIC. Reference actual lines. NO generic phrases.
 
-Return JSON with this EXACT structure:
+Return JSON:
 {
   "post_breakdown": {
     "hook_type": "<curiosity|pain|data|story|contrarian|question|bold_claim|none>",
@@ -199,14 +207,14 @@ Return JSON with this EXACT structure:
     "format": "<text_only|list|carousel_style|thread_style>"
   },
   "audience_targeting": {
-    "who_targeted": "<specific description>",
+    "who_targeted": "<specific>",
     "awareness_level": "<unaware|problem_aware|solution_aware|product_aware|most_aware>",
-    "relevance_to_user": "<how this relates to YOUR audience - be specific>"
+    "relevance_to_user": "<how this relates to YOUR audience>"
   },
   "strength_analysis": {
-    "why_it_works": "<specific structural/emotional reasons>",
-    "strong_lines": ["<quote actual strong lines from the post>"],
-    "emotional_triggers": ["<specific triggers used>"]
+    "why_it_works": "<specific reasons>",
+    "strong_lines": ["<quote actual lines>"],
+    "emotional_triggers": ["<specific triggers>"]
   },
   "weakness_analysis": {
     "failures": ["<specific weakness with reasoning>"],
@@ -216,11 +224,11 @@ Return JSON with this EXACT structure:
       "differentiation": "<specific issue or 'strong'>",
       "specificity": "<specific issue or 'strong'>"
     }
-  },${creativeAnalysisBlock}
-  "engagement_insight": "<if metrics provided: explain WHY engagement is high/low tied to structure. If no metrics: skip>",
-  "improvement_suggestions": ["<specific, actionable suggestions - NOT generic>"],
-  "rewritten_hook": "<a better version of the hook, written as if the USER wrote it for THEIR audience>",
-  "rewritten_cta": "<a better CTA version>"
+  },${creativeBlock}
+  "engagement_insight": "<WHY engagement is high/low tied to structure>",
+  "improvement_suggestions": ["<specific actionable suggestions>"],
+  "rewritten_hook": "<better hook for USER's audience>",
+  "rewritten_cta": "<better CTA>"
 }
 
 Return ONLY valid JSON.`;
@@ -229,8 +237,9 @@ Return ONLY valid JSON.`;
   return JSON.parse(raw);
 }
 
-async function generateAggregateReport(
-  posts: any[], postAnalyses: any[], competitorName: string, userContext: string
+async function generateStrategyReport(
+  posts: any[], postAnalyses: any[], competitorName: string, userContext: string,
+  businessProfile: any, activeCampaign: any
 ): Promise<any> {
   const postsOverview = posts.map((p: any, i: number) => {
     const a = postAnalyses[i];
@@ -240,77 +249,135 @@ async function generateAggregateReport(
     const hookType = a?.post_breakdown?.hook_type || "unknown";
     const contentType = a?.post_breakdown?.content_type || "unknown";
     const tone = a?.post_breakdown?.tone || "unknown";
+    const ctaType = a?.post_breakdown?.cta_type || "none";
     const visual = p.post_format ? `, format=${p.post_format}` : "";
-    const visualDesc = p.visual_summary ? `, visual="${p.visual_summary}"` : "";
-    return `Post ${i + 1} ${metrics}: hook=${hookType}, type=${contentType}, tone=${tone}${visual}${visualDesc}\nContent preview: ${p.content?.substring(0, 200)}...`;
+    return `Post ${i + 1} ${metrics}: hook=${hookType}, type=${contentType}, tone=${tone}, cta=${ctaType}${visual}\nPreview: ${p.content?.substring(0, 250)}...`;
   }).join("\n\n");
 
-  const hasVisualPosts = posts.some((p: any) => p.post_format || p.visual_summary);
-  const visualStrategyBlock = hasVisualPosts ? `
-  "visual_strategy": {
-    "dominant_visual_types": ["<most common visual formats used>"],
-    "best_performing_visuals": "<which visual types get best engagement>",
-    "visual_gaps": ["<visual approaches they are NOT using>"],
-    "visual_consistency": "<how consistent is their visual branding>"
-  },` : "";
+  const userAdvantages = businessProfile ? [
+    businessProfile.differentiators ? `Differentiators: ${JSON.stringify(businessProfile.differentiators)}` : "",
+    businessProfile.brand_tone ? `Tone: ${businessProfile.brand_tone}` : "",
+    businessProfile.target_audience ? `Target: ${businessProfile.target_audience}` : "",
+  ].filter(Boolean).join("\n") : "Not specified";
 
-  const prompt = `You are an elite competitive intelligence analyst for LinkedIn strategy. Analyze ${posts.length} posts from competitor "${competitorName || "Unknown"}".
+  const campaignGoal = activeCampaign
+    ? `Active campaign "${activeCampaign.name}": ${activeCampaign.primary_objective}, target ${activeCampaign.target_quantity} ${activeCampaign.target_metric}`
+    : "No active campaign — default to engagement optimization";
+
+  const prompt = `You are an elite competitive intelligence strategist for LinkedIn. Analyze ${posts.length} posts from "${competitorName || "Unknown"}" and generate an ACTIONABLE competitive strategy.
 
 ${userContext}
 
-POST SUMMARIES:
+USER'S ADVANTAGES:
+${userAdvantages}
+
+CAMPAIGN GOAL:
+${campaignGoal}
+
+COMPETITOR POSTS:
 ${postsOverview}
 
-Generate a COMPREHENSIVE strategic report. Be SPECIFIC. Reference patterns across posts. Make recommendations RELATIVE to the user's business context.
+Generate a COMPREHENSIVE, DECISIVE, SPECIFIC report. NO vague language. Every recommendation must be outcome-linked.
 
-Return JSON with this EXACT structure:
+Return JSON:
 {
-  "patterns": ["<3-5 specific content patterns found across posts>"],
-  "gaps": ["<3-5 real strategic gaps the user can exploit>"],
-  "overused_themes": ["<2-4 themes they repeat too much>"],
-  "suggested_angles": ["<3-5 content angles the user should use to differentiate>"],
-  "content_strategy_overview": {
-    "content_type_distribution": {"storytelling": "<percentage>", "educational": "<percentage>", "product_led": "<percentage>", "authority": "<percentage>"},
-    "posting_consistency": "<assessment>",
-    "variety_vs_repetition": "<assessment>",
-    "format_preferences": ["<formats they use most>"]
+  "win_strategy": {
+    "competitor_name": "${competitorName}",
+    "primary_weakness": "<single most exploitable weakness — be specific>",
+    "user_advantage": "<user's strongest advantage over this competitor>",
+    "winning_strategy": ["<3-4 specific, decisive strategy bullets>"],
+    "expected_engagement_lift": "<e.g. +30-50%>",
+    "expected_conversion_lift": "<e.g. +15-25%>"
   },
-  "messaging_patterns": {
-    "core_themes": ["<main themes with frequency>"],
-    "repeated_narratives": ["<stories/angles they repeat>"],
-    "language_patterns": ["<specific language/phrasing patterns>"],
-    "positioning_statement": "<how they position themselves>"
-  },
-  "audience_strategy": {
-    "primary_target": "<who they mainly target>",
-    "awareness_level_focus": "<which awareness levels they serve>",
-    "personas_addressed": ["<specific personas>"],
-    "personas_ignored": ["<personas they miss - opportunity for user>"]
-  },
-  "strengths_analysis": ["<pattern-based strengths with evidence>"],
-  "weaknesses_analysis": ["<real weaknesses with evidence - be harsh and honest>"],
-  "performance_insights": {
-    "best_performing_type": "<which post types work best and why>",
-    "worst_performing_type": "<which fail and why>",
-    "engagement_triggers": ["<what triggers engagement>"],
-    "engagement_killers": ["<what kills engagement>"]
-  },${visualStrategyBlock}
-  "strategic_opportunities": [
+  "content_gap_matrix": [
+    {"content_type": "Storytelling", "competitor_pct": <0-100>, "ideal_pct": <0-100>, "gap_level": "<high|medium|low>", "action": "<what to do>"},
+    {"content_type": "Pain-based", "competitor_pct": <0-100>, "ideal_pct": <0-100>, "gap_level": "<high|medium|low>", "action": "<what to do>"},
+    {"content_type": "Educational", "competitor_pct": <0-100>, "ideal_pct": <0-100>, "gap_level": "<high|medium|low>", "action": "<what to do>"},
+    {"content_type": "Product-led", "competitor_pct": <0-100>, "ideal_pct": <0-100>, "gap_level": "<high|medium|low>", "action": "<what to do>"},
+    {"content_type": "CTA-driven", "competitor_pct": <0-100>, "ideal_pct": <0-100>, "gap_level": "<high|medium|low>", "action": "<what to do>"},
+    {"content_type": "Engagement hooks", "competitor_pct": <0-100>, "ideal_pct": <0-100>, "gap_level": "<high|medium|low>", "action": "<what to do>"}
+  ],
+  "content_angles": [
     {
-      "opportunity": "<specific opportunity>",
-      "reasoning": "<why this works>",
-      "action": "<what to do>"
+      "title": "<specific post title/angle>",
+      "description": "<1-2 sentence description>",
+      "hook_type": "<curiosity|pain|data|story|contrarian|question|bold_claim>",
+      "intent": "<engagement|lead|awareness|conversion>",
+      "why_it_beats_competitor": "<specific reasoning>",
+      "example_hook": "<actual hook line>"
     }
   ],
-  "actionable_recommendations": [
+  "opportunity_scores": [
     {
-      "action": "<specific action>",
-      "priority": "<high|medium|low>",
-      "category": "<content|tone|audience|cta|positioning>",
-      "reasoning": "<why this matters>"
+      "opportunity": "<specific opportunity>",
+      "score": <1-10>,
+      "impact": "<high|medium|low>",
+      "effort": "<low|medium|high>",
+      "priority": "<do_first|do_next|optional>",
+      "reasoning": "<why this matters>",
+      "action": "<what exactly to do>"
     }
-  ]
+  ],
+  "predicted_outcomes": {
+    "engagement_improvement": "<e.g. +30-50% higher than competitor>",
+    "conversion_improvement": "<e.g. +15-25% more DMs/leads>",
+    "reach_potential": "<moderate|high|very_high>",
+    "confidence": "<high|medium|low>",
+    "tied_to_goal": "<how this connects to campaign goal or default engagement>"
+  },
+  "campaign_blueprint": {
+    "duration_weeks": 4,
+    "posts_per_week": 2,
+    "total_posts": 8,
+    "weeks": [
+      {"week": 1, "theme": "<theme>", "posts": [{"type": "<content type>", "angle": "<specific angle>", "hook_type": "<type>", "cta": "<cta type>"}]},
+      {"week": 2, "theme": "<theme>", "posts": [{"type": "<content type>", "angle": "<specific angle>", "hook_type": "<type>", "cta": "<cta type>"}]},
+      {"week": 3, "theme": "<theme>", "posts": [{"type": "<content type>", "angle": "<specific angle>", "hook_type": "<type>", "cta": "<cta type>"}]},
+      {"week": 4, "theme": "<theme>", "posts": [{"type": "<content type>", "angle": "<specific angle>", "hook_type": "<type>", "cta": "<cta type>"}]}
+    ]
+  },
+  "winning_position": {
+    "focus_audience": "<specific audience segment to target>",
+    "messaging_approach": "<how to simplify/differentiate messaging>",
+    "cta_strategy": "<specific CTA approach>",
+    "local_context": "<any local/contextual advantage>",
+    "key_moves": ["<3-4 specific positioning moves>"]
+  },
+  "patterns": ["<3-5 content patterns>"],
+  "gaps": ["<3-5 strategic gaps to exploit>"],
+  "overused_themes": ["<2-4 themes they overuse>"],
+  "suggested_angles": ["<3-5 angles — brief>"],
+  "content_strategy_overview": {
+    "content_type_distribution": {"storytelling": "<pct>", "educational": "<pct>", "product_led": "<pct>", "authority": "<pct>"},
+    "posting_consistency": "<assessment>",
+    "variety_vs_repetition": "<assessment>",
+    "format_preferences": ["<formats>"]
+  },
+  "messaging_patterns": {
+    "core_themes": ["<themes>"],
+    "repeated_narratives": ["<narratives>"],
+    "language_patterns": ["<patterns>"],
+    "positioning_statement": "<how they position>"
+  },
+  "audience_strategy": {
+    "primary_target": "<who>",
+    "awareness_level_focus": "<levels>",
+    "personas_addressed": ["<personas>"],
+    "personas_ignored": ["<personas user can target>"]
+  },
+  "strengths_analysis": ["<strengths with evidence>"],
+  "weaknesses_analysis": ["<weaknesses with evidence>"],
+  "performance_insights": {
+    "best_performing_type": "<type + why>",
+    "worst_performing_type": "<type + why>",
+    "engagement_triggers": ["<triggers>"],
+    "engagement_killers": ["<killers>"]
+  },
+  "strategic_opportunities": [{"opportunity": "<>", "reasoning": "<>", "action": "<>"}],
+  "actionable_recommendations": [{"action": "<specific>", "priority": "<high|medium|low>", "category": "<content|tone|audience|cta|positioning>", "reasoning": "<outcome-linked>", "expected_impact": "<specific metric improvement>"}]
 }
+
+CRITICAL: Generate at least 5 content_angles and 5 opportunity_scores. Every recommendation MUST include expected impact. NO generic advice.
 
 Return ONLY valid JSON.`;
 

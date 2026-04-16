@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,13 @@ import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { WinStrategySummary } from "@/components/competitor/WinStrategySummary";
+import { ContentGapMatrix } from "@/components/competitor/ContentGapMatrix";
+import { ContentAnglesPanel } from "@/components/competitor/ContentAnglesPanel";
+import { OpportunityScoringCards } from "@/components/competitor/OpportunityScoringCards";
+import { PredictedOutcomePanel } from "@/components/competitor/PredictedOutcomePanel";
+import { CampaignFromCompetitor } from "@/components/competitor/CampaignFromCompetitor";
+import { WinningPositionCard } from "@/components/competitor/WinningPositionCard";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
@@ -38,6 +46,9 @@ type CompetitorInsight = {
   content_strategy_overview: any; messaging_patterns: any; audience_strategy: any;
   strengths_analysis: any; weaknesses_analysis: any; performance_insights: any;
   strategic_opportunities: any; actionable_recommendations: any;
+  win_strategy: any; content_gap_matrix: any; content_angles: any;
+  opportunity_scores: any; predicted_outcomes: any; campaign_blueprint: any;
+  winning_position: any;
 };
 
 type ExtractionField = { value: any; confidence: string };
@@ -62,6 +73,7 @@ const confidenceIcon = (c: string) => {
 };
 
 const CompetitorsPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -519,7 +531,15 @@ const CompetitorsPage = () => {
 
                       {/* INSIGHTS TAB */}
                       <TabsContent value="insights" className="px-4 pb-4 mt-2">
-                        {compInsight ? <InsightsPanel insight={compInsight} /> : (
+                        {compInsight ? (
+                          <div className="space-y-6">
+                            <WinStrategySummary strategy={compInsight.win_strategy} />
+                            <ContentGapMatrix matrix={compInsight.content_gap_matrix} />
+                            <PredictedOutcomePanel outcomes={compInsight.predicted_outcomes} />
+                            <WinningPositionCard position={compInsight.winning_position} />
+                            <InsightsPanel insight={compInsight} />
+                          </div>
+                        ) : (
                           <div className="text-center py-8 text-muted-foreground text-sm">
                             <Eye className="h-8 w-8 mx-auto mb-2 opacity-50" />
                             Run "Full Analysis" with 2+ posts to generate insights.
@@ -529,7 +549,37 @@ const CompetitorsPage = () => {
 
                       {/* STRATEGY TAB */}
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
-                        {compInsight ? <StrategyPanel insight={compInsight} /> : (
+                        {compInsight ? (
+                          <div className="space-y-6">
+                            <ContentAnglesPanel
+                              angles={compInsight.content_angles}
+                              onCreatePost={(angle) => {
+                                // Store angle data for create page
+                                sessionStorage.setItem("competitor_strategy", JSON.stringify({
+                                  hook_type: angle.hook_type,
+                                  intent: angle.intent,
+                                  title: angle.title,
+                                  example_hook: angle.example_hook,
+                                }));
+                                navigate("/create");
+                              }}
+                            />
+                            <OpportunityScoringCards scores={compInsight.opportunity_scores} />
+                            <CampaignFromCompetitor
+                              blueprint={compInsight.campaign_blueprint}
+                              competitorName={comp.name}
+                              onGenerateCampaign={() => {
+                                sessionStorage.setItem("competitor_campaign_blueprint", JSON.stringify({
+                                  ...compInsight.campaign_blueprint,
+                                  competitor_name: comp.name,
+                                  win_strategy: compInsight.win_strategy,
+                                }));
+                                navigate("/campaign/new");
+                              }}
+                            />
+                            <StrategyPanel insight={compInsight} />
+                          </div>
+                        ) : (
                           <div className="text-center py-8 text-muted-foreground text-sm">
                             <Swords className="h-8 w-8 mx-auto mb-2 opacity-50" />
                             Run "Full Analysis" to get strategic recommendations.
