@@ -35,6 +35,7 @@ import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator
 
 import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 import { BestMoveCard } from "@/components/competitor/BestMoveCard";
+import { GuidedJourney } from "@/components/competitor/GuidedJourney";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
