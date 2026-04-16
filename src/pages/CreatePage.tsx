@@ -117,6 +117,18 @@ const CreatePage = () => {
         }
       });
     }
+
+    // Load competitor strategy if coming from competitor intelligence
+    const stored = sessionStorage.getItem("competitor_strategy");
+    if (stored) {
+      try {
+        const strategy = JSON.parse(stored);
+        setCompetitorStrategy(strategy);
+        if (strategy.title) setInstruction(strategy.title);
+        sessionStorage.removeItem("competitor_strategy");
+        toast.success("Competitor strategy loaded! Customize and generate.");
+      } catch { /* ignore */ }
+    }
   }, [user]);
 
   const handleGenerate = async () => {
