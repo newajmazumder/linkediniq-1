@@ -229,7 +229,7 @@ const CompetitorsPage = () => {
         impressions: ext_result.impressions?.value ?? "",
         post_format: ext_result.post_format?.value || "unknown",
         visual_summary: ext_result.visual_summary?.value || "",
-        post_url: "",
+        post_url: ext_result.post_url?.value || "",
         topic: ext_result.author_name?.value || "",
         screenshot_url: uploadedUrls[0],
         all_screenshot_urls: uploadedUrls,
@@ -689,7 +689,7 @@ function ScreenshotPostFlow({
       </div>
 
       {/* Post URL */}
-      <ReviewField label="Post URL (optional)" confidence="missing">
+      <ReviewField label="Post URL" confidence={extraction.post_url?.confidence || "missing"}>
         <Input value={reviewData.post_url || ""} onChange={e => updateField("post_url", e.target.value)} placeholder="https://linkedin.com/feed/update/..." className="text-xs h-8" />
       </ReviewField>
 

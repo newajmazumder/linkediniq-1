@@ -89,6 +89,10 @@ Extract and return a JSON object with this EXACT structure:
   "author_headline": {
     "value": "<headline/title of the author if visible>",
     "confidence": "high|medium|low|missing"
+  },
+  "post_url": {
+    "value": "<LinkedIn post URL if visible in the browser address bar, post menu, or anywhere in the screenshot. Look for URLs like linkedin.com/feed/update/... or linkedin.com/posts/... — return null if not visible>",
+    "confidence": "high|medium|low|missing"
   }
 }
 
