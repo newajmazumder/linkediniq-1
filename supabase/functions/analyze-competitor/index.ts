@@ -29,6 +29,48 @@ async function callAI(prompt: string, temperature = 0.4): Promise<string> {
   return raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
 }
 
+function buildMarketContextBlock(mc: any): string {
+  if (!mc) return "";
+  let block = `\nMARKET CONTEXT — ${mc.region_name} (${mc.region_code}):\n`;
+  block += `Audience Type: ${mc.audience_type}\n`;
+  block += `Tone Preference: ${mc.tone_preference}\n`;
+  block += `Buyer Maturity: ${mc.buyer_maturity}\n`;
+  block += `Content Style Bias: ${mc.content_style_bias}\n`;
+  block += `Preferred CTA Style: ${mc.preferred_cta_style}\n`;
+
+  const channels = mc.primary_channels;
+  if (Array.isArray(channels) && channels.length) block += `Primary Channels: ${channels.join(", ")}\n`;
+  const behaviors = mc.common_customer_behaviors;
+  if (Array.isArray(behaviors) && behaviors.length) block += `Customer Behaviors: ${behaviors.join("; ")}\n`;
+  const pains = mc.common_pain_points;
+  if (Array.isArray(pains) && pains.length) block += `Common Pain Points: ${pains.join("; ")}\n`;
+  const trust = mc.trust_signals;
+  if (Array.isArray(trust) && trust.length) block += `Trust Signals: ${trust.join(", ")}\n`;
+  const examples = mc.localized_examples;
+  if (Array.isArray(examples) && examples.length) block += `Localized Examples: ${examples.join("; ")}\n`;
+  const phrases = mc.localized_phrases;
+  if (Array.isArray(phrases) && phrases.length) block += `Localized Phrases: ${phrases.join("; ")}\n`;
+  const langs = mc.language_defaults;
+  if (Array.isArray(langs) && langs.length) block += `Language Defaults: ${langs.join(", ")}\n`;
+
+  const platform = mc.platform_reality;
+  if (platform && typeof platform === "object" && Object.keys(platform).length) {
+    block += `Platform Reality: ${JSON.stringify(platform)}\n`;
+  }
+  const sales = mc.sales_conversation_behavior;
+  if (sales && typeof sales === "object" && Object.keys(sales).length) {
+    block += `Sales Conversation Behavior: ${JSON.stringify(sales)}\n`;
+  }
+
+  block += `\nCRITICAL MARKET RULES:\n`;
+  block += `- Generate ALL insights, recommendations, CTAs, and strategies NATIVELY for the ${mc.region_name} market.\n`;
+  block += `- Use ${mc.tone_preference} tone throughout. Match ${mc.content_style_bias} content style.\n`;
+  block += `- Reference ${mc.region_name}-specific behaviors, channels, and pain points in every recommendation.\n`;
+  block += `- Evaluate competitor content against LOCAL relevance — content that works globally but fails locally should be flagged.\n`;
+  block += `- CTA style must match: ${mc.preferred_cta_style}\n`;
+  return block;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -45,7 +87,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { competitor_id, competitor_name, posts, action } = await req.json();
+    const { competitor_id, competitor_name, posts, action, market_context_id } = await req.json();
     if (!competitor_id) throw new Error("Missing competitor_id");
 
     const { data: businessProfile } = await supabase
@@ -55,14 +97,22 @@ serve(async (req) => {
     const { data: campaigns } = await supabase
       .from("campaigns").select("*").eq("user_id", user.id).eq("is_active", true).limit(1);
 
-    const userContext = buildUserContext(businessProfile, personas || [], campaigns || []);
+    // Fetch market context: from param, from active campaign, or default
+    let marketContext: any = null;
+    const mcId = market_context_id || campaigns?.[0]?.market_context_id;
+    if (mcId) {
+      const { data } = await supabase.from("market_contexts").select("*").eq("id", mcId).maybeSingle();
+      marketContext = data;
+    }
+
+    const userContext = buildUserContext(businessProfile, personas || [], campaigns || [], marketContext);
 
     // ===== SINGLE POST ANALYSIS =====
     if (action === "analyze_post") {
       const targetPost = posts?.[0];
       if (!targetPost) throw new Error("No post provided");
 
-      const analysis = await analyzePostLevel(targetPost, competitor_name, userContext);
+      const analysis = await analyzePostLevel(targetPost, competitor_name, userContext, marketContext);
 
       await supabase.from("competitor_posts").update({
         post_analysis: analysis,
@@ -82,7 +132,7 @@ serve(async (req) => {
     const postAnalyses: any[] = [];
     for (const post of posts) {
       try {
-        const analysis = await analyzePostLevel(post, competitor_name, userContext);
+        const analysis = await analyzePostLevel(post, competitor_name, userContext, marketContext);
         postAnalyses.push({ post_id: post.id, ...analysis });
         await supabase.from("competitor_posts").update({
           post_analysis: analysis,
@@ -96,9 +146,9 @@ serve(async (req) => {
       }
     }
 
-    const report = await generateStrategyReport(posts, postAnalyses, competitor_name, userContext, businessProfile, campaigns?.[0]);
+    const report = await generateStrategyReport(posts, postAnalyses, competitor_name, userContext, businessProfile, campaigns?.[0], marketContext);
 
-    await supabase.from("competitor_insights").upsert({
+    const upsertData: any = {
       user_id: user.id,
       competitor_id,
       patterns: report.patterns || [],
@@ -123,7 +173,10 @@ serve(async (req) => {
       execution_plan: report.execution_plan || [],
       why_posts_work: report.why_posts_work || [],
       confidence_layer: report.confidence_layer || {},
-    }, { onConflict: "competitor_id" });
+    };
+    if (mcId) upsertData.market_context_id = mcId;
+
+    await supabase.from("competitor_insights").upsert(upsertData, { onConflict: "competitor_id" });
 
     return new Response(JSON.stringify({ success: true, post_analyses: postAnalyses }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -138,7 +191,7 @@ serve(async (req) => {
   }
 });
 
-function buildUserContext(profile: any, personas: any[], campaigns: any[]): string {
+function buildUserContext(profile: any, personas: any[], campaigns: any[], marketContext: any): string {
   if (!profile && personas.length === 0) return "No user business context available.";
   let ctx = "USER'S BUSINESS CONTEXT (INJECT INTO EVERY INSIGHT):\n";
   if (profile) {
@@ -176,35 +229,20 @@ function buildUserContext(profile: any, personas: any[], campaigns: any[]): stri
     ctx += `\nACTIVE CAMPAIGN: "${c.name}" — Goal: ${c.primary_objective || c.goal}, Target: ${c.target_quantity || "N/A"} ${c.target_metric || ""}, Timeframe: ${c.target_timeframe || "monthly"}\n`;
   }
 
-  const marketSignals = [
-    profile?.target_audience,
-    profile?.company_summary,
-    profile?.product_summary,
-    ...(personas || []).flatMap((p: any) => [p?.geography, p?.name, p?.industry]),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
-
-  const isBangladeshContext =
-    marketSignals.includes("bangladesh") ||
-    marketSignals.includes("dhaka") ||
-    marketSignals.includes("bd store") ||
-    marketSignals.includes("bangladeshi");
-
-  if (isBangladeshContext) {
-    ctx += `\nBANGLADESH MARKET REALITY:\n`;
-    ctx += `- Store owners often buy through WhatsApp and Facebook inbox conversations, not polished funnel pages.\n`;
-    ctx += `- Buyers are highly price-sensitive and respond to trust proof, screenshots, fast replies, and relatable daily business pain.\n`;
-    ctx += `- Hooks around delayed replies, missed inbox sales, \"Price ase?\" messages, COD friction, and ad spend waste are locally resonant.\n`;
-    ctx += `- Mixed Bangla-English phrasing and direct CTAs usually outperform polished corporate copy.\n`;
+  // Inject dynamic market context instead of hardcoded Bangladesh logic
+  if (marketContext) {
+    ctx += buildMarketContextBlock(marketContext);
   }
 
-  ctx += `\nCRITICAL: Reference the user's SPECIFIC product, audience, geography, and pricing in EVERY recommendation. Do NOT give generic advice. Make it personal. If Bangladesh is in context, ground every insight in Bangladeshi store-owner behavior, Facebook + WhatsApp selling reality, local buying patterns, and price sensitivity.\n`;
+  ctx += `\nCRITICAL: Reference the user's SPECIFIC product, audience, geography, and pricing in EVERY recommendation. Do NOT give generic advice. Make it personal.`;
+  if (marketContext) {
+    ctx += ` Ground every insight in ${marketContext.region_name} market behavior, local channels, and buyer patterns.`;
+  }
+  ctx += `\n`;
   return ctx;
 }
 
-async function analyzePostLevel(post: any, competitorName: string, userContext: string): Promise<any> {
+async function analyzePostLevel(post: any, competitorName: string, userContext: string, marketContext: any): Promise<any> {
   const metricsInfo = (post.likes || post.comments || post.reposts || post.impressions)
     ? `\nEngagement: ${post.likes || 0} likes, ${post.comments || 0} comments, ${post.reposts || 0} reposts, ${post.impressions || 0} impressions`
     : "\nNo engagement metrics.";
@@ -219,6 +257,14 @@ async function analyzePostLevel(post: any, competitorName: string, userContext: 
     "visual_assessment": "<what visual they used and how it relates to content>",
     "message_alignment": "<does visual support or weaken the message?>",
     "performance_impact": "<is visual helping or hurting engagement?>"
+  },` : "";
+
+  const localRelevanceBlock = marketContext ? `
+  "local_relevance": {
+    "score": "<high|medium|low>",
+    "assessment": "<how well does this post resonate with ${marketContext.region_name} audience?>",
+    "gaps": "<what's missing for local relevance?>",
+    "localization_opportunity": "<how user can win by being more locally relevant>"
   },` : "";
 
   const prompt = `You are an elite LinkedIn content strategist. Analyze this post from "${competitorName || "Unknown"}".
@@ -258,7 +304,7 @@ Return JSON:
       "differentiation": "<specific issue or 'strong'>",
       "specificity": "<specific issue or 'strong'>"
     }
-  },${creativeBlock}
+  },${creativeBlock}${localRelevanceBlock}
   "engagement_insight": "<WHY engagement is high/low tied to structure>",
   "what_you_should_replicate": "<specific element user should learn from this post>",
   "what_you_should_avoid": "<specific element user should NOT copy>",
@@ -275,7 +321,7 @@ Return ONLY valid JSON.`;
 
 async function generateStrategyReport(
   posts: any[], postAnalyses: any[], competitorName: string, userContext: string,
-  businessProfile: any, activeCampaign: any
+  businessProfile: any, activeCampaign: any, marketContext: any
 ): Promise<any> {
   const postsOverview = posts.map((p: any, i: number) => {
     const a = postAnalyses[i];
@@ -300,6 +346,13 @@ async function generateStrategyReport(
     ? `Active campaign "${activeCampaign.name}": ${activeCampaign.primary_objective}, target ${activeCampaign.target_quantity} ${activeCampaign.target_metric}`
     : "No active campaign — default to engagement optimization";
 
+  const marketName = marketContext?.region_name || "the target market";
+  const localRelevanceInstruction = marketContext
+    ? `\n- Evaluate ALL competitor content against LOCAL RELEVANCE for ${marketName}. Flag content that works globally but fails locally.
+- Add "local_relevance_score" (high/medium/low) to predicted_outcomes based on how well strategies fit ${marketName} buyer behavior.
+- Every content angle CTA must use ${marketContext.preferred_cta_style} style appropriate for ${marketName}.`
+    : "";
+
   const prompt = `You are an elite competitive intelligence strategist for LinkedIn. You speak in DECISIVE, SHARP language. Never say "you may consider" — say "you should prioritize." Every insight leads to action. Every action leads to content. Every content aims for an outcome.
 
 You MUST personalize every single recommendation to the user's specific product, audience, geography, and funnel stage. Generic advice = failure.
@@ -317,7 +370,7 @@ ${campaignGoal}
 COMPETITOR POSTS:
 ${postsOverview}
 
-Generate a COMPREHENSIVE, DECISIVE, SPECIFIC report. NO vague language. NO generic AI statements.
+Generate a COMPREHENSIVE, DECISIVE, SPECIFIC report. NO vague language. NO generic AI statements.${localRelevanceInstruction}
 
 Return JSON:
 {
@@ -376,7 +429,9 @@ Return JSON:
     "conversion_improvement": "<e.g. +15-25% more DMs/leads>",
     "reach_potential": "<moderate|high|very_high>",
     "confidence": "<high|medium|low>",
-    "tied_to_goal": "<how this connects to campaign goal or default engagement>"
+    "tied_to_goal": "<how this connects to campaign goal or default engagement>",
+    "local_relevance_score": "<high|medium|low — how well strategies fit the target market>",
+    "market_fit_assessment": "<1-2 sentence assessment of how competitor content fits vs misses the target market>"
   },
   "execution_plan": [
     {
@@ -470,7 +525,6 @@ CRITICAL RULES:
 - why_posts_work should cover top 2-3 performing posts
 - winning_position must use do_this/do_not_do/dominate_with format
 - PERSONALIZE: Reference user's specific product name, target audience, geography, pricing, and funnel stage in angles and strategies
-- If Bangladesh is in context, explicitly use Bangladeshi store-owner behavior, WhatsApp + Facebook inbox reality, local price sensitivity, and buying patterns as strategic inputs
 - best_move must be the SINGLE highest-ROI action — not generic
 
 Return ONLY valid JSON.`;
