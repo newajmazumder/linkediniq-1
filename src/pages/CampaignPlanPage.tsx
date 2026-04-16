@@ -9,12 +9,13 @@ import { toast } from "sonner";
 import {
   Loader2, Target, ChevronDown, ChevronUp, Sparkles,
   BarChart3, FileText, AlertTriangle, TrendingUp,
-  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle,
+  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
+  diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
 } from "@/lib/strategy";
 
 type Campaign = any;
@@ -32,7 +33,7 @@ const CampaignPlanPage = () => {
   const [postPlans, setPostPlans] = useState<PostPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [expandedWeek, setExpandedWeek] = useState<number | null>(1);
+  const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
   const [tab, setTab] = useState<"plan" | "analytics" | "report">("plan");
   const [analytics, setAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
