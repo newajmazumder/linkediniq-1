@@ -703,9 +703,9 @@ serve(async (req) => {
     // Determine language: request param > campaign setting > default english
     const language = requestLanguage || (campaignData as any).language || "english";
 
-    // Fetch market context if campaign has one
+    // Fetch market context: request param > campaign setting
     let marketContext: any = null;
-    const marketContextId = (campaignData as any).market_context_id;
+    const marketContextId = requestMarketContextId || (campaignData as any).market_context_id;
     if (marketContextId) {
       const { data: mc } = await supabase.from("market_contexts").select("*").eq("id", marketContextId).single();
       marketContext = mc;
