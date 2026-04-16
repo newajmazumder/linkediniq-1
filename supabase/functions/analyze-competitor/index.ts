@@ -140,24 +140,42 @@ serve(async (req) => {
 
 function buildUserContext(profile: any, personas: any[], campaigns: any[]): string {
   if (!profile && personas.length === 0) return "No user business context available.";
-  let ctx = "USER'S BUSINESS CONTEXT:\n";
+  let ctx = "USER'S BUSINESS CONTEXT (INJECT INTO EVERY INSIGHT):\n";
   if (profile) {
     if (profile.company_summary) ctx += `Company: ${profile.company_summary}\n`;
     if (profile.product_summary) ctx += `Product: ${profile.product_summary}\n`;
-    if (profile.target_audience) ctx += `Target Audience: ${profile.target_audience}\n`;
+    if (profile.target_audience) ctx += `Target Audience / ICP: ${profile.target_audience}\n`;
     if (profile.brand_tone) ctx += `Brand Tone: ${profile.brand_tone}\n`;
     const diffs = profile.differentiators;
     if (diffs && Array.isArray(diffs) && diffs.length > 0) ctx += `Differentiators: ${diffs.join(", ")}\n`;
     const problems = profile.customer_problems;
-    if (problems && Array.isArray(problems) && problems.length > 0) ctx += `Customer Problems: ${problems.join(", ")}\n`;
+    if (problems && Array.isArray(problems) && problems.length > 0) ctx += `Customer Problems Solved: ${problems.join(", ")}\n`;
+    const benefits = profile.customer_benefits;
+    if (benefits && Array.isArray(benefits) && benefits.length > 0) ctx += `Customer Benefits: ${benefits.join(", ")}\n`;
+    const features = profile.product_features;
+    if (features && Array.isArray(features) && features.length > 0) ctx += `Product Features: ${features.join(", ")}\n`;
+    const industries = profile.industries_served;
+    if (industries && Array.isArray(industries) && industries.length > 0) ctx += `Industries / Geography: ${industries.join(", ")}\n`;
+    const pillars = profile.messaging_pillars;
+    if (pillars && Array.isArray(pillars) && pillars.length > 0) ctx += `Messaging Pillars: ${pillars.join(", ")}\n`;
+    const ctas = profile.valid_ctas;
+    if (ctas && Array.isArray(ctas) && ctas.length > 0) ctx += `Valid CTAs: ${ctas.join(", ")}\n`;
+    if (profile.desired_perception) ctx += `Desired Perception: ${profile.desired_perception}\n`;
+    if (profile.founder_story) ctx += `Founder Story: ${profile.founder_story.substring(0, 300)}\n`;
   }
   if (personas.length > 0) {
-    ctx += `Personas: ${personas.map(p => `${p.name} (${p.industry || "general"}, ${p.awareness_level || "unaware"})`).join("; ")}\n`;
+    ctx += `\nAUDIENCE PERSONAS:\n`;
+    personas.forEach(p => {
+      ctx += `- ${p.name}: industry=${p.industry || "general"}, awareness=${p.awareness_level || "unaware"}, size=${p.business_size || "any"}, geo=${p.geography || "global"}\n`;
+      if (p.pain_points && Array.isArray(p.pain_points) && p.pain_points.length > 0) ctx += `  Pain points: ${p.pain_points.join(", ")}\n`;
+      if (p.goals && Array.isArray(p.goals) && p.goals.length > 0) ctx += `  Goals: ${p.goals.join(", ")}\n`;
+    });
   }
   if (campaigns.length > 0) {
     const c = campaigns[0];
-    ctx += `Active Campaign: "${c.name}" — Goal: ${c.primary_objective || c.goal}, Target: ${c.target_quantity || "N/A"} ${c.target_metric || ""}\n`;
+    ctx += `\nACTIVE CAMPAIGN: "${c.name}" — Goal: ${c.primary_objective || c.goal}, Target: ${c.target_quantity || "N/A"} ${c.target_metric || ""}, Timeframe: ${c.target_timeframe || "monthly"}\n`;
   }
+  ctx += `\nCRITICAL: Reference the user's SPECIFIC product, audience, geography, and pricing in EVERY recommendation. Do NOT give generic advice. Make it personal.\n`;
   return ctx;
 }
 
