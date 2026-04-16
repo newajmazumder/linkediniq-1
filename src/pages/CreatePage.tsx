@@ -248,7 +248,8 @@ const CreatePage = () => {
             <Select value={selectedCampaignId} onValueChange={(v) => {
               setSelectedCampaignId(v);
               const camp = campaigns.find((c) => c.id === v);
-              if (camp?.language) setLanguage(camp.language as "english" | "bangla");
+              if (camp?.language) setLanguage(camp.language);
+              if (camp?.market_context_id) setSelectedMarketId(camp.market_context_id);
             }}>
               <SelectTrigger className={`text-sm ${!selectedCampaignId || selectedCampaignId === "none" ? "border-destructive/50" : ""}`}>
                 <SelectValue placeholder="Select campaign" />
@@ -263,29 +264,43 @@ const CreatePage = () => {
             </Select>
           </div>
 
-          {/* Language Selector */}
+          {/* Target Market */}
           <div className="space-y-1">
             <label className="text-xs font-medium text-foreground flex items-center gap-1.5">
-              <Globe className="h-3.5 w-3.5" /> Language
+              <Globe className="h-3.5 w-3.5" /> Target Market
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {([
-                { value: "english" as const, label: "🇺🇸 English" },
-                { value: "bangla" as const, label: "🇧🇩 Bangla" },
-              ]).map((opt) => (
+              {marketContexts.map((mc) => (
                 <button
-                  key={opt.value}
-                  onClick={() => setLanguage(opt.value)}
+                  key={mc.id}
+                  onClick={() => setSelectedMarketId(mc.id)}
                   className={`rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${
-                    language === opt.value
+                    selectedMarketId === mc.id
                       ? "border-primary bg-primary/5 text-foreground"
                       : "border-border bg-card text-muted-foreground hover:border-primary/50 hover:text-foreground"
                   }`}
                 >
-                  {opt.label}
+                  {mc.region_code === "BD" ? "🇧🇩" : mc.region_code === "US" ? "🇺🇸" : "🌍"} {mc.region_name}
                 </button>
               ))}
             </div>
+            {selectedMarketId && (
+              <p className="text-[10px] text-muted-foreground">
+                {marketContexts.find(m => m.id === selectedMarketId)?.audience_type?.replace(/_/g, " ")}
+              </p>
+            )}
+          </div>
+
+          {/* Language Selector */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">Content Language</label>
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="english">English</SelectItem>
+                <SelectItem value="bangla">বাংলা (Bangla)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Post Type Selector */}
