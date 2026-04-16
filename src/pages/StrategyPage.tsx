@@ -130,11 +130,14 @@ const priorityColors: Record<string, string> = {
   low: "bg-muted text-muted-foreground border-border",
 };
 
+type MarketContextOption = { id: string; region_code: string; region_name: string; audience_type: string };
+
 const StrategyPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
+  const [marketContexts, setMarketContexts] = useState<MarketContextOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
