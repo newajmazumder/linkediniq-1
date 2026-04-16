@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Target, Zap, ArrowRight, Rocket } from "lucide-react";
+import { Target, Rocket } from "lucide-react";
 
 interface ContentAngle {
   title: string;
@@ -33,22 +33,20 @@ export function ContentAnglesPanel({ angles, onCreatePost, onGeneratePost }: {
     <div className="space-y-3">
       <div className="flex items-center gap-2">
         <Target className="h-4 w-4 text-foreground" />
-        <h3 className="text-sm font-semibold text-foreground">Ready-to-Execute Content Angles</h3>
-        <Badge variant="secondary" className="text-[9px]">{angles.length} angles</Badge>
+        <h3 className="text-sm font-semibold text-foreground">Ready-to-Execute Angles</h3>
+        <Badge variant="secondary" className="text-[9px]">{angles.length}</Badge>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {angles.map((angle, i) => (
           <div key={i} className="border border-border rounded-lg p-4 bg-card hover:border-primary/30 transition-colors space-y-3">
-            <div className="flex items-start justify-between gap-2">
-              <h4 className="text-xs font-bold text-foreground flex-1">
-                <span className="text-primary mr-1">{i + 1}.</span> {angle.title}
-              </h4>
-            </div>
+            <h4 className="text-xs font-bold text-foreground">
+              <span className="text-primary mr-1">{i + 1}.</span> {angle.title}
+            </h4>
 
             <p className="text-[11px] text-muted-foreground leading-relaxed">{angle.description}</p>
 
-            {/* Structured outcome card */}
+            {/* Structured outcome */}
             <div className="bg-muted/50 rounded-lg p-3 space-y-1.5">
               {angle.goal && (
                 <div className="flex items-center gap-2 text-[10px]">
@@ -87,11 +85,11 @@ export function ContentAnglesPanel({ angles, onCreatePost, onGeneratePost }: {
               </div>
             )}
 
-            {/* Action buttons */}
+            {/* Single clear action */}
             <div className="flex gap-2 pt-1">
               {onGeneratePost && (
-                <Button size="sm" className="h-7 text-[10px] px-3 gap-1" onClick={() => onGeneratePost(angle)}>
-                  <Rocket className="h-2.5 w-2.5" /> Generate Post Now
+                <Button size="sm" className="h-7 text-[10px] px-3 gap-1 flex-1" onClick={() => onGeneratePost(angle)}>
+                  <Rocket className="h-2.5 w-2.5" /> Generate Post
                 </Button>
               )}
               {onCreatePost && (
