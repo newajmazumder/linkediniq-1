@@ -255,16 +255,39 @@ const CompetitorsPage = () => {
         }
       }
 
-      // Track manual corrections
+      // Track manual corrections and update confidence for manually filled fields
       const corrections: Record<string, boolean> = {};
       if (extraction) {
-        if (reviewData.post_text !== (extraction.post_text?.value || "")) corrections.post_text = true;
-        if (String(reviewData.likes) !== String(extraction.likes?.value ?? "")) corrections.likes = true;
-        if (String(reviewData.comments) !== String(extraction.comments?.value ?? "")) corrections.comments = true;
-        if (String(reviewData.reposts) !== String(extraction.reposts?.value ?? "")) corrections.reposts = true;
-        if (String(reviewData.impressions) !== String(extraction.impressions?.value ?? "")) corrections.impressions = true;
-        if (reviewData.visual_summary !== (extraction.visual_summary?.value || "")) corrections.visual_summary = true;
-        if (reviewData.post_format !== (extraction.post_format?.value || "")) corrections.post_format = true;
+        const fieldMap: Record<string, string> = {
+          post_text: reviewData.post_text || "",
+          likes: String(reviewData.likes ?? ""),
+          comments: String(reviewData.comments ?? ""),
+          reposts: String(reviewData.reposts ?? ""),
+          impressions: String(reviewData.impressions ?? ""),
+          visual_summary: reviewData.visual_summary || "",
+          post_format: reviewData.post_format || "",
+          post_url: reviewData.post_url || "",
+        };
+        const extractionMap: Record<string, string> = {
+          post_text: extraction.post_text?.value || "",
+          likes: String(extraction.likes?.value ?? ""),
+          comments: String(extraction.comments?.value ?? ""),
+          reposts: String(extraction.reposts?.value ?? ""),
+          impressions: String(extraction.impressions?.value ?? ""),
+          visual_summary: extraction.visual_summary?.value || "",
+          post_format: extraction.post_format?.value || "",
+          post_url: extraction.post_url?.value || "",
+        };
+        for (const key of Object.keys(fieldMap)) {
+          if (fieldMap[key] !== extractionMap[key] && fieldMap[key].trim()) {
+            corrections[key] = true;
+            confidenceObj[key] = "manual";
+          }
+        }
+      }
+      // Also mark fields as manual if they were missing but user provided a value
+      if (!extraction) {
+        if (reviewData.post_url?.trim()) confidenceObj.post_url = "manual";
       }
 
       const originalWithScreenshots = {
