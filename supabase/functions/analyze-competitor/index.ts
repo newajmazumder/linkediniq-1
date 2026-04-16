@@ -287,6 +287,7 @@ Every insight must answer: "So what? What should the user DO about this?"
 
 Return JSON:
 {
+  "brutal_verdict": "<max 15 words. Pure decision clarity. Examples: 'Strong authority. Weak conversion. Easy to beat.' or 'Low impact post. Not worth reacting to.'>",
   "post_breakdown": {
     "hook_type": "<curiosity|pain|data|story|contrarian|question|bold_claim|none>",
     "content_type": "<educational|storytelling|product_led|authority|promotional|thought_leadership>",
@@ -299,12 +300,13 @@ Return JSON:
     "engagement_potential": "<low|medium|high>",
     "conversion_intent_strength": "<low|medium|high>",
     "competitive_threat_level": "<low|medium|high>",
-    "verdict": "<1-2 sentence decisive verdict — e.g. 'This post builds authority but fails to convert due to weak CTA and no urgency trigger.'>"
+    "threat_action": "<ignore|learn|must_respond>",
+    "verdict": "<1-2 sentence decisive verdict — e.g. 'This post builds authority but is NOT a conversion threat. Weak CTA and no urgency trigger.'>"
   },
   "exploitable_weaknesses": [
     {
-      "weakness": "<specific weakness phrased as opportunity — e.g. 'Too technical for store owners — loses non-technical audience'>",
-      "how_to_exploit": "<what user should do to capitalize on this>"
+      "weakness": "<SHORT bullet: weakness + implication — e.g. 'Too technical → loses non-technical store owners'>",
+      "how_to_exploit": "<1 line action>"
     }
   ],
   "strength_analysis": {
@@ -324,9 +326,9 @@ Return JSON:
     }
   },${creativeBlock}${marketFitBlock}
   "behavioral_insight": {
-    "scroll_stop_power": "<why users stop or don't stop scrolling>",
-    "engagement_trigger": "<what triggers engagement>",
-    "attention_drop_point": "<where attention drops and why>",
+    "scroll_stop_power": "<1 line: weak/medium/strong + why>",
+    "engagement_trigger": "<1 line: what triggers engagement>",
+    "attention_drop_point": "<1 line: where attention drops and why>",
     "psychology_summary": "<1-2 sentence psychological analysis>"
   },
   "winning_move": {
@@ -335,11 +337,19 @@ Return JSON:
     "better_cta": "<more aggressive / clearer / localized CTA>",
     "strategic_advantage": "<WHY your version wins — reference competitor weakness>"
   },
+  "what_to_do_now": [
+    "<action 1: most important executable action>",
+    "<action 2: secondary action>",
+    "<action 3: optional follow-up>"
+  ],
   "outperform_version": "<full rewritten post (150-300 words) optimized for user's audience, market, and campaign goal — stronger hook, better CTA, more locally relevant>",
   "competitive_benchmark": {
-    "hook_vs_standard": "<e.g. '30% weaker than high-performing patterns in this niche'>",
+    "hook_vs_standard": "<e.g. '30% weaker than high-performing patterns'>",
+    "hook_direction": "<weaker|stronger|similar>",
     "engagement_vs_top": "<comparison to top-performing posts>",
-    "cta_vs_best_practice": "<comparison to best practice CTAs>"
+    "engagement_direction": "<below_average|average|above_average>",
+    "cta_vs_best_practice": "<comparison to best practice CTAs>",
+    "cta_direction": "<weak|adequate|strong>"
   },
   "audience_targeting": {
     "who_targeted": "<specific>",
