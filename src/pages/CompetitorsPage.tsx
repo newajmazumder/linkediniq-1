@@ -623,13 +623,23 @@ const CompetitorsPage = () => {
                               })}
                             />
 
-                            {/* Predicted Outcomes with action */}
+                            {/* Predicted Outcomes with actions */}
                             <PredictedOutcomePanel
                               outcomes={compInsight.predicted_outcomes}
                               onApplyStrategy={() => navigateToCreate({
                                 win_strategy: compInsight.win_strategy,
                                 winning_position: compInsight.winning_position,
                               })}
+                              onCreatePost={() => {
+                                const angle = compInsight.content_angles?.[0];
+                                navigateToCreate({
+                                  hook_type: angle?.hook_type || "pain",
+                                  intent: "conversion",
+                                  title: angle?.title || "Strategy-driven post",
+                                  auto_generate: true,
+                                });
+                              }}
+                              onCreateCampaign={() => navigateToCampaign(compInsight, comp.name)}
                             />
 
                             {/* Content Gap Matrix with per-row actions */}
