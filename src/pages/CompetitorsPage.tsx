@@ -126,11 +126,24 @@ const CompetitorsPage = () => {
   const [reviewData, setReviewData] = useState<Record<string, any>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (user) { fetchCompetitors(); fetchBusinessProfile(); } }, [user]);
+  const [activeMarketContextId, setActiveMarketContextId] = useState<string | null>(null);
+  const [activeMarketName, setActiveMarketName] = useState<string | null>(null);
+
+  useEffect(() => { if (user) { fetchCompetitors(); fetchBusinessProfile(); fetchActiveMarketContext(); } }, [user]);
 
   const fetchBusinessProfile = async () => {
     const { data } = await supabase.from("business_profiles").select("product_summary, target_audience, company_summary").eq("user_id", user!.id).maybeSingle();
     setBusinessProfile(data as BusinessProfile | null);
+  };
+
+  const fetchActiveMarketContext = async () => {
+    const { data: campaign } = await supabase
+      .from("campaigns").select("market_context_id").eq("user_id", user!.id).eq("is_active", true).limit(1).maybeSingle();
+    if (campaign?.market_context_id) {
+      setActiveMarketContextId(campaign.market_context_id);
+      const { data: mc } = await supabase.from("market_contexts").select("region_name, region_code").eq("id", campaign.market_context_id).maybeSingle();
+      if (mc) setActiveMarketName(`${mc.region_code === "BD" ? "🇧🇩" : mc.region_code === "US" ? "🇺🇸" : "🌍"} ${mc.region_name}`);
+    }
   };
 
   const fetchCompetitors = async () => {
