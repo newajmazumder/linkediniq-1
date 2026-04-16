@@ -14,11 +14,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Plus, Trash2, Target, ChevronDown, ChevronUp, Sparkles, ArrowRight, AlertTriangle, TrendingUp } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useNavigate } from "react-router-dom";
+import {
+  Loader2, Plus, Trash2, Target, Sparkles, ArrowRight,
+  AlertTriangle, TrendingUp, ChevronRight, Zap, Flame, Edit2,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import {
+  computeCampaignState, STATE_META, computeStrategyScore, scoreColor,
+} from "@/lib/strategy";
 
 type Persona = { id: string; name: string };
 type Campaign = {
@@ -50,6 +55,8 @@ type CampaignProgress = {
   metric_name: string;
   gap_analysis: string | null;
 };
+
+type PostingStat = { campaign_id: string; total: number; drafted: number };
 
 const objectives = [
   "awareness", "engagement", "followers", "profile_visits",
@@ -124,12 +131,6 @@ type GapAnalysis = {
   overused?: string[];
 };
 
-const priorityColors: Record<string, string> = {
-  high: "bg-destructive/10 text-destructive border-destructive/20",
-  medium: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
-  low: "bg-muted text-muted-foreground border-border",
-};
-
 type MarketContextOption = { id: string; region_code: string; region_name: string; audience_type: string };
 
 const StrategyPage = () => {
@@ -143,16 +144,22 @@ const StrategyPage = () => {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [tab, setTab] = useState<"campaigns" | "recommendations">("campaigns");
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [gapAnalysis, setGapAnalysis] = useState<GapAnalysis | null>(null);
   const [loadingRecs, setLoadingRecs] = useState(false);
   const [progress, setProgress] = useState<Record<string, CampaignProgress>>({});
+  const [postingStats, setPostingStats] = useState<Record<string, PostingStat>>({});
 
   useEffect(() => {
     if (user) {
-      Promise.all([fetchCampaigns(), fetchPersonas(), fetchRecommendations(), fetchProgress()]).then(() => setLoading(false));
+      Promise.all([
+        fetchCampaigns(),
+        fetchPersonas(),
+        fetchRecommendations(),
+        fetchProgress(),
+        fetchPostingStats(),
+      ]).then(() => setLoading(false));
       supabase.from("market_contexts").select("id, region_code, region_name, audience_type").eq("is_preset", true).then(({ data }) => setMarketContexts((data || []) as MarketContextOption[]));
     }
   }, [user]);
@@ -166,6 +173,22 @@ const StrategyPage = () => {
       const map: Record<string, CampaignProgress> = {};
       for (const p of data) map[p.campaign_id] = p as CampaignProgress;
       setProgress(map);
+    }
+  };
+
+  const fetchPostingStats = async () => {
+    const { data } = await supabase
+      .from("campaign_post_plans")
+      .select("campaign_id, status")
+      .eq("user_id", user!.id);
+    if (data) {
+      const map: Record<string, PostingStat> = {};
+      for (const row of data as any[]) {
+        if (!map[row.campaign_id]) map[row.campaign_id] = { campaign_id: row.campaign_id, total: 0, drafted: 0 };
+        map[row.campaign_id].total += 1;
+        if (row.status && row.status !== "planned") map[row.campaign_id].drafted += 1;
+      }
+      setPostingStats(map);
     }
   };
 
@@ -311,11 +334,11 @@ const StrategyPage = () => {
   }
 
   return (
-    <div className="content-fade-in space-y-6">
+    <div className="content-fade-in space-y-6 px-4 sm:px-6 py-4">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Strategy</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Define campaigns with measurable targets and get AI recommendations.</p>
+          <h1 className="text-2xl font-semibold text-foreground">Strategy Control Center</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Run every campaign as a measurable bet — not a content calendar.</p>
         </div>
         {tab === "campaigns" && (
           <div className="flex gap-2 shrink-0">
@@ -508,86 +531,164 @@ const StrategyPage = () => {
             <div className="space-y-3">
               {campaigns.map((c) => {
                 const prog = progress[c.id];
-                const progressPct = prog && prog.target_value > 0 ? Math.min(100, Math.round((prog.current_value / prog.target_value) * 100)) : null;
+                const posting = postingStats[c.id];
+                const outcomePct = prog && prog.target_value > 0
+                  ? Math.min(100, Math.round((prog.current_value / prog.target_value) * 100))
+                  : null;
+                const postingPct = posting && posting.total > 0
+                  ? Math.round((posting.drafted / posting.total) * 100)
+                  : null;
+
+                const state = computeCampaignState({
+                  outcomePct,
+                  postingPct,
+                  totalPlanned: posting?.total,
+                  hasPlan: !!posting,
+                });
+                const meta = STATE_META[state];
+
+                const score = computeStrategyScore({
+                  hasCoreMessage: !!c.core_message,
+                  hasPersona: !!c.primary_persona_id,
+                  hasOffer: !!c.offer,
+                  hasMeasurableTarget: !!(c.target_metric && c.target_quantity),
+                  postingPct,
+                  outcomePct,
+                });
+
+                // Strategy hook (verdict line)
+                const verdict = state === "winning"
+                  ? "Outperforming the plan — double down."
+                  : state === "on_track"
+                  ? "On pace. Keep cadence steady."
+                  : state === "at_risk"
+                  ? prog?.gap_analysis || "Behind on outcome — strengthen hooks and CTAs."
+                  : state === "off_track"
+                  ? "Execution is the bottleneck. Ship posts now."
+                  : "Generate the plan to start executing.";
+
+                // Primary action
+                const primaryAction = state === "draft"
+                  ? { label: "Generate plan", onClick: () => navigate(`/campaign/${c.id}`) }
+                  : (postingPct ?? 0) < 50
+                  ? { label: "Create next post", onClick: () => navigate(`/create?campaign_id=${c.id}`) }
+                  : { label: "Open campaign", onClick: () => navigate(`/campaign/${c.id}`) };
 
                 return (
-                  <div key={c.id} className="rounded-lg border border-border bg-card">
-                    <button onClick={() => setExpandedId(expandedId === c.id ? null : c.id)} className="flex w-full items-center justify-between p-4 text-left">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-medium text-foreground">{c.name}</span>
-                          {c.target_priority && (
-                            <Badge variant="outline" className={cn("text-[10px]", priorityColors[c.target_priority] || "")}>
-                              {c.target_priority}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary capitalize">{c.primary_objective || c.goal}</span>
-                          {c.target_metric && c.target_quantity && (
-                            <span className="text-xs text-muted-foreground">
-                              {metricLabels[c.target_metric] || c.target_metric}: {c.target_quantity} / {c.target_timeframe?.replace("_", " ")}
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground">{c.tone} · {c.cta_type} CTA</span>
-                        </div>
-
-                        {/* Progress bar */}
-                        {progressPct !== null && (
-                          <div className="mt-2 flex items-center gap-2">
-                            <Progress value={progressPct} className="h-1.5 flex-1" />
-                            <span className={cn("text-[10px] font-medium", progressPct >= 80 ? "text-green-600" : progressPct >= 40 ? "text-yellow-600" : "text-muted-foreground")}>
-                              {prog.current_value}/{prog.target_value} ({progressPct}%)
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      {expandedId === c.id ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                    </button>
-                    {expandedId === c.id && (
-                      <div className="border-t border-border px-4 py-3 space-y-2 text-xs text-muted-foreground">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div><span className="font-medium text-foreground">Primary Persona:</span> {personaName(c.primary_persona_id)}</div>
-                          <div><span className="font-medium text-foreground">Secondary Persona:</span> {personaName(c.secondary_persona_id)}</div>
-                          <div className="col-span-2"><span className="font-medium text-foreground">Core Message:</span> {c.core_message || "—"}</div>
-                          {c.offer && <div className="col-span-2"><span className="font-medium text-foreground">Offer:</span> {c.offer}</div>}
-                        </div>
-
-                        {/* Target details */}
-                        {c.primary_objective && (
-                          <div className="rounded-md bg-primary/5 border border-primary/10 p-2 space-y-1">
-                            <p className="text-[10px] font-medium text-primary flex items-center gap-1"><Target className="h-3 w-3" /> Campaign Target</p>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                              <span>Objective: <span className="text-foreground capitalize">{c.primary_objective.replace("_", " ")}</span></span>
-                              {c.target_metric && <span>Metric: <span className="text-foreground">{metricLabels[c.target_metric] || c.target_metric}</span></span>}
-                              {c.target_quantity && <span>Target: <span className="text-foreground">{c.target_quantity}</span></span>}
-                              {c.target_timeframe && <span>Timeframe: <span className="text-foreground capitalize">{c.target_timeframe.replace("_", " ")}</span></span>}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Progress details */}
-                        {prog && prog.gap_analysis && (
-                          <div className="rounded-md bg-yellow-500/5 border border-yellow-500/10 p-2">
-                            <p className="text-[10px] font-medium text-yellow-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> Gap Analysis</p>
-                            <p className="text-xs text-foreground mt-0.5">{prog.gap_analysis}</p>
-                          </div>
-                        )}
-
-                        <div>
-                          <span className="font-medium text-foreground">Style Mix:</span> Storytelling {c.style_storytelling}% · Educational {c.style_educational}% · Product {c.style_product_led}% · Authority {c.style_authority}%
-                        </div>
-                        <div className="flex gap-2 pt-2">
-                          <Button size="sm" variant="outline" onClick={() => navigate(`/campaign/${c.id}`)}>
-                            <Target className="mr-1 h-3 w-3" /> View Plan
-                          </Button>
-                          <Button size="sm" variant="outline" onClick={() => startEdit(c)}>Edit</Button>
-                          <Button size="sm" variant="ghost" className="text-destructive" onClick={() => handleDelete(c.id)}>
-                            <Trash2 className="mr-1 h-3 w-3" /> Delete
-                          </Button>
-                        </div>
-                      </div>
+                  <div
+                    key={c.id}
+                    className={cn(
+                      "rounded-lg border border-border bg-card border-l-4 overflow-hidden",
+                      meta.borderClass,
                     )}
+                  >
+                    <div className="p-4 sm:p-5 space-y-4">
+                      {/* LEVEL 1 — Title + status */}
+                      <div className="flex items-start justify-between gap-3 flex-wrap">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h2 className="text-base sm:text-lg font-semibold text-foreground truncate">{c.name}</h2>
+                            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", meta.bgClass, meta.textClass)}>
+                              <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
+                              {meta.label}
+                            </span>
+                            {c.target_priority === "high" && (
+                              <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">
+                                <Flame className="mr-0.5 h-2.5 w-2.5" /> High priority
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground capitalize">
+                            {(c.primary_objective || c.goal || "").replace("_", " ")}
+                            {c.target_timeframe && ` · ${c.target_timeframe.replace("_", " ")}`}
+                          </p>
+                        </div>
+
+                        {/* Strategy Score */}
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="text-right">
+                            <div className={cn("text-lg font-bold leading-none", scoreColor(score.total))}>
+                              {score.total.toFixed(1)}
+                              <span className="text-xs font-normal text-muted-foreground">/10</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">Strategy Score</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* LEVEL 2 — Goal + progress */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="rounded-md bg-muted/40 p-3">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">🎯 Goal</p>
+                          <p className="mt-1 text-sm font-medium text-foreground">
+                            {c.target_quantity && c.target_metric
+                              ? `${c.target_quantity} ${metricLabels[c.target_metric] || c.target_metric}`
+                              : "No measurable target set"}
+                          </p>
+                          {outcomePct !== null && (
+                            <div className="mt-2 space-y-1">
+                              <Progress value={outcomePct} className="h-1.5" />
+                              <p className="text-[10px] text-muted-foreground">
+                                {prog!.current_value}/{prog!.target_value} ({outcomePct}%)
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="rounded-md bg-muted/40 p-3">
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">⚙️ Execution</p>
+                          {posting ? (
+                            <>
+                              <p className="mt-1 text-sm font-medium text-foreground">
+                                {posting.drafted}/{posting.total} posts created
+                              </p>
+                              <div className="mt-2 space-y-1">
+                                <Progress value={postingPct ?? 0} className="h-1.5" />
+                                <p className="text-[10px] text-muted-foreground">
+                                  {postingPct !== null && postingPct < 30 ? "Behind schedule" : postingPct! >= 70 ? "On cadence" : "Catching up"}
+                                </p>
+                              </div>
+                            </>
+                          ) : (
+                            <p className="mt-1 text-sm text-muted-foreground">Plan not generated</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Strategy Hook (verdict) */}
+                      <div className={cn("rounded-md border p-3 flex gap-2 items-start", meta.bgClass, "border-current/10", meta.textClass)}>
+                        <Zap className="h-4 w-4 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase tracking-wide opacity-80">💡 Strategy hook</p>
+                          <p className="text-xs text-foreground mt-0.5">
+                            {c.core_message || verdict}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* LEVEL 3 — Compact context strip */}
+                      <div className="flex flex-wrap gap-2 text-[10px] text-muted-foreground">
+                        <span className="rounded-full bg-secondary px-2 py-0.5">👤 {personaName(c.primary_persona_id)}</span>
+                        {c.tone && <span className="rounded-full bg-secondary px-2 py-0.5">🎙 {c.tone}</span>}
+                        {c.cta_type && <span className="rounded-full bg-secondary px-2 py-0.5">🎯 {c.cta_type} CTA</span>}
+                        {c.offer && <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">🎁 {c.offer}</span>}
+                      </div>
+
+                      {/* Primary action row */}
+                      <div className="flex items-center justify-between gap-2 pt-1 border-t border-border flex-wrap">
+                        <Button size="sm" onClick={primaryAction.onClick} className="gap-1">
+                          {primaryAction.label} <ChevronRight className="h-3.5 w-3.5" />
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>
+                            <Edit2 className="h-3 w-3" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDelete(c.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 );
               })}
