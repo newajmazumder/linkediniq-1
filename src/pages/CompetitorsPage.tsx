@@ -30,6 +30,8 @@ import { ExecutionPlanTimeline } from "@/components/competitor/ExecutionPlanTime
 import { WhyPostsWorkPanel } from "@/components/competitor/WhyPostsWorkPanel";
 import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator";
 import { QuickActionsPanel } from "@/components/competitor/QuickActionsPanel";
+import { DecisionHeader } from "@/components/competitor/DecisionHeader";
+import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
