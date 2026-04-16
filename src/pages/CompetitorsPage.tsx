@@ -438,6 +438,7 @@ const CompetitorsPage = () => {
                                 reviewData={reviewData}
                                 setReviewData={setReviewData}
                                 onFileSelect={handleScreenshotSelect}
+                                onPaste={handlePaste}
                                 onExtract={runExtraction}
                                 onSave={() => saveScreenshotPost(comp.id)}
                                 onCancel={resetPostForm}
@@ -501,12 +502,13 @@ const CompetitorsPage = () => {
 
 function ScreenshotPostFlow({
   screenshotPreview, screenshotFile, extracting, extraction, reviewData, setReviewData,
-  onFileSelect, onExtract, onSave, onCancel, saving, fileInputRef,
+  onFileSelect, onPaste, onExtract, onSave, onCancel, saving, fileInputRef,
 }: {
   screenshotPreview: string | null; screenshotFile: File | null; extracting: boolean;
   extraction: ExtractionResult | null; reviewData: Record<string, any>;
   setReviewData: (d: Record<string, any>) => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onPaste: (e: React.ClipboardEvent) => void;
   onExtract: () => void; onSave: () => void; onCancel: () => void; saving: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
 }) {
