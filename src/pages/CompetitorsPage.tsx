@@ -537,8 +537,11 @@ const CompetitorsPage = () => {
                       <TabsContent value="insights" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
+                            {/* Confidence indicator at top */}
+                            <ConfidenceIndicator confidence={compInsight.confidence_layer} />
                             <WinStrategySummary strategy={compInsight.win_strategy} />
                             <ContentGapMatrix matrix={compInsight.content_gap_matrix} />
+                            <WhyPostsWorkPanel items={compInsight.why_posts_work} />
                             <PredictedOutcomePanel outcomes={compInsight.predicted_outcomes} />
                             <WinningPositionCard position={compInsight.winning_position} />
                             <InsightsPanel insight={compInsight} />
@@ -555,15 +558,90 @@ const CompetitorsPage = () => {
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
+                            {/* Quick Actions Panel */}
+                            <QuickActionsPanel
+                              hasInsights={true}
+                              onGenerate7DayPlan={() => {
+                                const firstAngle = compInsight.content_angles?.[0];
+                                if (firstAngle) {
+                                  sessionStorage.setItem("competitor_strategy", JSON.stringify({
+                                    hook_type: firstAngle.hook_type,
+                                    intent: firstAngle.intent,
+                                    title: firstAngle.title,
+                                    example_hook: firstAngle.example_hook,
+                                    goal: firstAngle.goal,
+                                    cta_style: firstAngle.cta_style,
+                                  }));
+                                  navigate("/create");
+                                }
+                              }}
+                              onGenerate4WeekCampaign={() => {
+                                sessionStorage.setItem("competitor_campaign_blueprint", JSON.stringify({
+                                  ...compInsight.campaign_blueprint,
+                                  competitor_name: comp.name,
+                                  win_strategy: compInsight.win_strategy,
+                                }));
+                                navigate("/campaign/new");
+                              }}
+                              onCreatePostsFromAngles={() => {
+                                const angle = compInsight.content_angles?.[0];
+                                if (angle) {
+                                  sessionStorage.setItem("competitor_strategy", JSON.stringify({
+                                    hook_type: angle.hook_type,
+                                    intent: angle.intent,
+                                    title: angle.title,
+                                    example_hook: angle.example_hook,
+                                    goal: angle.goal,
+                                    cta_style: angle.cta_style,
+                                  }));
+                                  navigate("/create");
+                                }
+                              }}
+                              onApplyStrategy={() => {
+                                sessionStorage.setItem("competitor_strategy", JSON.stringify({
+                                  win_strategy: compInsight.win_strategy,
+                                  winning_position: compInsight.winning_position,
+                                }));
+                                navigate("/create");
+                              }}
+                            />
+
+                            {/* Execution Plan */}
+                            <ExecutionPlanTimeline
+                              plan={compInsight.execution_plan}
+                              onGeneratePost={(day) => {
+                                sessionStorage.setItem("competitor_strategy", JSON.stringify({
+                                  title: day.post_title,
+                                  hook_type: day.hook_type,
+                                  intent: day.goal,
+                                  cta_style: day.cta,
+                                }));
+                                navigate("/create");
+                              }}
+                            />
+
                             <ContentAnglesPanel
                               angles={compInsight.content_angles}
                               onCreatePost={(angle) => {
-                                // Store angle data for create page
                                 sessionStorage.setItem("competitor_strategy", JSON.stringify({
                                   hook_type: angle.hook_type,
                                   intent: angle.intent,
                                   title: angle.title,
                                   example_hook: angle.example_hook,
+                                  goal: (angle as any).goal,
+                                  cta_style: (angle as any).cta_style,
+                                }));
+                                navigate("/create");
+                              }}
+                              onGeneratePost={(angle) => {
+                                sessionStorage.setItem("competitor_strategy", JSON.stringify({
+                                  hook_type: angle.hook_type,
+                                  intent: angle.intent,
+                                  title: angle.title,
+                                  example_hook: angle.example_hook,
+                                  goal: (angle as any).goal,
+                                  cta_style: (angle as any).cta_style,
+                                  auto_generate: true,
                                 }));
                                 navigate("/create");
                               }}
