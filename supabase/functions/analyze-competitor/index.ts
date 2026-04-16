@@ -392,7 +392,6 @@ Return JSON:
 
 Return ONLY valid JSON.`;
 
-Return ONLY valid JSON.`;
 
   const raw = await callAI(prompt, 0.3);
   return JSON.parse(raw);
