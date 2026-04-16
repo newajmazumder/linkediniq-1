@@ -534,19 +534,24 @@ const CompetitorsPage = () => {
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
-                            {/* Decision Header - sticky top */}
-                            <DecisionHeader
+                            {/* "Your Best Move Right Now" - Start Here Layer */}
+                            <BestMoveCard
                               competitorName={comp.name}
-                              hasInsights={true}
-                              onGeneratePost={() => {
+                              winStrategy={compInsight.win_strategy}
+                              topAngle={compInsight.content_angles?.[0]}
+                              predictedOutcomes={compInsight.predicted_outcomes}
+                              userProduct={businessProfile?.product_summary || undefined}
+                              userAudience={businessProfile?.target_audience || undefined}
+                              onExecuteBestMove={() => {
                                 const angle = compInsight.content_angles?.[0];
-                                if (angle) navigateToCreate({
-                                  hook_type: angle.hook_type, intent: angle.intent,
-                                  title: angle.title, example_hook: angle.example_hook,
-                                  goal: angle.goal, cta_style: angle.cta_style,
+                                navigateToCreate({
+                                  hook_type: angle?.hook_type || "pain",
+                                  intent: angle?.intent || "conversion",
+                                  title: angle?.title || compInsight.win_strategy?.winning_strategy?.[0] || "Winning post",
+                                  example_hook: angle?.example_hook,
+                                  goal: angle?.goal, cta_style: angle?.cta_style,
                                   auto_generate: true,
                                 });
-                                else navigateToCreate({ hook_type: "pain", intent: "conversion", auto_generate: true });
                               }}
                               onBuildCampaign={() => navigateToCampaign(compInsight, comp.name)}
                               onExploitWeakness={() => navigateToCreate({
