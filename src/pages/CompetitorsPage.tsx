@@ -389,19 +389,161 @@ const CompetitorsPage = () => {
     setAnalyzingId(null);
   };
 
-  // === Navigation helpers ===
+  // === Execution helpers ===
   const navigateToCreate = (strategyData: any) => {
     sessionStorage.setItem("competitor_strategy", JSON.stringify(strategyData));
     navigate("/create");
   };
 
-  const navigateToCampaign = (compInsight: CompetitorInsight, compName: string) => {
-    sessionStorage.setItem("competitor_campaign_blueprint", JSON.stringify({
-      ...compInsight.campaign_blueprint,
-      competitor_name: compName,
-      win_strategy: compInsight.win_strategy,
-    }));
-    navigate("/campaign/new");
+  const buildCampaignFromInsight = async (
+    compInsight: CompetitorInsight,
+    compName: string,
+    options?: { openFirstPost?: boolean }
+  ) => {
+    if (!user) return;
+
+    const launchToast = toast.loading(
+      options?.openFirstPost
+        ? "Building your campaign and generating Post 1..."
+        : "Building your campaign plan..."
+    );
+
+    try {
+      const topAngle = compInsight.content_angles?.[0];
+      const objectiveMap: Record<string, string> = {
+        lead: "lead_generation",
+        conversion: "dms",
+        dm: "dms",
+        awareness: "awareness",
+        engagement: "engagement",
+      };
+      const targetMetricMap: Record<string, string> = {
+        lead_generation: "leads",
+        dms: "dms",
+        awareness: "impressions",
+        engagement: "comments",
+      };
+
+      const campaignObjective = objectiveMap[topAngle?.intent || "engagement"] || "engagement";
+      const campaignName = `${compName} Counter Campaign`;
+      const durationWeeks = compInsight.campaign_blueprint?.duration_weeks || 4;
+      const postsPerWeek = compInsight.campaign_blueprint?.posts_per_week || 2;
+      const totalPosts = compInsight.campaign_blueprint?.total_posts || durationWeeks * postsPerWeek;
+
+      const { data: defaultPersona } = await supabase
+        .from("audience_personas")
+        .select("id")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      const { data: campaign, error: campaignError } = await supabase
+        .from("campaigns")
+        .insert({
+          user_id: user.id,
+          name: campaignName,
+          goal: campaignObjective,
+          primary_objective: campaignObjective,
+          primary_persona_id: defaultPersona?.id || null,
+          target_metric: targetMetricMap[campaignObjective] || "comments",
+          target_quantity: campaignObjective === "dms" ? 20 : campaignObjective === "lead_generation" ? 10 : 1000,
+          target_timeframe: "monthly",
+          core_message: compInsight.winning_position?.messaging_approach || compInsight.win_strategy?.winning_strategy?.[0] || topAngle?.description || null,
+          offer: businessProfile?.product_summary || null,
+          cta_type: topAngle?.cta_style || compInsight.winning_position?.cta_strategy || "soft",
+          tone: topAngle?.hook_type === "story" ? "empathetic" : "confident",
+          is_active: true,
+        })
+        .select()
+        .single();
+
+      if (campaignError || !campaign) throw campaignError || new Error("Failed to create campaign");
+
+      const { error: blueprintError } = await supabase
+        .from("campaign_blueprints")
+        .insert({
+          user_id: user.id,
+          campaign_id: campaign.id,
+          campaign_summary: {
+            name: campaignName,
+            objective: campaignObjective,
+            target_metric: targetMetricMap[campaignObjective] || "comments",
+            target_quantity: campaignObjective === "dms" ? 20 : campaignObjective === "lead_generation" ? 10 : 1000,
+            timeframe: "monthly",
+            duration_weeks: durationWeeks,
+            posts_per_week: postsPerWeek,
+            total_posts: totalPosts,
+          },
+          business_rationale: {
+            competitor_name: compName,
+            why_this_campaign: compInsight.win_strategy?.primary_weakness || compInsight.best_move?.reason || "Exploit the competitor's most visible strategic gap.",
+            expected_outcome: compInsight.predicted_outcomes?.engagement_improvement || topAngle?.expected_outcome || null,
+          },
+          audience_summary: {
+            primary_audience: businessProfile?.target_audience || compInsight.winning_position?.focus_audience || null,
+            geography: "Bangladesh",
+          },
+          messaging_strategy: {
+            core_message: topAngle?.title || compInsight.winning_position?.messaging_approach || null,
+            tone: topAngle?.hook_type === "story" ? "empathetic" : "confident",
+            differentiation: compInsight.win_strategy?.user_advantage || null,
+          },
+          cta_strategy: {
+            cta_type: topAngle?.cta_style || compInsight.winning_position?.cta_strategy || "soft",
+            primary_cta: topAngle?.cta_style || "Comment or DM to continue the conversation",
+          },
+          content_strategy: {
+            winning_position: compInsight.winning_position || {},
+            campaign_blueprint: compInsight.campaign_blueprint || {},
+            execution_plan: compInsight.execution_plan || [],
+          },
+          success_model: {
+            predicted_outcomes: compInsight.predicted_outcomes || {},
+          },
+          ai_recommendations: compInsight.actionable_recommendations || [],
+          status: "active",
+        });
+
+      if (blueprintError) throw blueprintError;
+
+      const { data: planData, error: planError } = await supabase.functions.invoke("generate-campaign-plan", {
+        body: { campaign_id: campaign.id },
+      });
+      if (planError) throw planError;
+      if (planData?.error) throw new Error(planData.error);
+
+      const firstPostPlan = planData?.post_plans?.[0];
+
+      toast.dismiss(launchToast);
+      toast.success(
+        options?.openFirstPost
+          ? "Campaign ready. Generating your first post now."
+          : "Campaign plan generated instantly."
+      );
+
+      if (options?.openFirstPost && firstPostPlan) {
+        sessionStorage.setItem("competitor_strategy", JSON.stringify({
+          title: firstPostPlan.content_angle || topAngle?.title || `${compName} counter-post`,
+          hook_type: firstPostPlan.suggested_hook_type || topAngle?.hook_type || "pain",
+          intent: topAngle?.intent || campaignObjective,
+          goal: firstPostPlan.post_objective || topAngle?.goal,
+          cta_style: firstPostPlan.suggested_cta_type || topAngle?.cta_style,
+          example_hook: topAngle?.example_hook,
+          tone: firstPostPlan.suggested_tone || null,
+          auto_generate: true,
+          momentum_step: "schedule",
+          momentum_message: "Post 1 is being generated now. Your next move is to save the strongest version and schedule it.",
+        }));
+        navigate(`/create?campaign_id=${campaign.id}&post_plan_id=${firstPostPlan.id}`);
+        return;
+      }
+
+      navigate(`/campaign/${campaign.id}`);
+    } catch (err: any) {
+      toast.dismiss(launchToast);
+      toast.error(err.message || "Failed to build campaign");
+    }
   };
 
   if (loading) return <div className="flex items-center justify-center h-64"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>;

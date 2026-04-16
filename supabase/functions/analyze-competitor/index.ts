@@ -175,7 +175,32 @@ function buildUserContext(profile: any, personas: any[], campaigns: any[]): stri
     const c = campaigns[0];
     ctx += `\nACTIVE CAMPAIGN: "${c.name}" — Goal: ${c.primary_objective || c.goal}, Target: ${c.target_quantity || "N/A"} ${c.target_metric || ""}, Timeframe: ${c.target_timeframe || "monthly"}\n`;
   }
-  ctx += `\nCRITICAL: Reference the user's SPECIFIC product, audience, geography, and pricing in EVERY recommendation. Do NOT give generic advice. Make it personal.\n`;
+
+  const marketSignals = [
+    profile?.target_audience,
+    profile?.company_summary,
+    profile?.product_summary,
+    ...(personas || []).flatMap((p: any) => [p?.geography, p?.name, p?.industry]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const isBangladeshContext =
+    marketSignals.includes("bangladesh") ||
+    marketSignals.includes("dhaka") ||
+    marketSignals.includes("bd store") ||
+    marketSignals.includes("bangladeshi");
+
+  if (isBangladeshContext) {
+    ctx += `\nBANGLADESH MARKET REALITY:\n`;
+    ctx += `- Store owners often buy through WhatsApp and Facebook inbox conversations, not polished funnel pages.\n`;
+    ctx += `- Buyers are highly price-sensitive and respond to trust proof, screenshots, fast replies, and relatable daily business pain.\n`;
+    ctx += `- Hooks around delayed replies, missed inbox sales, \"Price ase?\" messages, COD friction, and ad spend waste are locally resonant.\n`;
+    ctx += `- Mixed Bangla-English phrasing and direct CTAs usually outperform polished corporate copy.\n`;
+  }
+
+  ctx += `\nCRITICAL: Reference the user's SPECIFIC product, audience, geography, and pricing in EVERY recommendation. Do NOT give generic advice. Make it personal. If Bangladesh is in context, ground every insight in Bangladeshi store-owner behavior, Facebook + WhatsApp selling reality, local buying patterns, and price sensitivity.\n`;
   return ctx;
 }
 
@@ -444,7 +469,8 @@ CRITICAL RULES:
 - execution_plan must have exactly 4 entries (days 1, 3, 5, 7)
 - why_posts_work should cover top 2-3 performing posts
 - winning_position must use do_this/do_not_do/dominate_with format
-- PERSONALIZE: Reference user's specific product name, target audience, geography, and pricing in angles and strategies
+- PERSONALIZE: Reference user's specific product name, target audience, geography, pricing, and funnel stage in angles and strategies
+- If Bangladesh is in context, explicitly use Bangladeshi store-owner behavior, WhatsApp + Facebook inbox reality, local price sensitivity, and buying patterns as strategic inputs
 - best_move must be the SINGLE highest-ROI action — not generic
 
 Return ONLY valid JSON.`;
