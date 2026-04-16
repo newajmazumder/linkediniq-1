@@ -919,6 +919,42 @@ function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded
             <ChevronRight className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")} />{expanded ? "Hide analysis" : "View analysis"}
           </button>
         )}
+        {/* Post-level action buttons */}
+        {onNavigateToCreate && (
+          <PostActionButtons
+            post={post}
+            onRewriteBetter={() => onNavigateToCreate({
+              title: `Better version: ${post.content.slice(0, 60)}...`,
+              hook_type: post.hook_style || "pain",
+              intent: "engagement",
+              rewrite_source: post.content,
+              auto_generate: true,
+            })}
+            onGenerateCompeting={() => onNavigateToCreate({
+              title: `Competing post against: ${post.content.slice(0, 40)}...`,
+              hook_type: post.hook_style || "curiosity",
+              intent: "conversion",
+              compete_against: post.content,
+              auto_generate: true,
+            })}
+            onUseHook={() => onNavigateToCreate({
+              title: `Using hook style: ${post.hook_style}`,
+              hook_type: post.hook_style || "pain",
+              intent: "engagement",
+              example_hook: post.content.split("\n")[0],
+            })}
+            onExploitWeakness={() => {
+              const weakness = post.post_analysis?.weakness_analysis?.failures?.[0] || "weak CTA";
+              onNavigateToCreate({
+                title: `Exploit: ${weakness}`,
+                hook_type: "pain",
+                intent: "conversion",
+                exploit_weakness: weakness,
+                auto_generate: true,
+              });
+            }}
+          />
+        )}
       </div>
       {expanded && hasAnalysis && (
         <div className="border-t border-border bg-muted/20 p-4 space-y-4">
