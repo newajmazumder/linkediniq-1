@@ -853,9 +853,10 @@ function ManualPostForm({ onSave, onCancel, saving, content, setContent, topic, 
   );
 }
 
-function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded, onToggle }: {
+function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded, onToggle, onNavigateToCreate }: {
   post: CompetitorPost; competitorId: string; onDelete: (id: string, cid: string) => void;
   onAnalyze: (p: CompetitorPost, cid: string) => void; analyzing: boolean; expanded: boolean; onToggle: () => void;
+  onNavigateToCreate?: (data: any) => void;
 }) {
   const hasMetrics = post.likes || post.comments || post.reposts || post.impressions;
   const hasAnalysis = post.post_analysis && Object.keys(post.post_analysis).length > 0;
