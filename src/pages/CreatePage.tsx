@@ -208,7 +208,21 @@ const CreatePage = () => {
           </div>
         )}
 
-        {/* Strategy Selectors */}
+        {/* Competitor Strategy Banner */}
+        {competitorStrategy && (
+          <div className="rounded-lg border border-orange-500/20 bg-orange-500/5 p-3 space-y-1">
+            <p className="text-xs font-medium text-orange-700 flex items-center gap-1"><Swords className="h-3.5 w-3.5" /> Competitor Strategy Applied</p>
+            <p className="text-xs text-foreground">{competitorStrategy.title}</p>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {competitorStrategy.hook_type && <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-[10px] text-orange-700">{competitorStrategy.hook_type} hook</span>}
+              {competitorStrategy.intent && <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-secondary-foreground">{competitorStrategy.intent}</span>}
+            </div>
+            {competitorStrategy.example_hook && (
+              <p className="text-[10px] text-muted-foreground italic mt-1">Hook: "{competitorStrategy.example_hook}"</p>
+            )}
+          </div>
+        )}
+
         <div className="space-y-3">
           <div className="space-y-1">
             <label className="text-xs font-medium text-foreground">Target Persona <span className="text-destructive">*</span></label>
