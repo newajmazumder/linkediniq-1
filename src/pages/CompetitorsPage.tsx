@@ -963,10 +963,10 @@ function ScreenshotPostFlow({
         <CheckCircle2 className="h-4 w-4 text-green-600" />Review Extracted Data
         <span className="text-xs text-muted-foreground font-normal ml-2">Edit any field before saving</span>
       </div>
-      <div className="flex gap-4">
-        <div className="flex flex-col gap-2 shrink-0">
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="flex sm:flex-col gap-2 shrink-0 overflow-x-auto sm:overflow-visible">
           {screenshotPreviews.map((preview, idx) => (
-            <div key={idx} className="w-24 h-24 rounded-lg border border-border overflow-hidden bg-muted/50 relative">
+            <div key={idx} className="w-20 h-20 sm:w-24 sm:h-24 rounded-lg border border-border overflow-hidden bg-muted/50 relative shrink-0">
               <img src={preview} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-contain" />
               {idx === 0 && <span className="absolute top-0.5 left-0.5 text-[8px] bg-primary text-primary-foreground px-1 py-0.5 rounded">Primary</span>}
             </div>
