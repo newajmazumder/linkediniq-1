@@ -35,6 +35,7 @@ import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator
 
 import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 import { BestMoveCard } from "@/components/competitor/BestMoveCard";
+import { GuidedJourney } from "@/components/competitor/GuidedJourney";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
@@ -525,6 +526,12 @@ const CompetitorsPage = () => {
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
+                            {/* GUIDED JOURNEY — Step 1/2/3 */}
+                            <GuidedJourney
+                              hasInsights={!!compInsight}
+                              hasPosts={compPosts.length > 0}
+                              postCount={compPosts.length}
+                            />
                             {/* LAYER 1: Your Best Move (visually dominant hero) */}
                             <BestMoveCard
                               competitorName={comp.name}
@@ -694,10 +701,17 @@ const CompetitorsPage = () => {
                             </Collapsible>
                           </div>
                         ) : (
-                          <div className="text-center py-8 text-muted-foreground text-sm">
-                            <Swords className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p>Run "Full Analysis" with 2+ posts to generate strategy.</p>
-                            <p className="text-xs mt-1">Add posts first, then click Full Analysis to get your execution plan.</p>
+                          <div className="space-y-4">
+                            <GuidedJourney
+                              hasInsights={false}
+                              hasPosts={compPosts.length > 0}
+                              postCount={compPosts.length}
+                            />
+                            <div className="text-center py-6 text-muted-foreground">
+                              <Swords className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                              <p className="text-sm font-medium">No strategy yet</p>
+                              <p className="text-xs mt-1">Add at least 2 posts, then click <strong>Full Analysis</strong> to unlock your execution plan.</p>
+                            </div>
                           </div>
                         )}
                       </TabsContent>

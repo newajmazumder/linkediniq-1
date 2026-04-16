@@ -40,7 +40,7 @@ export function WinStrategySummary({
               <AlertTriangle className="h-3 w-3" /> Their Fatal Flaw
             </p>
             <p className="text-sm text-foreground font-medium">{strategy.primary_weakness}</p>
-            <p className="text-[10px] text-destructive/80 mt-1 italic">This is costing them conversions every day</p>
+            <p className="text-[10px] text-destructive/80 mt-1 italic">This is actively costing them leads and engagement — your window to strike</p>
           </div>
 
           <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3">
