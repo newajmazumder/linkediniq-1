@@ -625,6 +625,11 @@ const CompetitorsPage = () => {
                           <TabsTrigger value="strategy" className="text-xs">Strategy & Execution</TabsTrigger>
                         </TabsList>
                         <div className="flex gap-2 items-center">
+                          {activeMarketName && (
+                            <Badge variant="outline" className="text-[9px] h-5 px-2">
+                              {activeMarketName}
+                            </Badge>
+                          )}
                           <Button size="sm" variant="outline" onClick={() => { setAddingPostFor(comp.id); setPostInputMode("screenshot"); }} className="h-7 text-xs">
                             <Plus className="h-3 w-3 mr-1" /> Add Post
                           </Button>
