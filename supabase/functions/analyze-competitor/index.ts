@@ -240,8 +240,19 @@ async function generateAggregateReport(
     const hookType = a?.post_breakdown?.hook_type || "unknown";
     const contentType = a?.post_breakdown?.content_type || "unknown";
     const tone = a?.post_breakdown?.tone || "unknown";
-    return `Post ${i + 1} ${metrics}: hook=${hookType}, type=${contentType}, tone=${tone}\nContent preview: ${p.content?.substring(0, 200)}...`;
+    const visual = p.post_format ? `, format=${p.post_format}` : "";
+    const visualDesc = p.visual_summary ? `, visual="${p.visual_summary}"` : "";
+    return `Post ${i + 1} ${metrics}: hook=${hookType}, type=${contentType}, tone=${tone}${visual}${visualDesc}\nContent preview: ${p.content?.substring(0, 200)}...`;
   }).join("\n\n");
+
+  const hasVisualPosts = posts.some((p: any) => p.post_format || p.visual_summary);
+  const visualStrategyBlock = hasVisualPosts ? `
+  "visual_strategy": {
+    "dominant_visual_types": ["<most common visual formats used>"],
+    "best_performing_visuals": "<which visual types get best engagement>",
+    "visual_gaps": ["<visual approaches they are NOT using>"],
+    "visual_consistency": "<how consistent is their visual branding>"
+  },` : "";
 
   const prompt = `You are an elite competitive intelligence analyst for LinkedIn strategy. Analyze ${posts.length} posts from competitor "${competitorName || "Unknown"}".
 
