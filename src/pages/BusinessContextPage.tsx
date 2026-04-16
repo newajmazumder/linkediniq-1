@@ -8,7 +8,7 @@ const BusinessContextPage = () => {
   const [activeTab, setActiveTab] = useState("sources");
 
   return (
-    <div className="content-fade-in space-y-6 px-6 py-8 max-w-5xl">
+    <div className="content-fade-in space-y-6 px-4 md:px-6 py-6 md:py-8 max-w-5xl">
       <div>
         <h1 className="text-2xl font-semibold text-foreground">Business Context</h1>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -212,7 +212,7 @@ const SettingsPage = () => {
 
           {account ? (
             <>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Display Name</p>
                   <p className="text-sm font-medium text-foreground">{account.display_name || "—"}</p>

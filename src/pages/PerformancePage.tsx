@@ -148,9 +148,9 @@ const PerformancePage = () => {
   const fulfilledCount = posts.filter(p => p.evaluation?.fulfillment_status === "fulfilled").length;
 
   return (
-    <div className="content-fade-in h-full flex">
+    <div className="content-fade-in h-full flex flex-col md:flex-row">
       {/* Left: Post list */}
-      <div className="w-[420px] shrink-0 border-r border-border overflow-y-auto px-6 py-8">
+      <div className="w-full md:w-[420px] md:shrink-0 md:border-r border-b md:border-b-0 border-border overflow-y-auto px-4 md:px-6 py-6 md:py-8">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-semibold text-foreground">Performance</h1>
@@ -310,7 +310,7 @@ const PerformancePage = () => {
       </div>
 
       {/* Right: Empty state / instructions */}
-      <div className="flex-1 overflow-y-auto px-6 py-8 flex items-center justify-center">
+      <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6 md:py-8 hidden md:flex items-center justify-center">
         <div className="text-center max-w-md">
           <Target className="mx-auto h-10 w-10 text-muted-foreground mb-4" />
           <h2 className="text-lg font-semibold text-foreground mb-2">Select a post to analyze</h2>

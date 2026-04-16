@@ -176,12 +176,12 @@ const AudiencePage = () => {
 
   return (
     <div className="content-fade-in space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Audience Profiles</h1>
           <p className="mt-1 text-sm text-muted-foreground">Define target personas for strategy-aware content.</p>
         </div>
-        <Button size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyPersona); }}>
+        <Button size="sm" className="shrink-0" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyPersona); }}>
           <Plus className="mr-1 h-3.5 w-3.5" />New Persona
         </Button>
       </div>
@@ -189,7 +189,7 @@ const AudiencePage = () => {
       {showForm && (
         <div className="rounded-lg border border-border bg-card p-5 space-y-4">
           <h3 className="text-sm font-medium text-foreground">{editingId ? "Edit" : "Create"} Persona</h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Persona Name *</label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder='e.g. "Ecommerce Founder – BD"' className="text-sm" /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Industry</label><Input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} placeholder="e.g. Ecommerce, SaaS" className="text-sm" /></div>
             <div className="space-y-1"><label className="text-xs font-medium text-foreground">Business Size</label><Select value={form.business_size} onValueChange={(v) => setForm({ ...form, business_size: v })}><SelectTrigger className="text-sm"><SelectValue /></SelectTrigger><SelectContent>{businessSizes.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select></div>
