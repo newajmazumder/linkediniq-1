@@ -32,7 +32,6 @@ import { WinningPositionCard } from "@/components/competitor/WinningPositionCard
 import { ExecutionPlanTimeline } from "@/components/competitor/ExecutionPlanTimeline";
 import { WhyPostsWorkPanel } from "@/components/competitor/WhyPostsWorkPanel";
 import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator";
-import { QuickActionsPanel } from "@/components/competitor/QuickActionsPanel";
 
 import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 import { BestMoveCard } from "@/components/competitor/BestMoveCard";
