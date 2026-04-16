@@ -73,6 +73,7 @@ const confidenceIcon = (c: string) => {
 };
 
 const CompetitorsPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [competitors, setCompetitors] = useState<Competitor[]>([]);
   const [loading, setLoading] = useState(true);
