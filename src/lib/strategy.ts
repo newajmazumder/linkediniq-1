@@ -82,6 +82,80 @@ export const scoreColor = (n: number) => {
   return "text-destructive";
 };
 
+export type ScoreSeverity = "critical" | "warning" | "good" | "excellent";
+
+export const scoreSeverity = (n: number): ScoreSeverity => {
+  if (n >= 8) return "excellent";
+  if (n >= 6) return "good";
+  if (n >= 3.5) return "warning";
+  return "critical";
+};
+
+export const scoreVerdict = (sev: ScoreSeverity): string => {
+  switch (sev) {
+    case "excellent": return "Strategy is firing on all cylinders.";
+    case "good": return "Solid foundation. Tighten one weak pillar to break through.";
+    case "warning": return "Strategy will underperform without intervention.";
+    case "critical": return "CRITICAL: Strategy will fail without immediate action.";
+  }
+};
+
+// Diagnose what's broken and what to fix — turns the score into a decision.
+export type ScoreDiagnostic = {
+  severity: ScoreSeverity;
+  verdict: string;
+  why: string[];
+  fixes: string[];
+};
+
+export const diagnoseScore = (
+  s: StrategyScoreBreakdown,
+  i: ScoreInputs,
+): ScoreDiagnostic => {
+  const why: string[] = [];
+  const fixes: string[] = [];
+
+  if (!i.hasCoreMessage) { why.push("No core message defined"); fixes.push("Write a one-line core message"); }
+  if (!i.hasPersona) { why.push("No primary persona"); fixes.push("Assign a target persona"); }
+  if (!i.hasMeasurableTarget) { why.push("No measurable target"); fixes.push("Set a target metric and quantity"); }
+
+  if (s.execution <= 2) { why.push("No posts created yet"); fixes.push("Generate posts for Week 1 now"); }
+  else if (s.execution <= 5) { why.push("Posting cadence is slow"); fixes.push("Catch up on planned posts this week"); }
+
+  if (s.conversion === 0 && i.outcomePct == null) { why.push("No outcome signal yet"); fixes.push("Publish posts with a clear CTA to start tracking"); }
+  else if (s.conversion <= 3) { why.push("Conversion CTAs aren't landing"); fixes.push("Switch to a harder, outcome-focused CTA"); }
+
+  return { severity: scoreSeverity(s.total), verdict: scoreVerdict(scoreSeverity(s.total)), why, fixes };
+};
+
+// The single "do this now" action surfaced on every campaign.
+export type PrimaryActionInfo = {
+  label: string;
+  urgent: boolean;
+  href: string;
+};
+
+export const primaryAction = (
+  campaignId: string,
+  state: CampaignState,
+  inputs: { totalPlanned?: number; postingPct?: number | null; firstWeekPostsRemaining?: number },
+): PrimaryActionInfo => {
+  if (state === "draft" || !inputs.totalPlanned) {
+    return { label: "Generate the campaign plan", urgent: true, href: `/campaign/${campaignId}` };
+  }
+  const remaining = inputs.firstWeekPostsRemaining ?? 0;
+  if (remaining > 0) {
+    return { label: `Generate ${remaining} post${remaining > 1 ? "s" : ""} for Week 1`, urgent: true, href: `/create?campaign_id=${campaignId}` };
+  }
+  if ((inputs.postingPct ?? 0) < 50) {
+    return { label: "Create the next post", urgent: true, href: `/create?campaign_id=${campaignId}` };
+  }
+  if (state === "off_track" || state === "at_risk") {
+    return { label: "Ship the next post to recover", urgent: true, href: `/create?campaign_id=${campaignId}` };
+  }
+  return { label: "Open the campaign plan", urgent: false, href: `/campaign/${campaignId}` };
+};
+
 // Map a week number (1-N) to a strategic phase narrative.
 export const weekPhaseLabel = (weekNumber: number, totalWeeks: number): string => {
   if (totalWeeks <= 1) return "Launch";
@@ -90,4 +164,24 @@ export const weekPhaseLabel = (weekNumber: number, totalWeeks: number): string =
   if (ratio <= 0.5) return "Introduce Solution";
   if (ratio <= 0.75) return "Proof & ROI";
   return "Conversion Push";
+};
+
+// One-paragraph campaign arc summary.
+export const buildNarrativeSummary = (
+  campaign: { core_message?: string | null; offer?: string | null; primary_objective?: string | null; target_metric?: string | null; target_quantity?: number | null },
+  totalWeeks: number,
+): string => {
+  const objective = (campaign.primary_objective || "awareness").replace(/_/g, " ");
+  const goal = campaign.target_quantity && campaign.target_metric
+    ? `${campaign.target_quantity} ${campaign.target_metric.replace(/_/g, " ")}`
+    : objective;
+
+  if (totalWeeks >= 4) {
+    const offerLine = campaign.offer ? ` and converts via ${campaign.offer.toLowerCase()}` : " and converts via a clear CTA";
+    return `This campaign builds problem awareness, introduces the solution, proves ROI, then drives ${goal}${offerLine}.`;
+  }
+  if (totalWeeks >= 2) {
+    return `This campaign frames the problem, then converts toward ${goal}.`;
+  }
+  return `This campaign focuses on ${goal}${campaign.offer ? ` via ${campaign.offer.toLowerCase()}` : ""}.`;
 };
