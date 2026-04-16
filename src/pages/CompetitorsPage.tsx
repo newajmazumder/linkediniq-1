@@ -36,6 +36,7 @@ import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator
 import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 import { BestMoveCard } from "@/components/competitor/BestMoveCard";
 import { GuidedJourney } from "@/components/competitor/GuidedJourney";
+import { CompetitorPostAnalysis } from "@/components/competitor/CompetitorPostAnalysis";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
@@ -1165,75 +1166,18 @@ function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded
         )}
       </div>
       {expanded && hasAnalysis && (
-        <div className="border-t border-border bg-muted/20 p-4 space-y-4">
-          {a.audience_targeting && (
-            <AnalysisSection icon={<Users className="h-3.5 w-3.5" />} title="Audience Targeting">
-              <p className="text-xs text-muted-foreground"><strong>Target:</strong> {a.audience_targeting.who_targeted}</p>
-              <p className="text-xs text-muted-foreground"><strong>Awareness:</strong> {a.audience_targeting.awareness_level}</p>
-              {a.audience_targeting.relevance_to_user && <p className="text-xs text-primary/80 mt-1 italic">→ {a.audience_targeting.relevance_to_user}</p>}
-            </AnalysisSection>
-          )}
-          {a.strength_analysis && (
-            <AnalysisSection icon={<TrendingUp className="h-3.5 w-3.5 text-green-500" />} title="Strengths">
-              <p className="text-xs text-muted-foreground">{a.strength_analysis.why_it_works}</p>
-              {a.strength_analysis.strong_lines?.length > 0 && (
-                <div className="mt-1 space-y-1">
-                  {a.strength_analysis.strong_lines.map((line: string, i: number) => (
-                    <p key={i} className="text-xs text-foreground/80 pl-2 border-l-2 border-green-500/40 italic">"{line}"</p>
-                  ))}
-                </div>
-              )}
-            </AnalysisSection>
-          )}
-          {a.weakness_analysis && (
-            <AnalysisSection icon={<AlertTriangle className="h-3.5 w-3.5 text-amber-500" />} title="Weaknesses">
-              {a.weakness_analysis.failures?.map((f: string, i: number) => <p key={i} className="text-xs text-muted-foreground">• {f}</p>)}
-              {a.weakness_analysis.weak_elements && (
-                <div className="grid grid-cols-2 gap-1 mt-1">
-                  {Object.entries(a.weakness_analysis.weak_elements).filter(([, v]) => v !== "strong").map(([k, v]) => (
-                    <p key={k} className="text-[10px] text-amber-600"><strong className="capitalize">{k}:</strong> {v as string}</p>
-                  ))}
-                </div>
-              )}
-            </AnalysisSection>
-          )}
-          {a.creative_analysis && (
-            <AnalysisSection icon={<ImageIcon className="h-3.5 w-3.5 text-purple-500" />} title="Creative / Visual Analysis">
-              {a.creative_analysis.visual_assessment && <p className="text-xs text-muted-foreground">{a.creative_analysis.visual_assessment}</p>}
-              {a.creative_analysis.message_alignment && <p className="text-xs text-muted-foreground"><strong>Visual-Message Fit:</strong> {a.creative_analysis.message_alignment}</p>}
-              {a.creative_analysis.performance_impact && <p className="text-xs text-muted-foreground"><strong>Impact:</strong> {a.creative_analysis.performance_impact}</p>}
-            </AnalysisSection>
-          )}
-          {a.engagement_insight && a.engagement_insight !== "skip" && (
-            <AnalysisSection icon={<BarChart3 className="h-3.5 w-3.5" />} title="Engagement Insight">
-              <p className="text-xs text-muted-foreground">{a.engagement_insight}</p>
-            </AnalysisSection>
-          )}
-          {a.improvement_suggestions?.length > 0 && (
-            <AnalysisSection icon={<Lightbulb className="h-3.5 w-3.5 text-blue-500" />} title="Improvements">
-              {a.improvement_suggestions.map((s: string, i: number) => <p key={i} className="text-xs text-muted-foreground">• {s}</p>)}
-            </AnalysisSection>
-          )}
-          {(a.rewritten_hook || a.rewritten_cta) && (
-            <AnalysisSection icon={<Swords className="h-3.5 w-3.5 text-primary" />} title="If YOU Wrote This">
-              {a.rewritten_hook && <div className="bg-primary/5 border border-primary/20 rounded p-2"><p className="text-[10px] font-semibold text-primary mb-0.5">Better Hook:</p><p className="text-xs text-foreground">{a.rewritten_hook}</p></div>}
-              {a.rewritten_cta && <div className="bg-primary/5 border border-primary/20 rounded p-2 mt-1"><p className="text-[10px] font-semibold text-primary mb-0.5">Better CTA:</p><p className="text-xs text-foreground">{a.rewritten_cta}</p></div>}
-            </AnalysisSection>
-          )}
-        </div>
+        <CompetitorPostAnalysis
+          analysis={a}
+          postContent={post.content}
+          onNavigateToCreate={onNavigateToCreate}
+        />
       )}
     </div>
   );
 }
 
-function AnalysisSection({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1">
-      <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">{icon} {title}</p>
-      <div className="pl-5 space-y-0.5">{children}</div>
-    </div>
-  );
-}
+
+
 
 function InsightsPanel({ insight }: { insight: CompetitorInsight }) {
   return (

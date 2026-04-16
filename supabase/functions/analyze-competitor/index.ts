@@ -259,15 +259,22 @@ async function analyzePostLevel(post: any, competitorName: string, userContext: 
     "performance_impact": "<is visual helping or hurting engagement?>"
   },` : "";
 
-  const localRelevanceBlock = marketContext ? `
-  "local_relevance": {
-    "score": "<high|medium|low>",
-    "assessment": "<how well does this post resonate with ${marketContext.region_name} audience?>",
-    "gaps": "<what's missing for local relevance?>",
-    "localization_opportunity": "<how user can win by being more locally relevant>"
+  const marketName = marketContext?.region_name || "the target market";
+  const marketFitBlock = marketContext ? `
+  "market_fit_analysis": {
+    "bd_fit": {
+      "score": "<high|medium|low>",
+      "assessment": "<does this work for ${marketName}? Be specific about local relevance>"
+    },
+    "us_fit": {
+      "score": "<high|medium|low>",
+      "assessment": "<does this work for US B2B/SaaS audience?>"
+    },
+    "market_gap_opportunity": "<how user can win by localizing harder than competitor>",
+    "local_relevance_score": "<high|medium|low>"
   },` : "";
 
-  const prompt = `You are an elite LinkedIn content strategist. Analyze this post from "${competitorName || "Unknown"}".
+  const prompt = `You are an elite LinkedIn competitive intelligence strategist. Analyze this post from "${competitorName || "Unknown"}" and provide a DECISIVE, ACTIONABLE breakdown.
 
 ${userContext}
 
@@ -275,7 +282,8 @@ POST:
 ${post.content}
 ${metricsInfo}${visualInfo}
 
-Be SPECIFIC. Reference actual lines. NO generic phrases. Speak like a strategist, not an assistant.
+Be SPECIFIC. Reference actual lines. NO generic phrases. Speak like a battle strategist, not an assistant.
+Every insight must answer: "So what? What should the user DO about this?"
 
 Return JSON:
 {
@@ -286,15 +294,25 @@ Return JSON:
     "cta_type": "<link_click|comment|dm|follow|share|none>",
     "format": "<text_only|list|carousel_style|thread_style>"
   },
-  "audience_targeting": {
-    "who_targeted": "<specific>",
-    "awareness_level": "<unaware|problem_aware|solution_aware|product_aware|most_aware>",
-    "relevance_to_user": "<how this relates to YOUR audience>"
+  "impact_panel": {
+    "hook_strength": <0-10>,
+    "engagement_potential": "<low|medium|high>",
+    "conversion_intent_strength": "<low|medium|high>",
+    "competitive_threat_level": "<low|medium|high>",
+    "verdict": "<1-2 sentence decisive verdict — e.g. 'This post builds authority but fails to convert due to weak CTA and no urgency trigger.'>"
   },
+  "exploitable_weaknesses": [
+    {
+      "weakness": "<specific weakness phrased as opportunity — e.g. 'Too technical for store owners — loses non-technical audience'>",
+      "how_to_exploit": "<what user should do to capitalize on this>"
+    }
+  ],
   "strength_analysis": {
     "why_it_works": "<specific reasons — decisive language>",
     "strong_lines": ["<quote actual lines>"],
-    "emotional_triggers": ["<specific triggers>"]
+    "emotional_triggers": ["<specific triggers>"],
+    "should_replicate": "<yes|no|partial>",
+    "replicate_note": "<what to learn, not blindly copy>"
   },
   "weakness_analysis": {
     "failures": ["<specific weakness with reasoning>"],
@@ -304,10 +322,31 @@ Return JSON:
       "differentiation": "<specific issue or 'strong'>",
       "specificity": "<specific issue or 'strong'>"
     }
-  },${creativeBlock}${localRelevanceBlock}
+  },${creativeBlock}${marketFitBlock}
+  "behavioral_insight": {
+    "scroll_stop_power": "<why users stop or don't stop scrolling>",
+    "engagement_trigger": "<what triggers engagement>",
+    "attention_drop_point": "<where attention drops and why>",
+    "psychology_summary": "<1-2 sentence psychological analysis>"
+  },
+  "winning_move": {
+    "better_hook": "<rewritten hook that outperforms competitor — ready to use>",
+    "better_angle": "<explain positioning difference>",
+    "better_cta": "<more aggressive / clearer / localized CTA>",
+    "strategic_advantage": "<WHY your version wins — reference competitor weakness>"
+  },
+  "outperform_version": "<full rewritten post (150-300 words) optimized for user's audience, market, and campaign goal — stronger hook, better CTA, more locally relevant>",
+  "competitive_benchmark": {
+    "hook_vs_standard": "<e.g. '30% weaker than high-performing patterns in this niche'>",
+    "engagement_vs_top": "<comparison to top-performing posts>",
+    "cta_vs_best_practice": "<comparison to best practice CTAs>"
+  },
+  "audience_targeting": {
+    "who_targeted": "<specific>",
+    "awareness_level": "<unaware|problem_aware|solution_aware|product_aware|most_aware>",
+    "relevance_to_user": "<how this relates to YOUR audience>"
+  },
   "engagement_insight": "<WHY engagement is high/low tied to structure>",
-  "what_you_should_replicate": "<specific element user should learn from this post>",
-  "what_you_should_avoid": "<specific element user should NOT copy>",
   "improvement_suggestions": ["<specific actionable suggestions>"],
   "rewritten_hook": "<better hook for USER's audience>",
   "rewritten_cta": "<better CTA>"
