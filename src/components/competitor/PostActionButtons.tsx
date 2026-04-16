@@ -25,7 +25,7 @@ export function PostActionButtons({
   const hasWeakness = post.post_analysis?.weakness_analysis?.failures?.length > 0;
 
   return (
-    <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border">
+    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 mt-2 pt-2 border-t border-border">
       <Button size="sm" variant="default" className="h-6 text-[10px] px-2 gap-1" onClick={onRewriteBetter}>
         <RefreshCw className="h-2.5 w-2.5" /> Rewrite Better
       </Button>

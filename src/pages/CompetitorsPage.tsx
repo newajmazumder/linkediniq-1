@@ -981,7 +981,7 @@ function ScreenshotPostFlow({
           </ReviewField>
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <ReviewField label="Likes" confidence={extraction.likes?.confidence || "missing"}>
           <Input type="number" value={reviewData.likes ?? ""} onChange={e => updateField("likes", e.target.value)} className="text-xs h-8" placeholder="—" />
         </ReviewField>
@@ -1046,7 +1046,7 @@ function ManualPostForm({ onSave, onCancel, saving, content, setContent, topic, 
       <Input placeholder="Topic (optional)" value={topic} onChange={(e: any) => setTopic(e.target.value)} />
       <Textarea placeholder="Paste competitor's post content..." value={content} onChange={(e: any) => setContent(e.target.value)} rows={4} />
       <Input placeholder="Post URL (optional)" value={url} onChange={(e: any) => setUrl(e.target.value)} />
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Input placeholder="Likes" type="number" value={likes} onChange={(e: any) => setLikes(e.target.value)} />
         <Input placeholder="Comments" type="number" value={comments} onChange={(e: any) => setComments(e.target.value)} />
         <Input placeholder="Reposts" type="number" value={reposts} onChange={(e: any) => setReposts(e.target.value)} />
@@ -1075,28 +1075,30 @@ function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded
   return (
     <div className="border border-border rounded-lg bg-background overflow-hidden">
       <div className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex gap-3 flex-1 min-w-0">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              {isScreenshot && <Badge variant="outline" className="text-[9px] h-4 px-1 gap-0.5"><Camera className="h-2.5 w-2.5" /> Screenshot</Badge>}
+              {post.post_format && post.post_format !== "unknown" && <Badge variant="secondary" className="text-[9px] h-4 px-1">{post.post_format.replace(/_/g, " ")}</Badge>}
+              {post.topic && <span className="text-[10px] font-medium text-primary truncate">{post.topic}</span>}
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onAnalyze(post, competitorId)} disabled={analyzing}>
+                {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : hasAnalysis ? <><RefreshCw className="h-3 w-3 mr-1" /> Re-analyze</> : <><Zap className="h-3 w-3 mr-1" /> Analyze</>}
+              </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => onDelete(post.id, competitorId)}><Trash2 className="h-3 w-3" /></Button>
+            </div>
+          </div>
+          <div className="flex gap-3">
             {isScreenshot && post.screenshot_url && (
-              <div className="w-16 h-16 rounded border border-border overflow-hidden bg-muted/50 shrink-0">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded border border-border overflow-hidden bg-muted/50 shrink-0">
                 <img src={post.screenshot_url} alt="Screenshot" className="w-full h-full object-cover" />
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 mb-1">
-                {isScreenshot && <Badge variant="outline" className="text-[9px] h-4 px-1 gap-0.5"><Camera className="h-2.5 w-2.5" /> Screenshot</Badge>}
-                {post.post_format && post.post_format !== "unknown" && <Badge variant="secondary" className="text-[9px] h-4 px-1">{post.post_format.replace(/_/g, " ")}</Badge>}
-                {post.topic && <span className="text-[10px] font-medium text-primary">{post.topic}</span>}
-              </div>
-              <p className="text-xs text-foreground line-clamp-3 whitespace-pre-wrap">{post.content}</p>
-              {post.visual_summary && <p className="text-[10px] text-muted-foreground mt-1 italic flex items-center gap-1"><ImageIcon className="h-2.5 w-2.5" /> {post.visual_summary}</p>}
+              <p className="text-xs text-foreground line-clamp-3 whitespace-pre-wrap break-words">{post.content}</p>
+              {post.visual_summary && <p className="text-[10px] text-muted-foreground mt-1 italic flex items-start gap-1"><ImageIcon className="h-2.5 w-2.5 shrink-0 mt-0.5" /> <span className="line-clamp-2">{post.visual_summary}</span></p>}
             </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onAnalyze(post, competitorId)} disabled={analyzing}>
-              {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : hasAnalysis ? <><RefreshCw className="h-3 w-3 mr-1" /> Re-analyze</> : <><Zap className="h-3 w-3 mr-1" /> Analyze</>}
-            </Button>
-            <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => onDelete(post.id, competitorId)}><Trash2 className="h-3 w-3" /></Button>
           </div>
         </div>
         {hasMetrics && (
