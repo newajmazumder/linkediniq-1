@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,13 @@ import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { WinStrategySummary } from "@/components/competitor/WinStrategySummary";
+import { ContentGapMatrix } from "@/components/competitor/ContentGapMatrix";
+import { ContentAnglesPanel } from "@/components/competitor/ContentAnglesPanel";
+import { OpportunityScoringCards } from "@/components/competitor/OpportunityScoringCards";
+import { PredictedOutcomePanel } from "@/components/competitor/PredictedOutcomePanel";
+import { CampaignFromCompetitor } from "@/components/competitor/CampaignFromCompetitor";
+import { WinningPositionCard } from "@/components/competitor/WinningPositionCard";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
@@ -38,6 +46,9 @@ type CompetitorInsight = {
   content_strategy_overview: any; messaging_patterns: any; audience_strategy: any;
   strengths_analysis: any; weaknesses_analysis: any; performance_insights: any;
   strategic_opportunities: any; actionable_recommendations: any;
+  win_strategy: any; content_gap_matrix: any; content_angles: any;
+  opportunity_scores: any; predicted_outcomes: any; campaign_blueprint: any;
+  winning_position: any;
 };
 
 type ExtractionField = { value: any; confidence: string };
