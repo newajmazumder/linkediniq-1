@@ -13,7 +13,7 @@ import {
   Target, TrendingUp, AlertTriangle, Lightbulb, Swords, Eye, Zap,
   BarChart3, Users, MessageSquare, ThumbsUp, Share2, ChevronRight,
   Camera, Upload, ImageIcon, CheckCircle2, AlertCircle, HelpCircle,
-  Flame, ToggleLeft, ToggleRight,
+  Flame, ToggleLeft, ToggleRight, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -1093,11 +1093,9 @@ function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded
             </div>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            {!hasAnalysis && (
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onAnalyze(post, competitorId)} disabled={analyzing}>
-                {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Zap className="h-3 w-3 mr-1" /> Analyze</>}
-              </Button>
-            )}
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => onAnalyze(post, competitorId)} disabled={analyzing}>
+              {analyzing ? <Loader2 className="h-3 w-3 animate-spin" /> : hasAnalysis ? <><RefreshCw className="h-3 w-3 mr-1" /> Re-analyze</> : <><Zap className="h-3 w-3 mr-1" /> Analyze</>}
+            </Button>
             <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => onDelete(post.id, competitorId)}><Trash2 className="h-3 w-3" /></Button>
           </div>
         </div>
