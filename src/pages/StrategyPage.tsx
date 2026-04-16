@@ -582,170 +582,142 @@ const StrategyPage = () => {
                 // Narrative summary
                 const summary = buildNarrativeSummary(c, posting?.weeks ?? 0);
 
-                const sevAccent =
-                  diag.severity === "critical" ? { bg: "bg-destructive/10", text: "text-destructive", border: "border-destructive/30", icon: AlertCircle, prefix: "🚨 CRITICAL" }
-                  : diag.severity === "warning" ? { bg: "bg-yellow-500/10", text: "text-yellow-600", border: "border-yellow-500/30", icon: AlertTriangle, prefix: "⚠️ WARNING" }
-                  : diag.severity === "good" ? { bg: "bg-green-500/10", text: "text-green-600", border: "border-green-500/30", icon: Zap, prefix: "✓ GOOD" }
-                  : { bg: "bg-green-500/15", text: "text-green-700", border: "border-green-500/40", icon: Zap, prefix: "🚀 EXCELLENT" };
-                const SevIcon = sevAccent.icon;
+                // Velocity — psychological pressure (actual vs required)
+                const velocity = posting && posting.weeks > 0
+                  ? computeVelocity(posting.drafted, posting.total, posting.weeks)
+                  : null;
+
+                const interp = scoreInterpretation(diag.severity);
+                const isUrgent = diag.severity === "critical" || diag.severity === "warning";
 
                 return (
                   <div
                     key={c.id}
                     className={cn(
-                      "rounded-xl border-2 border-border bg-card border-l-[6px] overflow-hidden shadow-sm",
+                      "rounded-xl border border-border bg-card border-l-[3px] overflow-hidden transition-shadow hover:shadow-sm",
                       meta.borderClass,
                     )}
                   >
-                    {/* PRIMARY ACTION BANNER — top, urgent, impossible to miss */}
-                    {action.urgent && (
-                      <button
-                        onClick={() => navigate(action.href)}
-                        className={cn(
-                          "w-full flex items-center justify-between gap-3 px-4 py-2.5 text-left transition-colors",
-                          state === "off_track" || state === "at_risk"
-                            ? "bg-destructive/10 hover:bg-destructive/15 text-destructive"
-                            : "bg-primary/10 hover:bg-primary/15 text-primary",
-                        )}
-                      >
-                        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide">
-                          <Flame className="h-3.5 w-3.5" />
-                          Do this now: <span className="font-semibold normal-case tracking-normal">{action.label}</span>
-                        </span>
-                        <ChevronRight className="h-4 w-4 shrink-0" />
-                      </button>
-                    )}
-
-                    <div className="p-4 sm:p-5 space-y-4">
-                      {/* LEVEL 1 — HERO: title + status + BIG score */}
-                      <div className="flex items-start justify-between gap-4 flex-wrap">
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide", meta.bgClass, meta.textClass)}>
-                              <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
-                              {meta.label}
+                    <div className="p-5 sm:p-6 space-y-5">
+                      {/* LEVEL 1 — Title + status whisper + DOMINANT score */}
+                      <div className="flex items-start justify-between gap-6">
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
+                            <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
+                            <span className={cn("font-medium", meta.textClass)}>{meta.label}</span>
+                            <span className="text-border">·</span>
+                            <span className="capitalize">
+                              {(c.primary_objective || c.goal || "").replace(/_/g, " ")}
+                              {c.target_timeframe && ` · ${c.target_timeframe.replace(/_/g, " ")}`}
                             </span>
                             {c.target_priority === "high" && (
-                              <Badge variant="outline" className="text-[10px] border-destructive/30 text-destructive">
-                                <Flame className="mr-0.5 h-2.5 w-2.5" /> High priority
-                              </Badge>
+                              <>
+                                <span className="text-border">·</span>
+                                <span className="text-foreground font-medium">High priority</span>
+                              </>
                             )}
                           </div>
-                          <h2 className="mt-1.5 text-lg sm:text-xl font-bold text-foreground leading-tight">{c.name}</h2>
-                          <p className="mt-1 text-xs text-muted-foreground capitalize">
-                            {(c.primary_objective || c.goal || "").replace("_", " ")}
-                            {c.target_timeframe && ` · ${c.target_timeframe.replace("_", " ")}`}
-                          </p>
+                          <h2 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight leading-tight">
+                            {c.name}
+                          </h2>
                         </div>
 
-                        {/* BIG Strategy Score */}
-                        <div className={cn("shrink-0 rounded-lg border-2 px-3 py-2 text-center", sevAccent.border, sevAccent.bg)}>
-                          <div className={cn("text-3xl font-black leading-none", scoreColor(score.total))}>
+                        {/* DOMINANT Strategy Score — single calm accent */}
+                        <div className="shrink-0 text-right">
+                          <div className={cn("text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
                             {score.total.toFixed(1)}
+                            <span className="text-base text-muted-foreground font-normal">/10</span>
                           </div>
-                          <div className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mt-0.5">
-                            Strategy /10
-                          </div>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Strategy · <span className="text-foreground">{interp}</span>
+                          </p>
                         </div>
                       </div>
 
-                      {/* HERO Strategy Hook — tinted, large, the campaign brain */}
-                      <div className={cn("rounded-lg border-l-4 p-3 sm:p-4", meta.borderClass, meta.bgClass)}>
-                        <p className={cn("text-[10px] font-bold uppercase tracking-wider", meta.textClass)}>
-                          💡 Strategy hook
+                      {/* LEVEL 2 — Strategy Hook (editorial typography, no tint) */}
+                      <div className="border-l-2 border-border pl-4">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
+                          Strategy
                         </p>
-                        <p className="mt-1 text-sm sm:text-base font-medium text-foreground leading-snug">
+                        <p className="mt-1 text-base sm:text-[17px] font-medium text-foreground leading-snug">
                           {c.core_message || summary}
                         </p>
                       </div>
 
-                      {/* Score diagnostic — turns score into a decision */}
-                      {(diag.why.length > 0 || diag.severity === "critical" || diag.severity === "warning") && (
-                        <div className={cn("rounded-md border p-3 space-y-2", sevAccent.border, sevAccent.bg)}>
-                          <div className="flex items-center gap-1.5">
-                            <SevIcon className={cn("h-3.5 w-3.5", sevAccent.text)} />
-                            <span className={cn("text-[11px] font-bold uppercase tracking-wide", sevAccent.text)}>
-                              {sevAccent.prefix}
-                            </span>
-                            <span className="text-xs text-foreground">{diag.verdict}</span>
+                      {/* LEVEL 2 — One quiet action row (only when there's a real problem) */}
+                      {isUrgent && (
+                        <button
+                          onClick={() => navigate(action.href)}
+                          className="group/act w-full flex items-center justify-between gap-3 rounded-md bg-muted/40 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
+                        >
+                          <div className="min-w-0">
+                            <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">
+                              Why · {diag.why[0] || "Strategy gap"}
+                            </p>
+                            <p className="mt-0.5 text-sm font-medium text-foreground">
+                              {action.label}
+                            </p>
                           </div>
-                          {diag.why.length > 0 && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                              <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Why low</p>
-                                <ul className="mt-0.5 space-y-0.5">
-                                  {diag.why.slice(0, 3).map((w) => (
-                                    <li key={w} className="text-[11px] text-foreground flex gap-1"><span className="text-destructive">×</span>{w}</li>
-                                  ))}
-                                </ul>
-                              </div>
-                              {diag.fixes.length > 0 && (
-                                <div>
-                                  <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-1"><Wrench className="h-2.5 w-2.5" /> Fix</p>
-                                  <ul className="mt-0.5 space-y-0.5">
-                                    {diag.fixes.slice(0, 3).map((f) => (
-                                      <li key={f} className="text-[11px] text-foreground flex gap-1"><span className="text-green-600">→</span>{f}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
+                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover/act:text-foreground group-hover/act:translate-x-0.5 transition-all" />
+                        </button>
                       )}
 
-                      {/* LEVEL 2 — SECONDARY: Goal + Execution metrics */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <div className="rounded-md bg-muted/50 p-2.5">
-                          <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">🎯 Goal</p>
-                          <p className="mt-0.5 text-sm font-semibold text-foreground">
+                      {/* LEVEL 3 — Goal · Execution · Velocity (compact, divided, not tinted) */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border border-y border-border">
+                        <div className="px-4 py-3 first:pl-0">
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Goal</p>
+                          <p className="mt-1 text-sm font-medium text-foreground">
                             {c.target_quantity && c.target_metric
                               ? `${c.target_quantity} ${metricLabels[c.target_metric] || c.target_metric}`
-                              : "No measurable target"}
+                              : <span className="text-muted-foreground font-normal">Not set</span>}
                           </p>
                           {outcomePct !== null && (
-                            <div className="mt-1.5 space-y-0.5">
-                              <Progress value={outcomePct} className="h-1" />
-                              <p className="text-[10px] text-muted-foreground">{prog!.current_value}/{prog!.target_value} ({outcomePct}%)</p>
-                            </div>
+                            <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{prog!.current_value}/{prog!.target_value} · {outcomePct}%</p>
                           )}
                         </div>
-                        <div className="rounded-md bg-muted/50 p-2.5">
-                          <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">⚙️ Execution</p>
-                          {posting ? (
+                        <div className="px-4 py-3">
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Execution</p>
+                          <p className="mt-1 text-sm font-medium text-foreground">
+                            {posting ? `${posting.drafted}/${posting.total} posts` : <span className="text-muted-foreground font-normal">No plan</span>}
+                          </p>
+                          {posting && (
+                            <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{(postingPct ?? 0)}% drafted</p>
+                          )}
+                        </div>
+                        <div className="px-4 py-3 last:pr-0">
+                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Velocity</p>
+                          {velocity ? (
                             <>
-                              <p className="mt-0.5 text-sm font-semibold text-foreground">{posting.drafted}/{posting.total} posts</p>
-                              <div className="mt-1.5 space-y-0.5">
-                                <Progress value={postingPct ?? 0} className="h-1" />
-                                <p className={cn("text-[10px] font-medium", (postingPct ?? 0) < 30 ? "text-destructive" : (postingPct ?? 0) >= 70 ? "text-green-600" : "text-yellow-600")}>
-                                  {(postingPct ?? 0) < 30 ? "Behind schedule" : (postingPct ?? 0) >= 70 ? "On cadence" : "Catching up"}
-                                </p>
-                              </div>
+                              <p className="mt-1 text-sm font-medium text-foreground tabular-nums">
+                                {velocity.actual} <span className="text-muted-foreground font-normal">/ {velocity.required} per wk</span>
+                              </p>
+                              <p className={cn("mt-0.5 text-[11px]", velocity.onPace ? "text-muted-foreground" : meta.textClass)}>
+                                {velocity.onPace ? "On pace" : `${(velocity.required - velocity.actual).toFixed(1)} short / week`}
+                              </p>
                             </>
                           ) : (
-                            <p className="mt-0.5 text-sm text-muted-foreground">Plan not generated</p>
+                            <p className="mt-1 text-sm text-muted-foreground font-normal">—</p>
                           )}
                         </div>
                       </div>
 
-                      {/* LEVEL 3 — SUPPORTING: tags + actions */}
-                      <div className="flex flex-wrap gap-1.5 text-[10px] text-muted-foreground">
-                        <span className="rounded-full bg-secondary px-2 py-0.5">👤 {personaName(c.primary_persona_id)}</span>
-                        {c.tone && <span className="rounded-full bg-secondary px-2 py-0.5">🎙 {c.tone}</span>}
-                        {c.cta_type && <span className="rounded-full bg-secondary px-2 py-0.5">🎯 {c.cta_type} CTA</span>}
-                        {c.offer && <span className="rounded-full bg-accent px-2 py-0.5 text-accent-foreground">🎁 {c.offer}</span>}
-                      </div>
-
-                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border flex-wrap">
-                        <Button size="sm" variant="outline" onClick={() => navigate(`/campaign/${c.id}`)} className="gap-1">
-                          <Target className="h-3.5 w-3.5" /> View Plan
-                        </Button>
+                      {/* LEVEL 4 — Quiet meta + actions */}
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                          <span>{personaName(c.primary_persona_id)}</span>
+                          {c.tone && <><span className="text-border">·</span><span className="capitalize">{c.tone}</span></>}
+                          {c.cta_type && <><span className="text-border">·</span><span className="capitalize">{c.cta_type} CTA</span></>}
+                          {c.offer && <><span className="text-border">·</span><span>{c.offer}</span></>}
+                        </div>
                         <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => startEdit(c)}>
-                            <Edit2 className="h-3 w-3" />
+                          <Button size="sm" variant="ghost" onClick={() => navigate(`/campaign/${c.id}`)} className="h-8 text-xs">
+                            View plan <ArrowRight className="ml-1 h-3 w-3" />
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => handleDelete(c.id)}>
-                            <Trash2 className="h-3 w-3" />
+                          <Button size="sm" variant="ghost" onClick={() => startEdit(c)} className="h-8 w-8 p-0">
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </div>
