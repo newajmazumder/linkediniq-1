@@ -125,7 +125,12 @@ const CompetitorsPage = () => {
   const [reviewData, setReviewData] = useState<Record<string, any>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (user) fetchCompetitors(); }, [user]);
+  useEffect(() => { if (user) { fetchCompetitors(); fetchBusinessProfile(); } }, [user]);
+
+  const fetchBusinessProfile = async () => {
+    const { data } = await supabase.from("business_profiles").select("product_summary, target_audience, company_summary").eq("user_id", user!.id).maybeSingle();
+    setBusinessProfile(data as BusinessProfile | null);
+  };
 
   const fetchCompetitors = async () => {
     setLoading(true);
