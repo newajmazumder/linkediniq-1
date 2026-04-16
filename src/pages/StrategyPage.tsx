@@ -16,13 +16,14 @@ import {
 } from "@/components/ui/select";
 import {
   Loader2, Plus, Trash2, Target, Sparkles, ArrowRight,
-  AlertTriangle, TrendingUp, ChevronRight, Zap, Flame, Edit2,
+  AlertTriangle, ChevronRight, Zap, Flame, Edit2, AlertCircle, Wrench,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor,
+  diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
 } from "@/lib/strategy";
 
 type Persona = { id: string; name: string };
@@ -56,7 +57,7 @@ type CampaignProgress = {
   gap_analysis: string | null;
 };
 
-type PostingStat = { campaign_id: string; total: number; drafted: number };
+type PostingStat = { campaign_id: string; total: number; drafted: number; week1Remaining: number; weeks: number };
 
 const objectives = [
   "awareness", "engagement", "followers", "profile_visits",
@@ -179,14 +180,18 @@ const StrategyPage = () => {
   const fetchPostingStats = async () => {
     const { data } = await supabase
       .from("campaign_post_plans")
-      .select("campaign_id, status")
+      .select("campaign_id, status, week_number")
       .eq("user_id", user!.id);
     if (data) {
       const map: Record<string, PostingStat> = {};
       for (const row of data as any[]) {
-        if (!map[row.campaign_id]) map[row.campaign_id] = { campaign_id: row.campaign_id, total: 0, drafted: 0 };
-        map[row.campaign_id].total += 1;
-        if (row.status && row.status !== "planned") map[row.campaign_id].drafted += 1;
+        if (!map[row.campaign_id]) map[row.campaign_id] = { campaign_id: row.campaign_id, total: 0, drafted: 0, week1Remaining: 0, weeks: 0 };
+        const stat = map[row.campaign_id];
+        stat.total += 1;
+        if (row.week_number > stat.weeks) stat.weeks = row.week_number;
+        const isDrafted = row.status && row.status !== "planned";
+        if (isDrafted) stat.drafted += 1;
+        if (row.week_number === 1 && !isDrafted) stat.week1Remaining += 1;
       }
       setPostingStats(map);
     }
