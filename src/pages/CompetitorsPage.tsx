@@ -51,7 +51,8 @@ type CompetitorInsight = {
   strategic_opportunities: any; actionable_recommendations: any;
   win_strategy: any; content_gap_matrix: any; content_angles: any;
   opportunity_scores: any; predicted_outcomes: any; campaign_blueprint: any;
-  winning_position: any;
+  winning_position: any; execution_plan: any; why_posts_work: any;
+  confidence_layer: any;
 };
 
 type ExtractionField = { value: any; confidence: string };
