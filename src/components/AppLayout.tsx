@@ -3,7 +3,8 @@ import { Outlet, useLocation } from "react-router-dom";
 import AppSidebar from "@/components/AppSidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Menu } from "lucide-react";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 const AppLayout = () => {
   const location = useLocation();
@@ -26,6 +27,7 @@ const AppLayout = () => {
               </button>
             </SheetTrigger>
             <SheetContent side="left" className="p-0 w-56">
+              <VisuallyHidden><SheetTitle>Navigation</SheetTitle></VisuallyHidden>
               <AppSidebar collapsed={false} onToggle={() => setMobileOpen(false)} onNavigate={() => setMobileOpen(false)} />
             </SheetContent>
           </Sheet>
