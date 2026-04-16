@@ -35,7 +35,6 @@ import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator
 import { QuickActionsPanel } from "@/components/competitor/QuickActionsPanel";
 
 import { PostActionButtons } from "@/components/competitor/PostActionButtons";
-
 import { BestMoveCard } from "@/components/competitor/BestMoveCard";
 
 type Competitor = {
