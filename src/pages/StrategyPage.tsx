@@ -104,6 +104,7 @@ const emptyForm = {
   target_timeframe: "monthly",
   target_priority: "medium",
   language: "english",
+  market_context_id: "",
 };
 
 type Recommendation = {
