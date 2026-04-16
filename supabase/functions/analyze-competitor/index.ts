@@ -20,12 +20,8 @@ async function callAI(prompt: string, temperature = 0.4): Promise<string> {
     }),
   });
   if (!resp.ok) {
-    if (resp.status === 402) {
-      throw new Error("AI credits exhausted. Please add funds.");
-    }
-    if (resp.status === 429) {
-      throw new Error("Rate limited. Please try again in a moment.");
-    }
+    if (resp.status === 402) throw new Error("AI credits exhausted. Please add funds.");
+    if (resp.status === 429) throw new Error("Rate limited. Please try again in a moment.");
     throw new Error(`AI error ${resp.status}`);
   }
   const data = await resp.json();
@@ -34,9 +30,7 @@ async function callAI(prompt: string, temperature = 0.4): Promise<string> {
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const authHeader = req.headers.get("Authorization");
@@ -83,11 +77,8 @@ serve(async (req) => {
     }
 
     // ===== AGGREGATE ANALYSIS =====
-    if (!posts || posts.length < 2) {
-      throw new Error("Need at least 2 posts for aggregate analysis");
-    }
+    if (!posts || posts.length < 2) throw new Error("Need at least 2 posts for aggregate analysis");
 
-    // Step 1: Analyze each post individually
     const postAnalyses: any[] = [];
     for (const post of posts) {
       try {
@@ -105,10 +96,8 @@ serve(async (req) => {
       }
     }
 
-    // Step 2: Generate comprehensive competitive strategy report
     const report = await generateStrategyReport(posts, postAnalyses, competitor_name, userContext, businessProfile, campaigns?.[0]);
 
-    // Save all insights
     await supabase.from("competitor_insights").upsert({
       user_id: user.id,
       competitor_id,
@@ -131,6 +120,9 @@ serve(async (req) => {
       predicted_outcomes: report.predicted_outcomes || {},
       campaign_blueprint: report.campaign_blueprint || {},
       winning_position: report.winning_position || {},
+      execution_plan: report.execution_plan || [],
+      why_posts_work: report.why_posts_work || [],
+      confidence_layer: report.confidence_layer || {},
     }, { onConflict: "competitor_id" });
 
     return new Response(JSON.stringify({ success: true, post_analyses: postAnalyses }), {
@@ -141,8 +133,7 @@ serve(async (req) => {
     const status = err.message?.includes("credits exhausted") ? 402
       : err.message?.includes("Rate limited") ? 429 : 500;
     return new Response(JSON.stringify({ error: err.message }), {
-      status,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
@@ -195,7 +186,7 @@ POST:
 ${post.content}
 ${metricsInfo}${visualInfo}
 
-Be SPECIFIC. Reference actual lines. NO generic phrases.
+Be SPECIFIC. Reference actual lines. NO generic phrases. Speak like a strategist, not an assistant.
 
 Return JSON:
 {
@@ -212,7 +203,7 @@ Return JSON:
     "relevance_to_user": "<how this relates to YOUR audience>"
   },
   "strength_analysis": {
-    "why_it_works": "<specific reasons>",
+    "why_it_works": "<specific reasons — decisive language>",
     "strong_lines": ["<quote actual lines>"],
     "emotional_triggers": ["<specific triggers>"]
   },
@@ -226,6 +217,8 @@ Return JSON:
     }
   },${creativeBlock}
   "engagement_insight": "<WHY engagement is high/low tied to structure>",
+  "what_you_should_replicate": "<specific element user should learn from this post>",
+  "what_you_should_avoid": "<specific element user should NOT copy>",
   "improvement_suggestions": ["<specific actionable suggestions>"],
   "rewritten_hook": "<better hook for USER's audience>",
   "rewritten_cta": "<better CTA>"
@@ -264,7 +257,9 @@ async function generateStrategyReport(
     ? `Active campaign "${activeCampaign.name}": ${activeCampaign.primary_objective}, target ${activeCampaign.target_quantity} ${activeCampaign.target_metric}`
     : "No active campaign — default to engagement optimization";
 
-  const prompt = `You are an elite competitive intelligence strategist for LinkedIn. Analyze ${posts.length} posts from "${competitorName || "Unknown"}" and generate an ACTIONABLE competitive strategy.
+  const prompt = `You are an elite competitive intelligence strategist for LinkedIn. You speak in DECISIVE, SHARP language. Never say "you may consider" — say "you should prioritize." Every insight leads to action. Every action leads to content. Every content aims for an outcome.
+
+Analyze ${posts.length} posts from "${competitorName || "Unknown"}" and generate an EXECUTION-READY competitive strategy.
 
 ${userContext}
 
@@ -277,15 +272,15 @@ ${campaignGoal}
 COMPETITOR POSTS:
 ${postsOverview}
 
-Generate a COMPREHENSIVE, DECISIVE, SPECIFIC report. NO vague language. Every recommendation must be outcome-linked.
+Generate a COMPREHENSIVE, DECISIVE, SPECIFIC report. NO vague language. NO generic AI statements.
 
 Return JSON:
 {
   "win_strategy": {
     "competitor_name": "${competitorName}",
-    "primary_weakness": "<single most exploitable weakness — be specific>",
+    "primary_weakness": "<single most exploitable weakness — be brutally specific>",
     "user_advantage": "<user's strongest advantage over this competitor>",
-    "winning_strategy": ["<3-4 specific, decisive strategy bullets>"],
+    "winning_strategy": ["<4 specific, decisive strategy bullets — each starts with action verb>"],
     "expected_engagement_lift": "<e.g. +30-50%>",
     "expected_conversion_lift": "<e.g. +15-25%>"
   },
@@ -299,12 +294,15 @@ Return JSON:
   ],
   "content_angles": [
     {
-      "title": "<specific post title/angle>",
+      "title": "<specific post title/angle — make it catchy>",
       "description": "<1-2 sentence description>",
       "hook_type": "<curiosity|pain|data|story|contrarian|question|bold_claim>",
       "intent": "<engagement|lead|awareness|conversion>",
-      "why_it_beats_competitor": "<specific reasoning>",
-      "example_hook": "<actual hook line>"
+      "goal": "<Drive DMs|Drive comments|Drive followers|Drive leads|Build authority|Drive awareness>",
+      "cta_style": "<Comment 'X' to get...|DM me 'X'|Follow for more|Share if you agree|Link in comments|No CTA (awareness only)>",
+      "why_it_beats_competitor": "<specific reasoning referencing actual competitor weakness>",
+      "expected_outcome": "<High engagement + High DM conversion|High engagement|Moderate reach + Authority building|etc>",
+      "example_hook": "<actual hook line ready to use>"
     }
   ],
   "opportunity_scores": [
@@ -314,8 +312,10 @@ Return JSON:
       "impact": "<high|medium|low>",
       "effort": "<low|medium|high>",
       "priority": "<do_first|do_next|optional>",
-      "reasoning": "<why this matters>",
-      "action": "<what exactly to do>"
+      "reasoning": "<why this matters — reference specific competitor data>",
+      "action": "<what exactly to do>",
+      "expected_impact": "<+X% engagement, +Y% DMs — be specific>",
+      "why_it_works": "<evidence-based explanation>"
     }
   ],
   "predicted_outcomes": {
@@ -325,23 +325,53 @@ Return JSON:
     "confidence": "<high|medium|low>",
     "tied_to_goal": "<how this connects to campaign goal or default engagement>"
   },
+  "execution_plan": [
+    {
+      "day": 1,
+      "post_title": "<specific post title>",
+      "goal": "<Stop scroll|Relatability|Comments + engagement|DMs / leads>",
+      "hook_type": "<pain|story|data|contrarian|question>",
+      "cta": "<specific CTA or 'None (awareness)'>",
+      "why_this_day": "<strategic reasoning for this sequence position>"
+    },
+    {"day": 3, "post_title": "<>", "goal": "<>", "hook_type": "<>", "cta": "<>", "why_this_day": "<>"},
+    {"day": 5, "post_title": "<>", "goal": "<>", "hook_type": "<>", "cta": "<>", "why_this_day": "<>"},
+    {"day": 7, "post_title": "<>", "goal": "<>", "hook_type": "<>", "cta": "<>", "why_this_day": "<>"}
+  ],
+  "why_posts_work": [
+    {
+      "post_index": <1-based index>,
+      "post_preview": "<first 80 chars of post>",
+      "why_it_worked": "<specific analysis of what made this post succeed>",
+      "key_elements": ["<element 1>", "<element 2>"],
+      "what_you_should_replicate": "<specific actionable takeaway>",
+      "what_you_should_add": "<what would make it even better for YOUR audience>"
+    }
+  ],
   "campaign_blueprint": {
     "duration_weeks": 4,
     "posts_per_week": 2,
     "total_posts": 8,
     "weeks": [
-      {"week": 1, "theme": "<theme>", "posts": [{"type": "<content type>", "angle": "<specific angle>", "hook_type": "<type>", "cta": "<cta type>"}]},
-      {"week": 2, "theme": "<theme>", "posts": [{"type": "<content type>", "angle": "<specific angle>", "hook_type": "<type>", "cta": "<cta type>"}]},
-      {"week": 3, "theme": "<theme>", "posts": [{"type": "<content type>", "angle": "<specific angle>", "hook_type": "<type>", "cta": "<cta type>"}]},
-      {"week": 4, "theme": "<theme>", "posts": [{"type": "<content type>", "angle": "<specific angle>", "hook_type": "<type>", "cta": "<cta type>"}]}
+      {"week": 1, "theme": "<>", "posts": [{"type": "<>", "angle": "<>", "hook_type": "<>", "cta": "<>"}]},
+      {"week": 2, "theme": "<>", "posts": [{"type": "<>", "angle": "<>", "hook_type": "<>", "cta": "<>"}]},
+      {"week": 3, "theme": "<>", "posts": [{"type": "<>", "angle": "<>", "hook_type": "<>", "cta": "<>"}]},
+      {"week": 4, "theme": "<>", "posts": [{"type": "<>", "angle": "<>", "hook_type": "<>", "cta": "<>"}]}
     ]
   },
   "winning_position": {
+    "do_this": ["<3-4 specific directives — decisive tone>"],
+    "do_not_do": ["<2-3 things to avoid — based on competitor patterns>"],
+    "dominate_with": ["<2-3 power moves that leverage user's unique advantage>"],
     "focus_audience": "<specific audience segment to target>",
     "messaging_approach": "<how to simplify/differentiate messaging>",
-    "cta_strategy": "<specific CTA approach>",
-    "local_context": "<any local/contextual advantage>",
-    "key_moves": ["<3-4 specific positioning moves>"]
+    "cta_strategy": "<specific CTA approach>"
+  },
+  "confidence_layer": {
+    "level": "<high|medium|low>",
+    "posts_analyzed": ${posts.length},
+    "pattern_consistency": "<strong|moderate|weak>",
+    "reasoning": "<why this confidence level — reference data points>"
   },
   "patterns": ["<3-5 content patterns>"],
   "gaps": ["<3-5 strategic gaps to exploit>"],
@@ -374,10 +404,18 @@ Return JSON:
     "engagement_killers": ["<killers>"]
   },
   "strategic_opportunities": [{"opportunity": "<>", "reasoning": "<>", "action": "<>"}],
-  "actionable_recommendations": [{"action": "<specific>", "priority": "<high|medium|low>", "category": "<content|tone|audience|cta|positioning>", "reasoning": "<outcome-linked>", "expected_impact": "<specific metric improvement>"}]
+  "actionable_recommendations": [{"action": "<specific — starts with verb>", "priority": "<high|medium|low>", "category": "<content|tone|audience|cta|positioning>", "reasoning": "<outcome-linked — reference data>", "expected_impact": "<specific metric improvement>"}]
 }
 
-CRITICAL: Generate at least 5 content_angles and 5 opportunity_scores. Every recommendation MUST include expected impact. NO generic advice.
+CRITICAL RULES:
+- Generate at least 6 content_angles and 5 opportunity_scores
+- Every recommendation MUST include expected impact with numbers
+- NO generic advice like "improve engagement" or "use better CTA"
+- Use SHARP language: "You should prioritize..." not "You may consider..."
+- Every content angle MUST include goal, cta_style, and expected_outcome
+- execution_plan must have exactly 4 entries (days 1, 3, 5, 7)
+- why_posts_work should cover top 2-3 performing posts
+- winning_position must use do_this/do_not_do/dominate_with format
 
 Return ONLY valid JSON.`;
 
