@@ -282,7 +282,7 @@ async function analyzePostLevel(post: any, competitorName: string, userContext: 
     "local_relevance_score": "<high|medium|low>"
   },` : "";
 
-  const prompt = `You are an elite LinkedIn competitive intelligence strategist. Analyze this post from "${competitorName || "Unknown"}" and provide a DECISIVE, ACTIONABLE breakdown.
+  const prompt = `You are an elite LinkedIn competitive intelligence strategist and decision engine. Analyze this post from "${competitorName || "Unknown"}".
 
 ${userContext}
 
@@ -290,12 +290,22 @@ POST:
 ${post.content}
 ${metricsInfo}${visualInfo}
 
-Be SPECIFIC. Reference actual lines. NO generic phrases. Speak like a battle strategist, not an assistant.
+Be SPECIFIC. Reference actual lines. NO generic phrases. Speak like a battle strategist.
 Every insight must answer: "So what? What should the user DO about this?"
 
 Return JSON:
 {
   "brutal_verdict": "<max 15 words. Pure decision clarity. Examples: 'Strong authority. Weak conversion. Easy to beat.' or 'Low impact post. Not worth reacting to.'>",
+  "verdict_card": {
+    "verdict_type": "<opportunity|monitor|threat>",
+    "verdict_label": "<Low Impact Opportunity|Medium Competitive Threat|High Priority Threat>",
+    "verdict_summary": "<1 sentence explaining verdict — decisive>",
+    "threat_level": "<low|medium|high>",
+    "recommended_action": "<Ignore or outperform with 1 strong post|Adapt strategy to counter|Respond immediately with superior content>",
+    "timing": "<No urgency — add to next content cycle|Within 3-5 days|Post immediately>",
+    "confidence": "<high|medium|low>",
+    "confidence_reason": "<short reason — e.g. 'Weak CTA + low relevance to ICP + generic messaging detected'>"
+  },
   "post_breakdown": {
     "hook_type": "<curiosity|pain|data|story|contrarian|question|bold_claim|none>",
     "content_type": "<educational|storytelling|product_led|authority|promotional|thought_leadership>",
@@ -309,11 +319,11 @@ Return JSON:
     "conversion_intent_strength": "<low|medium|high>",
     "competitive_threat_level": "<low|medium|high>",
     "threat_action": "<ignore|learn|must_respond>",
-    "verdict": "<1-2 sentence decisive verdict — e.g. 'This post builds authority but is NOT a conversion threat. Weak CTA and no urgency trigger.'>"
+    "verdict": "<1-2 sentence decisive verdict>"
   },
   "exploitable_weaknesses": [
     {
-      "weakness": "<SHORT bullet: weakness + implication — e.g. 'Too technical → loses non-technical store owners'>",
+      "weakness": "<SHORT: weakness + implication — e.g. 'Too technical → loses non-technical store owners'>",
       "how_to_exploit": "<1 line action>"
     }
   ],
@@ -325,7 +335,7 @@ Return JSON:
     "replicate_note": "<what to learn, not blindly copy>"
   },
   "weakness_analysis": {
-    "failures": ["<specific weakness with reasoning>"],
+    "failures": ["<specific weakness>"],
     "weak_elements": {
       "hook": "<specific issue or 'strong'>",
       "cta": "<specific issue or 'strong'>",
@@ -336,39 +346,51 @@ Return JSON:
   "behavioral_insight": {
     "scroll_stop_power": "<1 line: weak/medium/strong + why>",
     "engagement_trigger": "<1 line: what triggers engagement>",
-    "attention_drop_point": "<1 line: where attention drops and why>",
-    "psychology_summary": "<1-2 sentence psychological analysis>"
+    "attention_drop_point": "<1 line: where attention drops and why>"
   },
   "winning_move": {
-    "better_hook": "<rewritten hook that outperforms competitor — ready to use>",
-    "better_angle": "<explain positioning difference>",
-    "better_cta": "<more aggressive / clearer / localized CTA>",
-    "strategic_advantage": "<WHY your version wins — reference competitor weakness>"
+    "better_hook": "<rewritten hook that outperforms — ready to use>",
+    "better_angle": "<positioning difference>",
+    "better_cta": "<more aggressive/clearer/localized CTA>",
+    "strategic_advantage": "<WHY your version wins>"
   },
-  "what_to_do_now": [
-    "<action 1: most important executable action>",
-    "<action 2: secondary action>",
-    "<action 3: optional follow-up>"
+  "execution_plan": {
+    "steps": [
+      "<Step 1: most important action — specific and executable>",
+      "<Step 2: secondary action>",
+      "<Step 3: follow-up action>",
+      "<Step 4: optional strategic move>"
+    ],
+    "timing_note": "<when to execute — e.g. 'Publish within 3 days for maximum impact'>"
+  },
+  "priority_opportunities": [
+    {
+      "label": "<short opportunity name>",
+      "impact": "<high|medium|low>",
+      "detail": "<1 line: what to do + expected result>"
+    }
   ],
-  "outperform_version": "<full rewritten post (150-300 words) optimized for user's audience, market, and campaign goal — stronger hook, better CTA, more locally relevant>",
-  "competitive_benchmark": {
-    "hook_vs_standard": "<e.g. '30% weaker than high-performing patterns'>",
-    "hook_direction": "<weaker|stronger|similar>",
-    "engagement_vs_top": "<comparison to top-performing posts>",
-    "engagement_direction": "<below_average|average|above_average>",
-    "cta_vs_best_practice": "<comparison to best practice CTAs>",
-    "cta_direction": "<weak|adequate|strong>"
+  "cross_post_patterns": {
+    "patterns_detected": ["<pattern across competitor's content — e.g. 'Weak CTAs across 80% of posts'>"],
+    "strategic_opportunity": "<how to exploit the pattern>",
+    "recommendation": "<specific action>"
   },
+  "competitive_benchmark": {
+    "hook": { "competitor": "<e.g. 6/10>", "top_performers": "<e.g. 8.5/10>", "opportunity": "<e.g. +40% improvement possible>", "direction": "<weaker|stronger|similar>" },
+    "engagement": { "competitor": "<low|medium|high>", "industry_standard": "<low|medium|high>", "your_expected": "<low|medium|high — with reason>", "direction": "<below_average|average|above_average>" },
+    "cta": { "competitor": "<description>", "best_practice": "<description>", "direction": "<weak|adequate|strong>" }
+  },
+  "outperform_version": "<full rewritten post (150-300 words) optimized for user's audience, market, and campaign goal>",
   "audience_targeting": {
     "who_targeted": "<specific>",
     "awareness_level": "<unaware|problem_aware|solution_aware|product_aware|most_aware>",
     "relevance_to_user": "<how this relates to YOUR audience>"
   },
   "engagement_insight": "<WHY engagement is high/low tied to structure>",
-  "improvement_suggestions": ["<specific actionable suggestions>"],
-  "rewritten_hook": "<better hook for USER's audience>",
-  "rewritten_cta": "<better CTA>"
+  "improvement_suggestions": ["<specific actionable suggestions>"]
 }
+
+Return ONLY valid JSON.`;
 
 Return ONLY valid JSON.`;
 
