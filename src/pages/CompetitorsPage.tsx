@@ -90,9 +90,9 @@ const CompetitorsPage = () => {
   const [newPostImpressions, setNewPostImpressions] = useState("");
   const [savingPost, setSavingPost] = useState(false);
 
-  // Screenshot flow
-  const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  // Screenshot flow (multiple)
+  const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
+  const [screenshotPreviews, setScreenshotPreviews] = useState<string[]>([]);
   const [extracting, setExtracting] = useState(false);
   const [extraction, setExtraction] = useState<ExtractionResult | null>(null);
   const [reviewData, setReviewData] = useState<Record<string, any>>({});
@@ -142,21 +142,35 @@ const CompetitorsPage = () => {
   const resetPostForm = () => {
     setNewPostContent(""); setNewPostTopic(""); setNewPostUrl("");
     setNewPostLikes(""); setNewPostComments(""); setNewPostReposts(""); setNewPostImpressions("");
-    setScreenshotFile(null); setScreenshotPreview(null); setExtraction(null); setReviewData({});
+    screenshotPreviews.forEach(url => URL.revokeObjectURL(url));
+    setScreenshotFiles([]); setScreenshotPreviews([]); setExtraction(null); setReviewData({});
     setAddingPostFor(null); setPostInputMode("screenshot");
   };
 
-  // Screenshot upload + extraction
+  // Screenshot upload + extraction (multiple)
   const handleScreenshotSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    applyScreenshotFile(file);
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    addScreenshotFiles(Array.from(files));
+    e.target.value = "";
   };
 
-  const applyScreenshotFile = (file: File) => {
-    if (file.size > 10 * 1024 * 1024) { toast.error("File too large. Max 10MB."); return; }
-    setScreenshotFile(file);
-    setScreenshotPreview(URL.createObjectURL(file));
+  const addScreenshotFiles = (files: File[]) => {
+    const valid = files.filter(f => {
+      if (f.size > 10 * 1024 * 1024) { toast.error(`${f.name} too large. Max 10MB.`); return false; }
+      return true;
+    });
+    if (valid.length === 0) return;
+    setScreenshotFiles(prev => [...prev, ...valid]);
+    setScreenshotPreviews(prev => [...prev, ...valid.map(f => URL.createObjectURL(f))]);
+    setExtraction(null);
+    setReviewData({});
+  };
+
+  const removeScreenshot = (index: number) => {
+    URL.revokeObjectURL(screenshotPreviews[index]);
+    setScreenshotFiles(prev => prev.filter((_, i) => i !== index));
+    setScreenshotPreviews(prev => prev.filter((_, i) => i !== index));
     setExtraction(null);
     setReviewData({});
   };
@@ -164,34 +178,39 @@ const CompetitorsPage = () => {
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
+    const imageFiles: File[] = [];
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.startsWith("image/")) {
-        e.preventDefault();
         const file = items[i].getAsFile();
-        if (file) applyScreenshotFile(file);
-        return;
+        if (file) imageFiles.push(file);
       }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addScreenshotFiles(imageFiles);
     }
   };
 
   const runExtraction = async () => {
-    if (!screenshotFile || !user) return;
+    if (screenshotFiles.length === 0 || !user) return;
     setExtracting(true);
     try {
-      // Upload screenshot to storage
-      const ext = screenshotFile.name.split(".").pop() || "png";
-      const path = `${user.id}/${Date.now()}.${ext}`;
-      const { error: uploadError } = await supabase.storage
-        .from("competitor-screenshots")
-        .upload(path, screenshotFile, { contentType: screenshotFile.type });
-      if (uploadError) throw new Error("Failed to upload screenshot");
+      // Upload all screenshots to storage
+      const uploadedUrls: string[] = [];
+      for (const file of screenshotFiles) {
+        const ext = file.name.split(".").pop() || "png";
+        const path = `${user.id}/${Date.now()}_${Math.random().toString(36).slice(2, 7)}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from("competitor-screenshots")
+          .upload(path, file, { contentType: file.type });
+        if (uploadError) throw new Error("Failed to upload screenshot");
+        const { data: urlData } = supabase.storage.from("competitor-screenshots").getPublicUrl(path);
+        uploadedUrls.push(urlData.publicUrl);
+      }
 
-      const { data: urlData } = supabase.storage.from("competitor-screenshots").getPublicUrl(path);
-      const screenshotUrl = urlData.publicUrl;
-
-      // Call extraction function
+      // Extract from first screenshot (primary — has post text & metrics)
       const { data, error } = await supabase.functions.invoke("extract-competitor-post", {
-        body: { screenshot_url: screenshotUrl },
+        body: { screenshot_url: uploadedUrls[0] },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -212,10 +231,11 @@ const CompetitorsPage = () => {
         visual_summary: ext_result.visual_summary?.value || "",
         post_url: "",
         topic: ext_result.author_name?.value || "",
-        screenshot_url: screenshotUrl,
+        screenshot_url: uploadedUrls[0],
+        all_screenshot_urls: uploadedUrls,
       });
 
-      toast.success("Screenshot analyzed! Review the extracted data below.");
+      toast.success(`${uploadedUrls.length} screenshot${uploadedUrls.length > 1 ? "s" : ""} analyzed! Review the extracted data below.`);
     } catch (err: any) {
       toast.error(err.message || "Extraction failed");
     }
@@ -246,6 +266,11 @@ const CompetitorsPage = () => {
         if (reviewData.post_format !== (extraction.post_format?.value || "")) corrections.post_format = true;
       }
 
+      const originalWithScreenshots = {
+        ...(extraction || {}),
+        all_screenshot_urls: reviewData.all_screenshot_urls || [reviewData.screenshot_url],
+      };
+
       const { error } = await supabase.from("competitor_posts").insert({
         user_id: user!.id,
         competitor_id: competitorId,
@@ -261,7 +286,7 @@ const CompetitorsPage = () => {
         visual_summary: reviewData.visual_summary?.trim() || null,
         post_format: reviewData.post_format || null,
         extraction_confidence: confidenceObj,
-        original_extraction: extraction || {},
+        original_extraction: originalWithScreenshots,
         manual_corrections: corrections,
       });
       if (error) throw error;
@@ -431,8 +456,8 @@ const CompetitorsPage = () => {
 
                             {postInputMode === "screenshot" ? (
                               <ScreenshotPostFlow
-                                screenshotPreview={screenshotPreview}
-                                screenshotFile={screenshotFile}
+                                screenshotPreviews={screenshotPreviews}
+                                screenshotFiles={screenshotFiles}
                                 extracting={extracting}
                                 extraction={extraction}
                                 reviewData={reviewData}
@@ -444,6 +469,7 @@ const CompetitorsPage = () => {
                                 onCancel={resetPostForm}
                                 saving={savingPost}
                                 fileInputRef={fileInputRef}
+                                onRemoveScreenshot={removeScreenshot}
                               />
                             ) : (
                               <ManualPostForm
@@ -501,33 +527,34 @@ const CompetitorsPage = () => {
 // ========== SCREENSHOT FLOW ==========
 
 function ScreenshotPostFlow({
-  screenshotPreview, screenshotFile, extracting, extraction, reviewData, setReviewData,
-  onFileSelect, onPaste, onExtract, onSave, onCancel, saving, fileInputRef,
+  screenshotPreviews, screenshotFiles, extracting, extraction, reviewData, setReviewData,
+  onFileSelect, onPaste, onExtract, onSave, onCancel, saving, fileInputRef, onRemoveScreenshot,
 }: {
-  screenshotPreview: string | null; screenshotFile: File | null; extracting: boolean;
+  screenshotPreviews: string[]; screenshotFiles: File[]; extracting: boolean;
   extraction: ExtractionResult | null; reviewData: Record<string, any>;
   setReviewData: (d: Record<string, any>) => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onPaste: (e: React.ClipboardEvent) => void;
   onExtract: () => void; onSave: () => void; onCancel: () => void; saving: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  onRemoveScreenshot: (index: number) => void;
 }) {
   const updateField = (key: string, value: any) => setReviewData({ ...reviewData, [key]: value });
 
-  // Step 1: Upload
-  if (!screenshotPreview) {
+  // Step 1: Upload (no screenshots yet)
+  if (screenshotPreviews.length === 0) {
     return (
       <div className="space-y-3" onPaste={onPaste}>
-        <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} className="hidden" />
+        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onFileSelect} className="hidden" />
         <button
           onClick={() => fileInputRef.current?.click()}
           className="w-full border-2 border-dashed border-border rounded-lg p-8 hover:border-primary/50 hover:bg-muted/30 transition-colors flex flex-col items-center gap-2 focus:outline-none focus:border-primary/50"
           tabIndex={0}
         >
           <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">Upload or Paste Screenshot</p>
-          <p className="text-xs text-muted-foreground">Click to browse, or paste from clipboard (Ctrl+V / ⌘V)</p>
-          <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP — Max 10MB</p>
+          <p className="text-sm font-medium text-foreground">Upload or Paste Screenshots</p>
+          <p className="text-xs text-muted-foreground">Click to browse, drag & drop, or paste (Ctrl+V / ⌘V)</p>
+          <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP — Max 10MB each — Multiple allowed</p>
         </button>
         <div className="flex justify-end">
           <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
@@ -539,32 +566,49 @@ function ScreenshotPostFlow({
   // Step 2: Preview + Extract
   if (!extraction) {
     return (
-      <div className="space-y-3">
-        <div className="flex gap-4">
-          <div className="w-48 h-48 rounded-lg border border-border overflow-hidden bg-muted/50 shrink-0">
-            <img src={screenshotPreview} alt="Screenshot" className="w-full h-full object-contain" />
-          </div>
-          <div className="flex-1 flex flex-col justify-center items-center">
-            {extracting ? (
-              <div className="text-center space-y-2">
-                <Loader2 className="h-6 w-6 animate-spin text-primary mx-auto" />
-                <p className="text-sm text-muted-foreground">Analyzing screenshot with AI vision...</p>
-                <p className="text-xs text-muted-foreground">Extracting post text, metrics & visual style</p>
-              </div>
-            ) : (
-              <div className="text-center space-y-3">
-                <Camera className="h-8 w-8 text-primary mx-auto" />
-                <p className="text-sm text-foreground font-medium">Screenshot ready</p>
-                <Button onClick={onExtract} size="sm">
-                  <Zap className="h-3.5 w-3.5 mr-1" /> Extract Post Data
-                </Button>
-              </div>
-            )}
-          </div>
+      <div className="space-y-3" onPaste={onPaste}>
+        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onFileSelect} className="hidden" />
+        <div className="flex gap-3 flex-wrap">
+          {screenshotPreviews.map((preview, idx) => (
+            <div key={idx} className="relative w-32 h-32 rounded-lg border border-border overflow-hidden bg-muted/50 shrink-0 group">
+              <img src={preview} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-contain" />
+              {idx === 0 && (
+                <span className="absolute top-1 left-1 text-[9px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-medium">Primary</span>
+              )}
+              <button
+                onClick={() => onRemoveScreenshot(idx)}
+                className="absolute top-1 right-1 h-5 w-5 rounded-full bg-destructive/90 text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </div>
+          ))}
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-32 h-32 rounded-lg border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/30 transition-colors flex flex-col items-center justify-center gap-1"
+          >
+            <Plus className="h-5 w-5 text-muted-foreground" />
+            <span className="text-[10px] text-muted-foreground">Add more</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          {extracting ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              Analyzing {screenshotFiles.length} screenshot{screenshotFiles.length > 1 ? "s" : ""} with AI vision...
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {screenshotFiles.length} screenshot{screenshotFiles.length > 1 ? "s" : ""} ready.
+              {screenshotFiles.length > 1 && " Primary screenshot (first) will be used for text extraction."}
+            </p>
+          )}
         </div>
         <div className="flex justify-between">
-          <Button size="sm" variant="ghost" onClick={() => { onCancel(); }}>Cancel</Button>
-          <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>Change Screenshot</Button>
+          <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button onClick={onExtract} size="sm" disabled={extracting}>
+            <Zap className="h-3.5 w-3.5 mr-1" /> Extract Post Data
+          </Button>
         </div>
       </div>
     );
@@ -580,9 +624,14 @@ function ScreenshotPostFlow({
       </div>
 
       <div className="flex gap-4">
-        {/* Screenshot thumbnail */}
-        <div className="w-32 h-32 rounded-lg border border-border overflow-hidden bg-muted/50 shrink-0">
-          <img src={screenshotPreview} alt="Screenshot" className="w-full h-full object-contain" />
+        {/* Screenshot thumbnails */}
+        <div className="flex flex-col gap-2 shrink-0">
+          {screenshotPreviews.map((preview, idx) => (
+            <div key={idx} className="w-24 h-24 rounded-lg border border-border overflow-hidden bg-muted/50 relative">
+              <img src={preview} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-contain" />
+              {idx === 0 && <span className="absolute top-0.5 left-0.5 text-[8px] bg-primary text-primary-foreground px-1 py-0.5 rounded">Primary</span>}
+            </div>
+          ))}
         </div>
 
         <div className="flex-1 space-y-3">
