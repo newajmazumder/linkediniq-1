@@ -208,9 +208,9 @@ const CompetitorsPage = () => {
         uploadedUrls.push(urlData.publicUrl);
       }
 
-      // Extract from first screenshot (primary — has post text & metrics)
+      // Extract from ALL screenshots so the AI sees visuals + metrics
       const { data, error } = await supabase.functions.invoke("extract-competitor-post", {
-        body: { screenshot_url: uploadedUrls[0] },
+        body: { screenshot_urls: uploadedUrls },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);

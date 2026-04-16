@@ -24,8 +24,9 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { screenshot_url } = await req.json();
-    if (!screenshot_url) throw new Error("Missing screenshot_url");
+    const { screenshot_url, screenshot_urls } = await req.json();
+    const allUrls: string[] = screenshot_urls?.length ? screenshot_urls : screenshot_url ? [screenshot_url] : [];
+    if (allUrls.length === 0) throw new Error("Missing screenshot_url or screenshot_urls");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -117,8 +118,8 @@ Return ONLY valid JSON. No markdown wrapping.`;
           {
             role: "user",
             content: [
-              { type: "text", text: prompt },
-              { type: "image_url", image_url: { url: screenshot_url } },
+              { type: "text", text: `${prompt}\n\nYou are given ${allUrls.length} screenshot(s) of the SAME LinkedIn post. Analyze ALL images together to extract the complete picture — text from one, visuals/metrics from others. If an image contains a chart, infographic, or graphic, the post_format is NOT "text_only".` },
+              ...allUrls.map(url => ({ type: "image_url" as const, image_url: { url } })),
             ],
           },
         ],
