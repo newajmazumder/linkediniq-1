@@ -104,6 +104,7 @@ const emptyForm = {
   target_timeframe: "monthly",
   target_priority: "medium",
   language: "english",
+  market_context_id: "",
 };
 
 type Recommendation = {
@@ -129,11 +130,14 @@ const priorityColors: Record<string, string> = {
   low: "bg-muted text-muted-foreground border-border",
 };
 
+type MarketContextOption = { id: string; region_code: string; region_name: string; audience_type: string };
+
 const StrategyPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [personas, setPersonas] = useState<Persona[]>([]);
+  const [marketContexts, setMarketContexts] = useState<MarketContextOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -149,6 +153,7 @@ const StrategyPage = () => {
   useEffect(() => {
     if (user) {
       Promise.all([fetchCampaigns(), fetchPersonas(), fetchRecommendations(), fetchProgress()]).then(() => setLoading(false));
+      supabase.from("market_contexts").select("id, region_code, region_name, audience_type").eq("is_preset", true).then(({ data }) => setMarketContexts((data || []) as MarketContextOption[]));
     }
   }, [user]);
 
@@ -228,6 +233,7 @@ const StrategyPage = () => {
         target_timeframe: form.target_timeframe,
         target_priority: form.target_priority,
         language: form.language,
+        market_context_id: form.market_context_id || null,
       };
 
       if (editingId) {
@@ -276,6 +282,7 @@ const StrategyPage = () => {
       target_timeframe: c.target_timeframe || "monthly",
       target_priority: c.target_priority || "medium",
       language: (c as any).language || "english",
+      market_context_id: (c as any).market_context_id || "",
     });
     setEditingId(c.id);
     setShowForm(true);
@@ -364,12 +371,25 @@ const StrategyPage = () => {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Language</label>
+                  <label className="text-xs font-medium text-foreground">Target Market</label>
+                  <Select value={form.market_context_id} onValueChange={(v) => setForm({ ...form, market_context_id: v })}>
+                    <SelectTrigger className="text-sm"><SelectValue placeholder="Select market" /></SelectTrigger>
+                    <SelectContent>
+                      {marketContexts.map((mc) => (
+                        <SelectItem key={mc.id} value={mc.id}>
+                          {mc.region_code === "BD" ? "🇧🇩" : mc.region_code === "US" ? "🇺🇸" : "🌍"} {mc.region_name} — {mc.audience_type.replace(/_/g, " ")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Content Language</label>
                   <Select value={form.language} onValueChange={(v) => setForm({ ...form, language: v })}>
                     <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="english">🇺🇸 English</SelectItem>
-                      <SelectItem value="bangla">🇧🇩 Bangla</SelectItem>
+                      <SelectItem value="english">English</SelectItem>
+                      <SelectItem value="bangla">বাংলা (Bangla)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

@@ -30,7 +30,7 @@ serve(async (req) => {
       });
     }
 
-    const { post_id, action, context, language } = await req.json();
+    const { post_id, action, context, language, market_context_id } = await req.json();
     if (!post_id || !action) {
       return new Response(JSON.stringify({ error: "post_id and action are required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -159,6 +159,17 @@ Apply the fix precisely. Do NOT rewrite the entire post — make the minimum cha
     const isBanglaContent = /[\u0980-\u09FF]/.test(post.hook + post.body);
     const effectiveLanguage = language || (isBanglaContent ? "bangla" : "english");
 
+    // Fetch market context if provided
+    let marketSystemAddition = "";
+    if (market_context_id) {
+      const { data: mc } = await supabase.from("market_contexts").select("*").eq("id", market_context_id).single();
+      if (mc) {
+        const phrases = mc.localized_phrases as any || {};
+        const ctaExamples = Array.isArray(phrases.cta_examples) ? phrases.cta_examples.join(", ") : "";
+        marketSystemAddition = ` You are writing for the ${mc.region_name} market (${mc.audience_type}). Tone: ${mc.tone_preference}. Buyer maturity: ${mc.buyer_maturity}. Use scenarios and references native to ${mc.region_name}. CTA style: ${mc.preferred_cta_style}. Example CTAs: ${ctaExamples}. Content must feel native to this market — not generic or transplanted from another region.`;
+      }
+    }
+
     const banglaSystemAddition = effectiveLanguage === "bangla"
       ? " You MUST write ALL output (hook, body, cta) in native conversational Bangla. Do NOT translate from English. Think in Bangla. Use business-friendly, conversational Bangla tone. Keep English product terms (AI Agent, WhatsApp, etc.) in English. CTAs must feel natural in Bangla."
       : "";
@@ -172,7 +183,7 @@ Apply the fix precisely. Do NOT rewrite the entire post — make the minimum cha
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: "You are a LinkedIn post rewriter for B2B SaaS. Respond with ONLY valid JSON, no markdown fences, no explanation." + banglaSystemAddition },
+          { role: "system", content: "You are a LinkedIn post rewriter for B2B SaaS. Respond with ONLY valid JSON, no markdown fences, no explanation." + marketSystemAddition + banglaSystemAddition },
           { role: "user", content: prompts[action] },
         ],
       }),

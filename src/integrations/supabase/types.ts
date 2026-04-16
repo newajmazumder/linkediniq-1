@@ -544,6 +544,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           language: string | null
+          market_context_id: string | null
           name: string
           offer: string | null
           primary_objective: string | null
@@ -570,6 +571,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           language?: string | null
+          market_context_id?: string | null
           name: string
           offer?: string | null
           primary_objective?: string | null
@@ -596,6 +598,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           language?: string | null
+          market_context_id?: string | null
           name?: string
           offer?: string | null
           primary_objective?: string | null
@@ -615,6 +618,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "campaigns_market_context_id_fkey"
+            columns: ["market_context_id"]
+            isOneToOne: false
+            referencedRelation: "market_contexts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "campaigns_primary_persona_id_fkey"
             columns: ["primary_persona_id"]
@@ -645,6 +655,7 @@ export type Database = {
           execution_plan: Json | null
           gaps: Json | null
           id: string
+          market_context_id: string | null
           messaging_patterns: Json | null
           opportunity_scores: Json | null
           overused_themes: Json | null
@@ -673,6 +684,7 @@ export type Database = {
           execution_plan?: Json | null
           gaps?: Json | null
           id?: string
+          market_context_id?: string | null
           messaging_patterns?: Json | null
           opportunity_scores?: Json | null
           overused_themes?: Json | null
@@ -701,6 +713,7 @@ export type Database = {
           execution_plan?: Json | null
           gaps?: Json | null
           id?: string
+          market_context_id?: string | null
           messaging_patterns?: Json | null
           opportunity_scores?: Json | null
           overused_themes?: Json | null
@@ -722,6 +735,13 @@ export type Database = {
             columns: ["competitor_id"]
             isOneToOne: false
             referencedRelation: "competitors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "competitor_insights_market_context_id_fkey"
+            columns: ["market_context_id"]
+            isOneToOne: false
+            referencedRelation: "market_contexts"
             referencedColumns: ["id"]
           },
         ]
@@ -1361,6 +1381,78 @@ export type Database = {
           },
         ]
       }
+      market_contexts: {
+        Row: {
+          audience_type: string
+          buyer_maturity: string
+          common_customer_behaviors: Json
+          common_pain_points: Json
+          content_style_bias: string
+          created_at: string
+          id: string
+          is_preset: boolean
+          language_defaults: Json
+          localized_examples: Json
+          localized_phrases: Json
+          platform_reality: Json
+          preferred_cta_style: string
+          primary_channels: Json
+          region_code: string
+          region_name: string
+          sales_conversation_behavior: Json
+          tone_preference: string
+          trust_signals: Json
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          audience_type?: string
+          buyer_maturity?: string
+          common_customer_behaviors?: Json
+          common_pain_points?: Json
+          content_style_bias?: string
+          created_at?: string
+          id?: string
+          is_preset?: boolean
+          language_defaults?: Json
+          localized_examples?: Json
+          localized_phrases?: Json
+          platform_reality?: Json
+          preferred_cta_style?: string
+          primary_channels?: Json
+          region_code: string
+          region_name: string
+          sales_conversation_behavior?: Json
+          tone_preference?: string
+          trust_signals?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          audience_type?: string
+          buyer_maturity?: string
+          common_customer_behaviors?: Json
+          common_pain_points?: Json
+          content_style_bias?: string
+          created_at?: string
+          id?: string
+          is_preset?: boolean
+          language_defaults?: Json
+          localized_examples?: Json
+          localized_phrases?: Json
+          platform_reality?: Json
+          preferred_cta_style?: string
+          primary_channels?: Json
+          region_code?: string
+          region_name?: string
+          sales_conversation_behavior?: Json
+          tone_preference?: string
+          trust_signals?: Json
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       post_context: {
         Row: {
           auto_mapped: boolean | null
@@ -1603,6 +1695,7 @@ export type Database = {
           id: string
           idea_id: string
           image_briefs: Json | null
+          market_context_id: string | null
           persona_id: string | null
           post_style: string
           post_type: string
@@ -1623,6 +1716,7 @@ export type Database = {
           id?: string
           idea_id: string
           image_briefs?: Json | null
+          market_context_id?: string | null
           persona_id?: string | null
           post_style: string
           post_type?: string
@@ -1643,6 +1737,7 @@ export type Database = {
           id?: string
           idea_id?: string
           image_briefs?: Json | null
+          market_context_id?: string | null
           persona_id?: string | null
           post_style?: string
           post_type?: string
@@ -1657,6 +1752,13 @@ export type Database = {
             columns: ["idea_id"]
             isOneToOne: false
             referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "posts_market_context_id_fkey"
+            columns: ["market_context_id"]
+            isOneToOne: false
+            referencedRelation: "market_contexts"
             referencedColumns: ["id"]
           },
         ]
