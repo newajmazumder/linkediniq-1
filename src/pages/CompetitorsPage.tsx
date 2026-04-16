@@ -513,7 +513,7 @@ const CompetitorsPage = () => {
                         {compPosts.length === 0 && addingPostFor !== comp.id ? (
                           <p className="text-xs text-muted-foreground italic py-4 text-center">No posts tracked yet. Add competitor posts to enable analysis.</p>
                         ) : compPosts.map(post => (
-                          <PostCard key={post.id} post={post} competitorId={comp.id} onDelete={deletePost} onAnalyze={analyzePost} analyzing={analyzingPostId === post.id} expanded={expandedPostId === post.id} onToggle={() => setExpandedPostId(expandedPostId === post.id ? null : post.id)} />
+                          <PostCard key={post.id} post={post} competitorId={comp.id} onDelete={deletePost} onAnalyze={analyzePost} analyzing={analyzingPostId === post.id} expanded={expandedPostId === post.id} onToggle={() => setExpandedPostId(expandedPostId === post.id ? null : post.id)} onNavigateToCreate={navigateToCreate} />
                         ))}
                       </TabsContent>
 
@@ -521,7 +521,29 @@ const CompetitorsPage = () => {
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
-                            {/* Quick Actions - always visible */}
+                            {/* Decision Header - sticky top */}
+                            <DecisionHeader
+                              competitorName={comp.name}
+                              hasInsights={true}
+                              onGeneratePost={() => {
+                                const angle = compInsight.content_angles?.[0];
+                                if (angle) navigateToCreate({
+                                  hook_type: angle.hook_type, intent: angle.intent,
+                                  title: angle.title, example_hook: angle.example_hook,
+                                  goal: angle.goal, cta_style: angle.cta_style,
+                                  auto_generate: true,
+                                });
+                                else navigateToCreate({ hook_type: "pain", intent: "conversion", auto_generate: true });
+                              }}
+                              onBuildCampaign={() => navigateToCampaign(compInsight, comp.name)}
+                              onExploitWeakness={() => navigateToCreate({
+                                title: `Counter: ${compInsight.win_strategy?.primary_weakness || "competitor weakness"}`,
+                                hook_type: "pain",
+                                intent: "conversion",
+                                exploit_weakness: compInsight.win_strategy?.primary_weakness,
+                                auto_generate: true,
+                              })}
+                            />
                             <QuickActionsPanel
                               hasInsights={true}
                               onGenerate7DayPlan={() => {
