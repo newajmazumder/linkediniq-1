@@ -7,24 +7,32 @@ const corsHeaders = {
 };
 
 async function callAI(prompt: string, temperature = 0.4): Promise<string> {
-  const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [{ role: "user", content: prompt }],
-      temperature,
-    }),
-  });
-  if (!resp.ok) {
-    if (resp.status === 402) throw new Error("AI credits exhausted. Please add funds.");
-    if (resp.status === 429) throw new Error("Rate limited. Please try again in a moment.");
-    throw new Error(`AI error ${resp.status}`);
+  let resp: Response | null = null;
+  const maxRetries = 3;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${Deno.env.get("LOVABLE_API_KEY")}`,
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        max_tokens: 8192,
+        messages: [{ role: "user", content: prompt }],
+        temperature,
+      }),
+    });
+    if (resp!.ok) break;
+    if ((resp!.status === 502 || resp!.status === 503) && attempt < maxRetries) {
+      await new Promise(r => setTimeout(r, 2000 * attempt));
+      continue;
+    }
+    if (resp!.status === 402) throw new Error("AI credits exhausted. Please add funds.");
+    if (resp!.status === 429) throw new Error("Rate limited. Please try again in a moment.");
+    throw new Error(`AI error ${resp!.status}`);
   }
-  const data = await resp.json();
+  const data = await resp!.json();
   const raw = data.choices?.[0]?.message?.content || "{}";
   return raw.trim().replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/, "");
 }
