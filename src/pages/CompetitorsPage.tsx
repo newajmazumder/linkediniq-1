@@ -477,7 +477,7 @@ const CompetitorsPage = () => {
           },
           business_rationale: {
             competitor_name: compName,
-            why_this_campaign: compInsight.win_strategy?.primary_weakness || compInsight.best_move?.reason || "Exploit the competitor's most visible strategic gap.",
+            why_this_campaign: compInsight.win_strategy?.primary_weakness || (compInsight as any).best_move?.reason || "Exploit the competitor's most visible strategic gap.",
             expected_outcome: compInsight.predicted_outcomes?.engagement_improvement || topAngle?.expected_outcome || null,
           },
           audience_summary: {
