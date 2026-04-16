@@ -167,13 +167,25 @@ async function analyzePostLevel(post: any, competitorName: string, userContext: 
     ? `\nEngagement Metrics: ${post.likes || 0} likes, ${post.comments || 0} comments, ${post.reposts || 0} reposts, ${post.impressions || 0} impressions`
     : "\nNo engagement metrics provided.";
 
+  const hasVisualData = post.post_format || post.visual_summary;
+  const visualInfo = hasVisualData
+    ? `\nVisual/Creative Info:\n- Post Format: ${post.post_format || "unknown"}\n- Visual Summary: ${post.visual_summary || "none"}\n- Source: ${post.source_type || "manual"}`
+    : "";
+
+  const creativeAnalysisBlock = hasVisualData ? `
+  "creative_analysis": {
+    "visual_assessment": "<what kind of visual they used and how it relates to the content>",
+    "message_alignment": "<does the visual support or weaken the message? Be specific>",
+    "performance_impact": "<is the visual likely helping or hurting engagement? Explain why>"
+  },` : "";
+
   const prompt = `You are an elite LinkedIn content strategist doing competitive intelligence analysis. Analyze this competitor post from "${competitorName || "Unknown"}".
 
 ${userContext}
 
 POST CONTENT:
 ${post.content}
-${metricsInfo}
+${metricsInfo}${visualInfo}
 
 Provide DEEP, SPECIFIC analysis. Reference actual lines from the post. NO generic phrases like "engaging content" or "good post".
 
@@ -204,7 +216,7 @@ Return JSON with this EXACT structure:
       "differentiation": "<specific issue or 'strong'>",
       "specificity": "<specific issue or 'strong'>"
     }
-  },
+  },${creativeAnalysisBlock}
   "engagement_insight": "<if metrics provided: explain WHY engagement is high/low tied to structure. If no metrics: skip>",
   "improvement_suggestions": ["<specific, actionable suggestions - NOT generic>"],
   "rewritten_hook": "<a better version of the hook, written as if the USER wrote it for THEIR audience>",
