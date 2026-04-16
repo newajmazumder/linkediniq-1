@@ -229,6 +229,7 @@ const StrategyPage = () => {
         target_timeframe: form.target_timeframe,
         target_priority: form.target_priority,
         language: form.language,
+        market_context_id: form.market_context_id || null,
       };
 
       if (editingId) {
