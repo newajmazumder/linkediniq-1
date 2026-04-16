@@ -93,11 +93,45 @@ export const scoreSeverity = (n: number): ScoreSeverity => {
 
 export const scoreVerdict = (sev: ScoreSeverity): string => {
   switch (sev) {
-    case "excellent": return "Strategy is firing on all cylinders.";
-    case "good": return "Solid foundation. Tighten one weak pillar to break through.";
-    case "warning": return "Strategy will underperform without intervention.";
-    case "critical": return "CRITICAL: Strategy will fail without immediate action.";
+    case "excellent": return "Firing on all cylinders.";
+    case "good": return "Solid base. Tighten one pillar to break through.";
+    case "warning": return "Underperforming. One intervention will shift the trajectory.";
+    case "critical": return "High risk of failure without action this week.";
   }
+};
+
+// One-line interpretation paired with the numeric score — calm, not alarming.
+export const scoreInterpretation = (sev: ScoreSeverity): string => {
+  switch (sev) {
+    case "excellent": return "On track to outperform";
+    case "good": return "Trending toward target";
+    case "warning": return "Off-pace — one fix away";
+    case "critical": return "High risk of failure";
+  }
+};
+
+// Posting velocity calculation — adds psychological pressure (actual vs required).
+export type VelocityInfo = {
+  actual: number;       // posts/week shipped so far
+  required: number;     // posts/week required to finish on time
+  onPace: boolean;
+  label: string;        // e.g., "0 / 5 posts per week"
+};
+
+export const computeVelocity = (
+  drafted: number,
+  total: number,
+  weeks: number,
+): VelocityInfo => {
+  const w = Math.max(1, weeks);
+  const actual = Math.round((drafted / w) * 10) / 10;
+  const required = Math.round((total / w) * 10) / 10;
+  return {
+    actual,
+    required,
+    onPace: actual >= required,
+    label: `${actual} / ${required} posts per week`,
+  };
 };
 
 // Diagnose what's broken and what to fix — turns the score into a decision.
