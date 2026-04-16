@@ -312,13 +312,13 @@ const StrategyPage = () => {
 
   return (
     <div className="content-fade-in space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Strategy</h1>
           <p className="mt-1 text-sm text-muted-foreground">Define campaigns with measurable targets and get AI recommendations.</p>
         </div>
         {tab === "campaigns" && (
-          <div className="flex gap-2">
+          <div className="flex gap-2 shrink-0">
             <Button size="sm" variant="outline" onClick={() => navigate("/campaign/new")}>
               <Sparkles className="mr-1 h-3.5 w-3.5" />
               AI Strategist
