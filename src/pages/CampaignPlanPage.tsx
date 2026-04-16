@@ -282,7 +282,6 @@ const CampaignPlanPage = () => {
           </div>
         </div>
       </div>
-      </div>
 
       {/* Tabs */}
       <div className="flex gap-1.5 border-b border-border">
