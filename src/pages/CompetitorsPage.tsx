@@ -531,7 +531,15 @@ const CompetitorsPage = () => {
 
                       {/* INSIGHTS TAB */}
                       <TabsContent value="insights" className="px-4 pb-4 mt-2">
-                        {compInsight ? <InsightsPanel insight={compInsight} /> : (
+                        {compInsight ? (
+                          <div className="space-y-6">
+                            <WinStrategySummary strategy={compInsight.win_strategy} />
+                            <ContentGapMatrix matrix={compInsight.content_gap_matrix} />
+                            <PredictedOutcomePanel outcomes={compInsight.predicted_outcomes} />
+                            <WinningPositionCard position={compInsight.winning_position} />
+                            <InsightsPanel insight={compInsight} />
+                          </div>
+                        ) : (
                           <div className="text-center py-8 text-muted-foreground text-sm">
                             <Eye className="h-8 w-8 mx-auto mb-2 opacity-50" />
                             Run "Full Analysis" with 2+ posts to generate insights.
@@ -541,7 +549,37 @@ const CompetitorsPage = () => {
 
                       {/* STRATEGY TAB */}
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
-                        {compInsight ? <StrategyPanel insight={compInsight} /> : (
+                        {compInsight ? (
+                          <div className="space-y-6">
+                            <ContentAnglesPanel
+                              angles={compInsight.content_angles}
+                              onCreatePost={(angle) => {
+                                // Store angle data for create page
+                                sessionStorage.setItem("competitor_strategy", JSON.stringify({
+                                  hook_type: angle.hook_type,
+                                  intent: angle.intent,
+                                  title: angle.title,
+                                  example_hook: angle.example_hook,
+                                }));
+                                navigate("/create");
+                              }}
+                            />
+                            <OpportunityScoringCards scores={compInsight.opportunity_scores} />
+                            <CampaignFromCompetitor
+                              blueprint={compInsight.campaign_blueprint}
+                              competitorName={comp.name}
+                              onGenerateCampaign={() => {
+                                sessionStorage.setItem("competitor_campaign_blueprint", JSON.stringify({
+                                  ...compInsight.campaign_blueprint,
+                                  competitor_name: comp.name,
+                                  win_strategy: compInsight.win_strategy,
+                                }));
+                                navigate("/campaign/new");
+                              }}
+                            />
+                            <StrategyPanel insight={compInsight} />
+                          </div>
+                        ) : (
                           <div className="text-center py-8 text-muted-foreground text-sm">
                             <Swords className="h-8 w-8 mx-auto mb-2 opacity-50" />
                             Run "Full Analysis" to get strategic recommendations.
