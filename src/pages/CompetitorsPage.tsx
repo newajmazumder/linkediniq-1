@@ -100,7 +100,6 @@ const CompetitorsPage = () => {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
   const [analyzingPostId, setAnalyzingPostId] = useState<string | null>(null);
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"action" | "insight">("action");
   const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
