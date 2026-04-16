@@ -294,7 +294,7 @@ Return JSON with this EXACT structure:
     "worst_performing_type": "<which fail and why>",
     "engagement_triggers": ["<what triggers engagement>"],
     "engagement_killers": ["<what kills engagement>"]
-  },
+  },${visualStrategyBlock}
   "strategic_opportunities": [
     {
       "opportunity": "<specific opportunity>",
