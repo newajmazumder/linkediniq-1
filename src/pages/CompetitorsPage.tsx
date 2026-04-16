@@ -477,7 +477,7 @@ const CompetitorsPage = () => {
           },
           business_rationale: {
             competitor_name: compName,
-            why_this_campaign: compInsight.win_strategy?.primary_weakness || compInsight.best_move?.reason || "Exploit the competitor's most visible strategic gap.",
+            why_this_campaign: compInsight.win_strategy?.primary_weakness || (compInsight as any).best_move?.reason || "Exploit the competitor's most visible strategic gap.",
             expected_outcome: compInsight.predicted_outcomes?.engagement_improvement || topAngle?.expected_outcome || null,
           },
           audience_summary: {
@@ -693,7 +693,7 @@ const CompetitorsPage = () => {
                                   auto_generate: true,
                                 });
                               }}
-                              onBuildCampaign={() => navigateToCampaign(compInsight, comp.name)}
+                              onBuildCampaign={() => buildCampaignFromInsight(compInsight, comp.name)}
                               onExploitWeakness={() => navigateToCreate({
                                 title: `Counter: ${compInsight.win_strategy?.primary_weakness || "competitor weakness"}`,
                                 hook_type: "pain",
@@ -747,7 +747,7 @@ const CompetitorsPage = () => {
                                   auto_generate: true,
                                 });
                               }}
-                              onCreateCampaign={() => navigateToCampaign(compInsight, comp.name)}
+                              onCreateCampaign={() => buildCampaignFromInsight(compInsight, comp.name)}
                             />
 
                             {/* LAYER 5: Opportunities - Decision System */}
@@ -787,7 +787,7 @@ const CompetitorsPage = () => {
                                     win_strategy: compInsight.win_strategy,
                                     winning_position: compInsight.winning_position,
                                   })}
-                                  onApplyToCampaign={() => navigateToCampaign(compInsight, comp.name)}
+                                  onApplyToCampaign={() => buildCampaignFromInsight(compInsight, comp.name)}
                                 />
 
                                 {/* Confidence */}
@@ -833,7 +833,7 @@ const CompetitorsPage = () => {
                                 <CampaignFromCompetitor
                                   blueprint={compInsight.campaign_blueprint}
                                   competitorName={comp.name}
-                                  onGenerateCampaign={() => navigateToCampaign(compInsight, comp.name)}
+                                  onGenerateCampaign={() => buildCampaignFromInsight(compInsight, comp.name)}
                                 />
 
                                 {/* Full detailed panels */}
