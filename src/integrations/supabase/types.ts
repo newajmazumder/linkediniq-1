@@ -635,56 +635,77 @@ export type Database = {
         Row: {
           actionable_recommendations: Json | null
           audience_strategy: Json | null
+          campaign_blueprint: Json | null
           competitor_id: string | null
+          content_angles: Json | null
+          content_gap_matrix: Json | null
           content_strategy_overview: Json | null
           created_at: string
           gaps: Json | null
           id: string
           messaging_patterns: Json | null
+          opportunity_scores: Json | null
           overused_themes: Json | null
           patterns: Json | null
           performance_insights: Json | null
+          predicted_outcomes: Json | null
           strategic_opportunities: Json | null
           strengths_analysis: Json | null
           suggested_angles: Json | null
           user_id: string
           weaknesses_analysis: Json | null
+          win_strategy: Json | null
+          winning_position: Json | null
         }
         Insert: {
           actionable_recommendations?: Json | null
           audience_strategy?: Json | null
+          campaign_blueprint?: Json | null
           competitor_id?: string | null
+          content_angles?: Json | null
+          content_gap_matrix?: Json | null
           content_strategy_overview?: Json | null
           created_at?: string
           gaps?: Json | null
           id?: string
           messaging_patterns?: Json | null
+          opportunity_scores?: Json | null
           overused_themes?: Json | null
           patterns?: Json | null
           performance_insights?: Json | null
+          predicted_outcomes?: Json | null
           strategic_opportunities?: Json | null
           strengths_analysis?: Json | null
           suggested_angles?: Json | null
           user_id: string
           weaknesses_analysis?: Json | null
+          win_strategy?: Json | null
+          winning_position?: Json | null
         }
         Update: {
           actionable_recommendations?: Json | null
           audience_strategy?: Json | null
+          campaign_blueprint?: Json | null
           competitor_id?: string | null
+          content_angles?: Json | null
+          content_gap_matrix?: Json | null
           content_strategy_overview?: Json | null
           created_at?: string
           gaps?: Json | null
           id?: string
           messaging_patterns?: Json | null
+          opportunity_scores?: Json | null
           overused_themes?: Json | null
           patterns?: Json | null
           performance_insights?: Json | null
+          predicted_outcomes?: Json | null
           strategic_opportunities?: Json | null
           strengths_analysis?: Json | null
           suggested_angles?: Json | null
           user_id?: string
           weaknesses_analysis?: Json | null
+          win_strategy?: Json | null
+          winning_position?: Json | null
         }
         Relationships: [
           {
