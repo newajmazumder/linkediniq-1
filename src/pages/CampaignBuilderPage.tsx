@@ -244,9 +244,8 @@ const CampaignBuilderPage = () => {
   return (
     <div ref={containerRef} className="content-fade-in flex flex-col md:flex-row h-full overflow-hidden">
       {/* Left: Chat */}
-      <div className="flex flex-col min-w-0 h-[60vh] md:h-full overflow-hidden" style={{ width: undefined }} 
-        {...(typeof window !== 'undefined' && window.innerWidth >= 768 ? { style: { width: `${chatWidthPercent}%` } } : {})}
-      >
+      <div className="flex flex-col min-w-0 h-[60vh] md:h-full overflow-hidden w-full md:w-auto" style={{ ...(window.innerWidth >= 768 ? { width: `${chatWidthPercent}%` } : {}) }}>
+
         {/* Step indicator */}
         <div className="shrink-0 flex items-center gap-1 px-5 py-3 border-b border-border bg-card/50 overflow-x-auto">
           {STEPS.map((step, i) => (
