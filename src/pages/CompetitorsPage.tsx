@@ -370,7 +370,7 @@ const CompetitorsPage = () => {
     try {
       const comp = competitors.find(c => c.id === competitorId);
       const { data, error } = await supabase.functions.invoke("analyze-competitor", {
-        body: { competitor_id: competitorId, competitor_name: comp?.name, posts: [post], action: "analyze_post" },
+        body: { competitor_id: competitorId, competitor_name: comp?.name, posts: [post], action: "analyze_post", market_context_id: activeMarketContextId },
       });
       if (error) throw error;
       const { data: updatedPosts } = await supabase.from("competitor_posts").select("*").eq("competitor_id", competitorId).eq("user_id", user!.id);
@@ -388,7 +388,7 @@ const CompetitorsPage = () => {
     try {
       const comp = competitors.find(c => c.id === competitorId);
       const { error } = await supabase.functions.invoke("analyze-competitor", {
-        body: { competitor_id: competitorId, competitor_name: comp?.name, posts: compPosts },
+        body: { competitor_id: competitorId, competitor_name: comp?.name, posts: compPosts, market_context_id: activeMarketContextId },
       });
       if (error) throw error;
       const [postsRes, insightRes] = await Promise.all([
