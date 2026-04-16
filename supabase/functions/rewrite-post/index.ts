@@ -30,7 +30,7 @@ serve(async (req) => {
       });
     }
 
-    const { post_id, action, context, language } = await req.json();
+    const { post_id, action, context, language, market_context_id } = await req.json();
     if (!post_id || !action) {
       return new Response(JSON.stringify({ error: "post_id and action are required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -737,7 +737,7 @@ serve(async (req) => {
 
     const systemPrompt = buildSystemPrompt(true, true, post_type);
     const userInstruction = instruction?.trim() || `Generate content for persona "${personaData.name}" aligned with campaign "${campaignData.name}"`;
-    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + outcomeStrategyBlock + businessContextBlock + performanceBlock + languageBlock;
+    const userMessage = userInstruction + knowledgeBlock + personaBlock + campaignBlock + outcomeStrategyBlock + businessContextBlock + performanceBlock + marketContextBlock;
 
     let response: Response | null = null;
     const maxRetries = 2;
