@@ -157,7 +157,8 @@ const CompetitorsPage = () => {
 
   const addScreenshotFiles = (files: File[]) => {
     const valid = files.filter(f => {
-      if (f.size > 10 * 1024 * 1024) { toast.error(`${f.name} too large. Max 10MB.`); return false; }
+      if (f.size > 50 * 1024 * 1024) { toast.error(`${f.name} too large. Max 50MB.`); return false; }
+      if (!f.type.startsWith("image/") && !f.type.startsWith("video/")) { toast.error(`${f.name} is not an image or video.`); return false; }
       return true;
     });
     if (valid.length === 0) return;
@@ -178,16 +179,16 @@ const CompetitorsPage = () => {
   const handlePaste = (e: React.ClipboardEvent) => {
     const items = e.clipboardData?.items;
     if (!items) return;
-    const imageFiles: File[] = [];
+    const mediaFiles: File[] = [];
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith("image/")) {
+      if (items[i].type.startsWith("image/") || items[i].type.startsWith("video/")) {
         const file = items[i].getAsFile();
-        if (file) imageFiles.push(file);
+        if (file) mediaFiles.push(file);
       }
     }
-    if (imageFiles.length > 0) {
+    if (mediaFiles.length > 0) {
       e.preventDefault();
-      addScreenshotFiles(imageFiles);
+      addScreenshotFiles(mediaFiles);
     }
   };
 
@@ -545,16 +546,16 @@ function ScreenshotPostFlow({
   if (screenshotPreviews.length === 0) {
     return (
       <div className="space-y-3" onPaste={onPaste}>
-        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onFileSelect} className="hidden" />
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={onFileSelect} className="hidden" />
         <button
           onClick={() => fileInputRef.current?.click()}
           className="w-full border-2 border-dashed border-border rounded-lg p-8 hover:border-primary/50 hover:bg-muted/30 transition-colors flex flex-col items-center gap-2 focus:outline-none focus:border-primary/50"
           tabIndex={0}
         >
           <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">Upload or Paste Screenshots</p>
+          <p className="text-sm font-medium text-foreground">Upload Screenshots or Videos</p>
           <p className="text-xs text-muted-foreground">Click to browse, drag & drop, or paste (Ctrl+V / ⌘V)</p>
-          <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP — Max 10MB each — Multiple allowed</p>
+          <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP, MP4, MOV — Max 50MB each — Multiple allowed</p>
         </button>
         <div className="flex justify-end">
           <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
@@ -567,13 +568,20 @@ function ScreenshotPostFlow({
   if (!extraction) {
     return (
       <div className="space-y-3" onPaste={onPaste}>
-        <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onFileSelect} className="hidden" />
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple onChange={onFileSelect} className="hidden" />
         <div className="flex gap-3 flex-wrap">
           {screenshotPreviews.map((preview, idx) => (
             <div key={idx} className="relative w-32 h-32 rounded-lg border border-border overflow-hidden bg-muted/50 shrink-0 group">
-              <img src={preview} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-contain" />
+              {screenshotFiles[idx]?.type.startsWith("video/") ? (
+                <video src={preview} className="w-full h-full object-contain" muted />
+              ) : (
+                <img src={preview} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-contain" />
+              )}
               {idx === 0 && (
                 <span className="absolute top-1 left-1 text-[9px] bg-primary text-primary-foreground px-1.5 py-0.5 rounded font-medium">Primary</span>
+              )}
+              {screenshotFiles[idx]?.type.startsWith("video/") && (
+                <span className="absolute bottom-1 left-1 text-[9px] bg-foreground/70 text-background px-1.5 py-0.5 rounded font-medium">Video</span>
               )}
               <button
                 onClick={() => onRemoveScreenshot(idx)}
@@ -595,12 +603,12 @@ function ScreenshotPostFlow({
           {extracting ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
-              Analyzing {screenshotFiles.length} screenshot{screenshotFiles.length > 1 ? "s" : ""} with AI vision...
+              Analyzing {screenshotFiles.length} file{screenshotFiles.length > 1 ? "s" : ""} with AI vision...
             </div>
           ) : (
             <p className="text-xs text-muted-foreground">
-              {screenshotFiles.length} screenshot{screenshotFiles.length > 1 ? "s" : ""} ready.
-              {screenshotFiles.length > 1 && " Primary screenshot (first) will be used for text extraction."}
+              {screenshotFiles.length} file{screenshotFiles.length > 1 ? "s" : ""} ready.
+              {screenshotFiles.length > 1 && " All files will be analyzed together for extraction."}
             </p>
           )}
         </div>
