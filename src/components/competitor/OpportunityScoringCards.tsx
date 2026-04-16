@@ -10,6 +10,8 @@ interface OpportunityScore {
   priority: string;
   reasoning: string;
   action: string;
+  expected_impact?: string;
+  why_it_works?: string;
 }
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
@@ -61,6 +63,15 @@ export function OpportunityScoringCards({ scores }: { scores: OpportunityScore[]
 
                 <p className="text-[11px] text-muted-foreground">{opp.reasoning}</p>
 
+                {/* Why it works - explanation layer */}
+                {opp.why_it_works && (
+                  <div className="bg-muted/50 rounded p-2">
+                    <p className="text-[10px] text-foreground">
+                      <strong>Why:</strong> {opp.why_it_works}
+                    </p>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 text-[10px]">
                   <span className="flex items-center gap-1">
                     {impactIcons[opp.impact] || impactIcons.medium}
@@ -70,6 +81,11 @@ export function OpportunityScoringCards({ scores }: { scores: OpportunityScore[]
                     Effort: <strong className="capitalize">{opp.effort}</strong>
                   </span>
                 </div>
+
+                {/* Expected impact */}
+                {opp.expected_impact && (
+                  <p className="text-[10px] text-primary font-medium">📈 {opp.expected_impact}</p>
+                )}
 
                 <p className="text-[10px] text-primary font-medium">→ {opp.action}</p>
               </div>
