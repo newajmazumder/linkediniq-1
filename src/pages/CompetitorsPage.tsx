@@ -537,7 +537,7 @@ const CompetitorsPage = () => {
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
-                            {/* "Your Best Move Right Now" - Start Here Layer */}
+                            {/* LAYER 1: Your Best Move (visually dominant hero) */}
                             <BestMoveCard
                               competitorName={comp.name}
                               winStrategy={compInsight.win_strategy}
@@ -565,40 +565,8 @@ const CompetitorsPage = () => {
                                 auto_generate: true,
                               })}
                             />
-                            <QuickActionsPanel
-                              hasInsights={true}
-                              onGenerate7DayPlan={() => {
-                                const firstAngle = compInsight.content_angles?.[0];
-                                if (firstAngle) navigateToCreate({ hook_type: firstAngle.hook_type, intent: firstAngle.intent, title: firstAngle.title, example_hook: firstAngle.example_hook, goal: firstAngle.goal, cta_style: firstAngle.cta_style });
-                              }}
-                              onGenerate4WeekCampaign={() => navigateToCampaign(compInsight, comp.name)}
-                              onCreatePostsFromAngles={() => {
-                                const angle = compInsight.content_angles?.[0];
-                                if (angle) navigateToCreate({ hook_type: angle.hook_type, intent: angle.intent, title: angle.title, example_hook: angle.example_hook, goal: angle.goal, cta_style: angle.cta_style });
-                              }}
-                              onApplyStrategy={() => navigateToCreate({ win_strategy: compInsight.win_strategy, winning_position: compInsight.winning_position })}
-                            />
 
-                            {/* Confidence */}
-                            <ConfidenceIndicator confidence={compInsight.confidence_layer} />
-
-                            {/* Win Strategy with action buttons */}
-                            <WinStrategySummary
-                              strategy={compInsight.win_strategy}
-                              onGenerateFromWeakness={() => navigateToCreate({
-                                title: `Counter: ${compInsight.win_strategy?.primary_weakness}`,
-                                hook_type: "pain",
-                                intent: "conversion",
-                                auto_generate: true,
-                              })}
-                              onUseStrategy={() => navigateToCreate({
-                                win_strategy: compInsight.win_strategy,
-                                winning_position: compInsight.winning_position,
-                              })}
-                              onApplyToCampaign={() => navigateToCampaign(compInsight, comp.name)}
-                            />
-
-                            {/* Execution Plan */}
+                            {/* LAYER 2: Quick Execution Plan */}
                             <ExecutionPlanTimeline
                               plan={compInsight.execution_plan}
                               onGeneratePost={(day) => navigateToCreate({
@@ -610,7 +578,7 @@ const CompetitorsPage = () => {
                               })}
                             />
 
-                            {/* Content Angles - always shown */}
+                            {/* LAYER 3: Content Angles (ready to execute) */}
                             <ContentAnglesPanel
                               angles={compInsight.content_angles}
                               onCreatePost={(angle) => navigateToCreate({
@@ -626,7 +594,7 @@ const CompetitorsPage = () => {
                               })}
                             />
 
-                            {/* Predicted Outcomes with actions */}
+                            {/* LAYER 4: Predicted Outcomes */}
                             <PredictedOutcomePanel
                               outcomes={compInsight.predicted_outcomes}
                               onApplyStrategy={() => navigateToCreate({
@@ -645,18 +613,7 @@ const CompetitorsPage = () => {
                               onCreateCampaign={() => navigateToCampaign(compInsight, comp.name)}
                             />
 
-                            {/* Content Gap Matrix with per-row actions */}
-                            <ContentGapMatrix
-                              matrix={compInsight.content_gap_matrix}
-                              onCreatePostForGap={(gap) => navigateToCreate({
-                                title: `${gap.content_type} post — ${gap.action}`,
-                                hook_type: gap.content_type.toLowerCase().includes("story") ? "story" : "pain",
-                                intent: "engagement",
-                                auto_generate: true,
-                              })}
-                            />
-
-                            {/* Opportunity Scoring with execute buttons */}
+                            {/* LAYER 5: Opportunities - Decision System */}
                             <OpportunityScoringCards
                               scores={compInsight.opportunity_scores}
                               onGeneratePost={(opp) => navigateToCreate({
@@ -672,45 +629,81 @@ const CompetitorsPage = () => {
                               })}
                             />
 
-                            {/* Why Posts Work with action buttons */}
-                            <WhyPostsWorkPanel
-                              items={compInsight.why_posts_work}
-                              onGeneratePost={(item) => navigateToCreate({
-                                title: `Inspired by: ${item.what_you_should_replicate}`,
-                                hook_type: "story",
-                                intent: "engagement",
-                                auto_generate: true,
-                              })}
-                              onReplicatePattern={(item) => navigateToCreate({
-                                title: item.what_you_should_replicate,
-                                hook_type: "story",
-                                intent: "engagement",
-                              })}
-                            />
+                            {/* DEEP INSIGHTS - Collapsed by default */}
+                            <Collapsible>
+                              <CollapsibleTrigger className="flex items-center gap-2 w-full text-left py-3 px-4 rounded-lg border border-border bg-muted/30 hover:bg-muted/50 transition-colors group">
+                                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-data-[state=open]:rotate-90" />
+                                <span className="text-sm font-semibold text-foreground">Deep Analysis & Strategy Details</span>
+                                <Badge variant="outline" className="text-[9px] ml-auto">Click to expand</Badge>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="pt-4 space-y-6">
+                                {/* Win Strategy detailed */}
+                                <WinStrategySummary
+                                  strategy={compInsight.win_strategy}
+                                  onGenerateFromWeakness={() => navigateToCreate({
+                                    title: `Counter: ${compInsight.win_strategy?.primary_weakness}`,
+                                    hook_type: "pain",
+                                    intent: "conversion",
+                                    auto_generate: true,
+                                  })}
+                                  onUseStrategy={() => navigateToCreate({
+                                    win_strategy: compInsight.win_strategy,
+                                    winning_position: compInsight.winning_position,
+                                  })}
+                                  onApplyToCampaign={() => navigateToCampaign(compInsight, comp.name)}
+                                />
 
-                            {/* Winning Position with action */}
-                            <WinningPositionCard
-                              position={compInsight.winning_position}
-                              onApplyStrategy={() => navigateToCreate({
-                                win_strategy: compInsight.win_strategy,
-                                winning_position: compInsight.winning_position,
-                              })}
-                            />
+                                {/* Confidence */}
+                                <ConfidenceIndicator confidence={compInsight.confidence_layer} />
 
-                            {/* Campaign Blueprint */}
-                            <CampaignFromCompetitor
-                              blueprint={compInsight.campaign_blueprint}
-                              competitorName={comp.name}
-                              onGenerateCampaign={() => navigateToCampaign(compInsight, comp.name)}
-                            />
+                                {/* Content Gap Matrix */}
+                                <ContentGapMatrix
+                                  matrix={compInsight.content_gap_matrix}
+                                  onCreatePostForGap={(gap) => navigateToCreate({
+                                    title: `${gap.content_type} post — ${gap.action}`,
+                                    hook_type: gap.content_type.toLowerCase().includes("story") ? "story" : "pain",
+                                    intent: "engagement",
+                                    auto_generate: true,
+                                  })}
+                                />
 
-                            {/* Insight Mode: show detailed analysis */}
-                            {viewMode === "insight" && (
-                              <>
+                                {/* Why Posts Work */}
+                                <WhyPostsWorkPanel
+                                  items={compInsight.why_posts_work}
+                                  onGeneratePost={(item) => navigateToCreate({
+                                    title: `Inspired by: ${item.what_you_should_replicate}`,
+                                    hook_type: "story",
+                                    intent: "engagement",
+                                    auto_generate: true,
+                                  })}
+                                  onReplicatePattern={(item) => navigateToCreate({
+                                    title: item.what_you_should_replicate,
+                                    hook_type: "story",
+                                    intent: "engagement",
+                                  })}
+                                />
+
+                                {/* Winning Position */}
+                                <WinningPositionCard
+                                  position={compInsight.winning_position}
+                                  onApplyStrategy={() => navigateToCreate({
+                                    win_strategy: compInsight.win_strategy,
+                                    winning_position: compInsight.winning_position,
+                                  })}
+                                />
+
+                                {/* Campaign Blueprint */}
+                                <CampaignFromCompetitor
+                                  blueprint={compInsight.campaign_blueprint}
+                                  competitorName={comp.name}
+                                  onGenerateCampaign={() => navigateToCampaign(compInsight, comp.name)}
+                                />
+
+                                {/* Full detailed panels */}
                                 <InsightsPanel insight={compInsight} />
                                 <StrategyPanel insight={compInsight} />
-                              </>
-                            )}
+                              </CollapsibleContent>
+                            </Collapsible>
                           </div>
                         ) : (
                           <div className="text-center py-8 text-muted-foreground text-sm">
