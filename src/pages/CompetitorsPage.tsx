@@ -30,6 +30,8 @@ import { ExecutionPlanTimeline } from "@/components/competitor/ExecutionPlanTime
 import { WhyPostsWorkPanel } from "@/components/competitor/WhyPostsWorkPanel";
 import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator";
 import { QuickActionsPanel } from "@/components/competitor/QuickActionsPanel";
+import { DecisionHeader } from "@/components/competitor/DecisionHeader";
+import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
@@ -511,7 +513,7 @@ const CompetitorsPage = () => {
                         {compPosts.length === 0 && addingPostFor !== comp.id ? (
                           <p className="text-xs text-muted-foreground italic py-4 text-center">No posts tracked yet. Add competitor posts to enable analysis.</p>
                         ) : compPosts.map(post => (
-                          <PostCard key={post.id} post={post} competitorId={comp.id} onDelete={deletePost} onAnalyze={analyzePost} analyzing={analyzingPostId === post.id} expanded={expandedPostId === post.id} onToggle={() => setExpandedPostId(expandedPostId === post.id ? null : post.id)} />
+                          <PostCard key={post.id} post={post} competitorId={comp.id} onDelete={deletePost} onAnalyze={analyzePost} analyzing={analyzingPostId === post.id} expanded={expandedPostId === post.id} onToggle={() => setExpandedPostId(expandedPostId === post.id ? null : post.id)} onNavigateToCreate={navigateToCreate} />
                         ))}
                       </TabsContent>
 
@@ -519,7 +521,29 @@ const CompetitorsPage = () => {
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
-                            {/* Quick Actions - always visible */}
+                            {/* Decision Header - sticky top */}
+                            <DecisionHeader
+                              competitorName={comp.name}
+                              hasInsights={true}
+                              onGeneratePost={() => {
+                                const angle = compInsight.content_angles?.[0];
+                                if (angle) navigateToCreate({
+                                  hook_type: angle.hook_type, intent: angle.intent,
+                                  title: angle.title, example_hook: angle.example_hook,
+                                  goal: angle.goal, cta_style: angle.cta_style,
+                                  auto_generate: true,
+                                });
+                                else navigateToCreate({ hook_type: "pain", intent: "conversion", auto_generate: true });
+                              }}
+                              onBuildCampaign={() => navigateToCampaign(compInsight, comp.name)}
+                              onExploitWeakness={() => navigateToCreate({
+                                title: `Counter: ${compInsight.win_strategy?.primary_weakness || "competitor weakness"}`,
+                                hook_type: "pain",
+                                intent: "conversion",
+                                exploit_weakness: compInsight.win_strategy?.primary_weakness,
+                                auto_generate: true,
+                              })}
+                            />
                             <QuickActionsPanel
                               hasInsights={true}
                               onGenerate7DayPlan={() => {
@@ -851,9 +875,10 @@ function ManualPostForm({ onSave, onCancel, saving, content, setContent, topic, 
   );
 }
 
-function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded, onToggle }: {
+function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded, onToggle, onNavigateToCreate }: {
   post: CompetitorPost; competitorId: string; onDelete: (id: string, cid: string) => void;
   onAnalyze: (p: CompetitorPost, cid: string) => void; analyzing: boolean; expanded: boolean; onToggle: () => void;
+  onNavigateToCreate?: (data: any) => void;
 }) {
   const hasMetrics = post.likes || post.comments || post.reposts || post.impressions;
   const hasAnalysis = post.post_analysis && Object.keys(post.post_analysis).length > 0;
@@ -915,6 +940,42 @@ function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded
           <button onClick={onToggle} className="flex items-center gap-1 mt-2 text-xs text-primary hover:underline">
             <ChevronRight className={cn("h-3 w-3 transition-transform", expanded && "rotate-90")} />{expanded ? "Hide analysis" : "View analysis"}
           </button>
+        )}
+        {/* Post-level action buttons */}
+        {onNavigateToCreate && (
+          <PostActionButtons
+            post={post}
+            onRewriteBetter={() => onNavigateToCreate({
+              title: `Better version: ${post.content.slice(0, 60)}...`,
+              hook_type: post.hook_style || "pain",
+              intent: "engagement",
+              rewrite_source: post.content,
+              auto_generate: true,
+            })}
+            onGenerateCompeting={() => onNavigateToCreate({
+              title: `Competing post against: ${post.content.slice(0, 40)}...`,
+              hook_type: post.hook_style || "curiosity",
+              intent: "conversion",
+              compete_against: post.content,
+              auto_generate: true,
+            })}
+            onUseHook={() => onNavigateToCreate({
+              title: `Using hook style: ${post.hook_style}`,
+              hook_type: post.hook_style || "pain",
+              intent: "engagement",
+              example_hook: post.content.split("\n")[0],
+            })}
+            onExploitWeakness={() => {
+              const weakness = post.post_analysis?.weakness_analysis?.failures?.[0] || "weak CTA";
+              onNavigateToCreate({
+                title: `Exploit: ${weakness}`,
+                hook_type: "pain",
+                intent: "conversion",
+                exploit_weakness: weakness,
+                auto_generate: true,
+              });
+            }}
+          />
         )}
       </div>
       {expanded && hasAnalysis && (
