@@ -19,6 +19,9 @@ import { cn } from "@/lib/utils";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { WinStrategySummary } from "@/components/competitor/WinStrategySummary";
 import { ContentGapMatrix } from "@/components/competitor/ContentGapMatrix";
 import { ContentAnglesPanel } from "@/components/competitor/ContentAnglesPanel";
