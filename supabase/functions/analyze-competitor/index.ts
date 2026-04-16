@@ -296,6 +296,14 @@ Generate a COMPREHENSIVE, DECISIVE, SPECIFIC report. NO vague language. NO gener
 
 Return JSON:
 {
+  "best_move": {
+    "action": "<THE single most impactful thing to do right now — specific to user's product and audience>",
+    "expected_outcome": "<specific outcome e.g. +40% engagement, 15+ DMs>",
+    "reason": "<why this works — reference competitor weakness AND user advantage>",
+    "hook_type": "<pain|story|data|contrarian|question>",
+    "cta_style": "<specific CTA>",
+    "goal": "<DM|engagement|leads|awareness>"
+  },
   "win_strategy": {
     "competitor_name": "${competitorName}",
     "primary_weakness": "<single most exploitable weakness — be brutally specific>",
