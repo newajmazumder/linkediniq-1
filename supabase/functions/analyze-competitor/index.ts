@@ -444,6 +444,8 @@ CRITICAL RULES:
 - execution_plan must have exactly 4 entries (days 1, 3, 5, 7)
 - why_posts_work should cover top 2-3 performing posts
 - winning_position must use do_this/do_not_do/dominate_with format
+- PERSONALIZE: Reference user's specific product name, target audience, geography, and pricing in angles and strategies
+- best_move must be the SINGLE highest-ROI action — not generic
 
 Return ONLY valid JSON.`;
 
