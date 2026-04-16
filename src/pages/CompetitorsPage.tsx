@@ -471,15 +471,6 @@ const CompetitorsPage = () => {
                           <TabsTrigger value="strategy" className="text-xs">Strategy & Execution</TabsTrigger>
                         </TabsList>
                         <div className="flex gap-2 items-center">
-                          {compInsight && (
-                            <button
-                              onClick={() => setViewMode(v => v === "action" ? "insight" : "action")}
-                              className="flex items-center gap-1.5 text-[10px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded border border-border"
-                            >
-                              {viewMode === "action" ? <ToggleRight className="h-3.5 w-3.5 text-primary" /> : <ToggleLeft className="h-3.5 w-3.5" />}
-                              {viewMode === "action" ? "Action Mode" : "Insight Mode"}
-                            </button>
-                          )}
                           <Button size="sm" variant="outline" onClick={() => { setAddingPostFor(comp.id); setPostInputMode("screenshot"); }} className="h-7 text-xs">
                             <Plus className="h-3 w-3 mr-1" /> Add Post
                           </Button>
