@@ -150,11 +150,28 @@ const CompetitorsPage = () => {
   const handleScreenshotSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    applyScreenshotFile(file);
+  };
+
+  const applyScreenshotFile = (file: File) => {
     if (file.size > 10 * 1024 * 1024) { toast.error("File too large. Max 10MB."); return; }
     setScreenshotFile(file);
     setScreenshotPreview(URL.createObjectURL(file));
     setExtraction(null);
     setReviewData({});
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) applyScreenshotFile(file);
+        return;
+      }
+    }
   };
 
   const runExtraction = async () => {
