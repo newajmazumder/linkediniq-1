@@ -526,6 +526,12 @@ const CompetitorsPage = () => {
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
+                            {/* GUIDED JOURNEY — Step 1/2/3 */}
+                            <GuidedJourney
+                              hasInsights={!!compInsight}
+                              hasPosts={compPosts.length > 0}
+                              postCount={compPosts.length}
+                            />
                             {/* LAYER 1: Your Best Move (visually dominant hero) */}
                             <BestMoveCard
                               competitorName={comp.name}
