@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Rocket, Calendar, Swords, Zap, ArrowRight, Target, TrendingUp } from "lucide-react";
+import { Rocket, Calendar, Swords, Zap, Target, TrendingUp, AlertTriangle, ArrowRight } from "lucide-react";
 
 interface BestMoveProps {
   competitorName: string;
@@ -27,7 +27,6 @@ export function BestMoveCard({
 }: BestMoveProps) {
   if (!winStrategy?.primary_weakness) return null;
 
-  // Derive the single best action
   const bestAction = topAngle?.title || winStrategy?.winning_strategy?.[0] || "Generate a competing post";
   const expectedOutcome = topAngle?.expected_outcome || predictedOutcomes?.engagement_improvement || "+30% engagement";
   const reason = winStrategy?.primary_weakness
@@ -35,67 +34,82 @@ export function BestMoveCard({
     : "Competitor has exploitable gaps in their content strategy";
 
   return (
-    <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-card to-primary/5 p-5 space-y-4">
+    <div className="relative rounded-2xl border-2 border-primary/40 bg-gradient-to-br from-primary/10 via-card to-primary/8 p-6 space-y-5 shadow-lg shadow-primary/5">
+      {/* Urgency ribbon */}
+      <div className="absolute -top-3 left-6 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-md">
+        🔥 Highest Impact Action
+      </div>
+
       {/* Header */}
-      <div className="flex items-center gap-2">
-        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <Zap className="h-4 w-4 text-primary" />
+      <div className="flex items-center gap-3 pt-1">
+        <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center ring-2 ring-primary/20">
+          <Zap className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-foreground">Your Best Move Right Now</h3>
-          <p className="text-[10px] text-muted-foreground">Against {competitorName}</p>
+          <h3 className="text-base font-bold text-foreground">Your Best Move Right Now</h3>
+          <p className="text-xs text-muted-foreground">Against {competitorName} — Act now for maximum impact</p>
         </div>
       </div>
 
-      {/* Best Action Card */}
-      <div className="bg-card border border-primary/20 rounded-lg p-4 space-y-3">
+      {/* Primary Action Block */}
+      <div className="bg-card border-2 border-primary/25 rounded-xl p-5 space-y-4">
         <div className="flex items-start gap-3">
-          <Target className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-          <div className="space-y-1 flex-1">
-            <p className="text-xs font-bold text-foreground">{bestAction}</p>
+          <Target className="h-6 w-6 text-primary shrink-0 mt-0.5" />
+          <div className="space-y-1.5 flex-1">
+            <p className="text-sm font-bold text-foreground leading-snug">{bestAction}</p>
             {userProduct && (
-              <p className="text-[10px] text-primary/80">
-                Using your product: {userProduct}
+              <p className="text-xs text-primary/80 font-medium">
+                Using: {userProduct}
               </p>
             )}
             {userAudience && (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 🎯 Target: {userAudience}
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <div className="bg-green-500/5 border border-green-500/20 rounded p-2">
-            <p className="text-[9px] font-semibold text-green-700 uppercase tracking-wider">Expected Outcome</p>
-            <p className="text-xs font-bold text-foreground mt-0.5 flex items-center gap-1">
-              <TrendingUp className="h-3 w-3 text-green-600" /> {expectedOutcome}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-green-500/8 border border-green-500/25 rounded-lg p-3">
+            <p className="text-[10px] font-bold text-green-700 uppercase tracking-wider">Expected Outcome</p>
+            <p className="text-sm font-bold text-foreground mt-1 flex items-center gap-1.5">
+              <TrendingUp className="h-4 w-4 text-green-600" /> {expectedOutcome}
             </p>
           </div>
-          <div className="bg-destructive/5 border border-destructive/20 rounded p-2">
-            <p className="text-[9px] font-semibold text-destructive uppercase tracking-wider">Why This Works</p>
-            <p className="text-[10px] text-foreground mt-0.5">{reason}</p>
+          <div className="bg-destructive/5 border border-destructive/20 rounded-lg p-3">
+            <p className="text-[10px] font-bold text-destructive uppercase tracking-wider flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> Why This Works
+            </p>
+            <p className="text-xs text-foreground mt-1 leading-relaxed">{reason}</p>
           </div>
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex flex-wrap gap-2">
-        <Button size="sm" onClick={onExecuteBestMove} className="h-9 text-xs gap-1.5">
-          <Rocket className="h-3.5 w-3.5" /> Execute This Now
+      {/* Urgency message */}
+      <div className="bg-amber-500/8 border border-amber-500/25 rounded-lg px-4 py-2.5">
+        <p className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+          ⚡ You're leaving engagement on the table by not acting on this weakness. Every day without a counter-post is a missed opportunity.
+        </p>
+      </div>
+
+      {/* CTA Buttons - Primary is visually dominant */}
+      <div className="flex flex-wrap gap-3">
+        <Button size="lg" onClick={onExecuteBestMove} className="h-11 text-sm gap-2 font-bold shadow-md shadow-primary/20 flex-1 min-w-[200px]">
+          <Rocket className="h-4 w-4" /> Start Executing Now
+          <ArrowRight className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="outline" onClick={onBuildCampaign} className="h-9 text-xs gap-1.5">
-          <Calendar className="h-3.5 w-3.5" /> Build Full Campaign
+        <Button size="sm" variant="outline" onClick={onBuildCampaign} className="h-11 text-xs gap-1.5">
+          <Calendar className="h-3.5 w-3.5" /> Preview Plan
         </Button>
-        <Button size="sm" variant="outline" onClick={onExploitWeakness} className="h-9 text-xs gap-1.5">
-          <Swords className="h-3.5 w-3.5" /> Exploit Different Weakness
+        <Button size="sm" variant="ghost" onClick={onExploitWeakness} className="h-11 text-xs gap-1.5 text-muted-foreground">
+          <Swords className="h-3.5 w-3.5" /> Different Weakness
         </Button>
       </div>
 
-      {/* Personalization context */}
+      {/* Context tags */}
       {(userProduct || userAudience) && (
-        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border">
+        <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/50">
           {userProduct && (
             <Badge variant="outline" className="text-[9px] h-5 px-2 bg-primary/5">
               🏢 {userProduct}
