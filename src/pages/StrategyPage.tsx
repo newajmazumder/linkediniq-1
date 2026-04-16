@@ -153,6 +153,7 @@ const StrategyPage = () => {
   useEffect(() => {
     if (user) {
       Promise.all([fetchCampaigns(), fetchPersonas(), fetchRecommendations(), fetchProgress()]).then(() => setLoading(false));
+      supabase.from("market_contexts").select("id, region_code, region_name, audience_type").eq("is_preset", true).then(({ data }) => setMarketContexts((data || []) as MarketContextOption[]));
     }
   }, [user]);
 
