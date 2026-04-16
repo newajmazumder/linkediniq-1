@@ -16,6 +16,7 @@ import CampaignPostCard from "@/components/campaign/CampaignPostCard";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
+  scoreInterpretation, computeVelocity,
 } from "@/lib/strategy";
 
 type Campaign = any;
