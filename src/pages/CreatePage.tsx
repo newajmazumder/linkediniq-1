@@ -165,6 +165,7 @@ const CreatePage = () => {
           campaign_id: selectedCampaignId || undefined,
           post_type: postType,
           language,
+          market_context_id: selectedMarketId || undefined,
         },
       });
 
