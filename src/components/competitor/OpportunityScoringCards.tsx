@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Zap, ArrowUp, ArrowDown, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -14,10 +15,10 @@ interface OpportunityScore {
   why_it_works?: string;
 }
 
-const priorityConfig: Record<string, { label: string; className: string }> = {
-  do_first: { label: "Do First", className: "bg-red-500/10 text-red-700 border-red-500/30" },
-  do_next: { label: "Do Next", className: "bg-amber-500/10 text-amber-700 border-amber-500/30" },
-  optional: { label: "Optional", className: "bg-muted text-muted-foreground border-border" },
+const priorityConfig: Record<string, { label: string; className: string; icon: string }> = {
+  do_first: { label: "🔴 Do First", className: "bg-red-500/10 text-red-700 border-red-500/30", icon: "🔴" },
+  do_next: { label: "🟡 Do Next", className: "bg-amber-500/10 text-amber-700 border-amber-500/30", icon: "🟡" },
+  optional: { label: "⚪ Optional", className: "bg-muted text-muted-foreground border-border", icon: "⚪" },
 };
 
 const impactIcons: Record<string, React.ReactNode> = {
@@ -26,7 +27,15 @@ const impactIcons: Record<string, React.ReactNode> = {
   low: <ArrowDown className="h-3 w-3 text-muted-foreground" />,
 };
 
-export function OpportunityScoringCards({ scores }: { scores: OpportunityScore[] }) {
+export function OpportunityScoringCards({
+  scores,
+  onExecuteOpportunity,
+  onGeneratePost,
+}: {
+  scores: OpportunityScore[];
+  onExecuteOpportunity?: (opp: OpportunityScore) => void;
+  onGeneratePost?: (opp: OpportunityScore) => void;
+}) {
   if (!scores || scores.length === 0) return null;
 
   const sorted = [...scores].sort((a, b) => b.score - a.score);
@@ -43,7 +52,6 @@ export function OpportunityScoringCards({ scores }: { scores: OpportunityScore[]
           const pConfig = priorityConfig[opp.priority] || priorityConfig.optional;
           return (
             <div key={i} className="border border-border rounded-lg p-4 bg-card flex gap-4 items-start">
-              {/* Score circle */}
               <div className={cn(
                 "h-12 w-12 rounded-full flex items-center justify-center shrink-0 font-bold text-lg",
                 opp.score >= 8 ? "bg-green-500/10 text-green-700 border-2 border-green-500/30"
@@ -63,7 +71,6 @@ export function OpportunityScoringCards({ scores }: { scores: OpportunityScore[]
 
                 <p className="text-[11px] text-muted-foreground">{opp.reasoning}</p>
 
-                {/* Why it works - explanation layer */}
                 {opp.why_it_works && (
                   <div className="bg-muted/50 rounded p-2">
                     <p className="text-[10px] text-foreground">
@@ -82,12 +89,25 @@ export function OpportunityScoringCards({ scores }: { scores: OpportunityScore[]
                   </span>
                 </div>
 
-                {/* Expected impact */}
                 {opp.expected_impact && (
                   <p className="text-[10px] text-primary font-medium">📈 {opp.expected_impact}</p>
                 )}
 
                 <p className="text-[10px] text-primary font-medium">→ {opp.action}</p>
+
+                {/* Action buttons */}
+                <div className="flex gap-2 pt-1">
+                  {onGeneratePost && (
+                    <Button size="sm" className="h-6 text-[10px] px-2" onClick={() => onGeneratePost(opp)}>
+                      <Zap className="h-2.5 w-2.5 mr-0.5" /> Generate Post
+                    </Button>
+                  )}
+                  {onExecuteOpportunity && (
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] px-2" onClick={() => onExecuteOpportunity(opp)}>
+                      <ArrowRight className="h-2.5 w-2.5 mr-0.5" /> Execute
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           );

@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import { Flame, TrendingUp, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Flame, TrendingUp, ArrowRight, Zap, Rocket } from "lucide-react";
 
 interface WinStrategy {
   competitor_name?: string;
@@ -10,16 +11,28 @@ interface WinStrategy {
   expected_conversion_lift?: string;
 }
 
-export function WinStrategySummary({ strategy }: { strategy: WinStrategy }) {
+export function WinStrategySummary({
+  strategy,
+  onGenerateFromWeakness,
+  onUseStrategy,
+  onApplyToCampaign,
+}: {
+  strategy: WinStrategy;
+  onGenerateFromWeakness?: () => void;
+  onUseStrategy?: () => void;
+  onApplyToCampaign?: () => void;
+}) {
   if (!strategy || !strategy.primary_weakness) return null;
 
   return (
     <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 via-background to-primary/5 p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <Flame className="h-5 w-5 text-orange-500" />
-        <h3 className="text-lg font-bold text-foreground">
-          How You Can Beat {strategy.competitor_name || "This Competitor"}
-        </h3>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Flame className="h-5 w-5 text-orange-500" />
+          <h3 className="text-lg font-bold text-foreground">
+            How You Can Beat {strategy.competitor_name || "This Competitor"}
+          </h3>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -63,6 +76,25 @@ export function WinStrategySummary({ strategy }: { strategy: WinStrategy }) {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-primary/10">
+        {onGenerateFromWeakness && (
+          <Button size="sm" onClick={onGenerateFromWeakness} className="h-8 text-xs">
+            <Zap className="h-3.5 w-3.5 mr-1" /> Generate Post from Weakness
+          </Button>
+        )}
+        {onUseStrategy && (
+          <Button size="sm" variant="outline" onClick={onUseStrategy} className="h-8 text-xs">
+            <ArrowRight className="h-3.5 w-3.5 mr-1" /> Use Winning Strategy
+          </Button>
+        )}
+        {onApplyToCampaign && (
+          <Button size="sm" variant="outline" onClick={onApplyToCampaign} className="h-8 text-xs">
+            <Rocket className="h-3.5 w-3.5 mr-1" /> Apply to Campaign
+          </Button>
+        )}
       </div>
     </div>
   );
