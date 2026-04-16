@@ -176,12 +176,12 @@ const AudiencePage = () => {
 
   return (
     <div className="content-fade-in space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Audience Profiles</h1>
           <p className="mt-1 text-sm text-muted-foreground">Define target personas for strategy-aware content.</p>
         </div>
-        <Button size="sm" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyPersona); }}>
+        <Button size="sm" className="shrink-0" onClick={() => { setShowForm(!showForm); setEditingId(null); setForm(emptyPersona); }}>
           <Plus className="mr-1 h-3.5 w-3.5" />New Persona
         </Button>
       </div>
