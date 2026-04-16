@@ -633,34 +633,58 @@ export type Database = {
       }
       competitor_insights: {
         Row: {
+          actionable_recommendations: Json | null
+          audience_strategy: Json | null
           competitor_id: string | null
+          content_strategy_overview: Json | null
           created_at: string
           gaps: Json | null
           id: string
+          messaging_patterns: Json | null
           overused_themes: Json | null
           patterns: Json | null
+          performance_insights: Json | null
+          strategic_opportunities: Json | null
+          strengths_analysis: Json | null
           suggested_angles: Json | null
           user_id: string
+          weaknesses_analysis: Json | null
         }
         Insert: {
+          actionable_recommendations?: Json | null
+          audience_strategy?: Json | null
           competitor_id?: string | null
+          content_strategy_overview?: Json | null
           created_at?: string
           gaps?: Json | null
           id?: string
+          messaging_patterns?: Json | null
           overused_themes?: Json | null
           patterns?: Json | null
+          performance_insights?: Json | null
+          strategic_opportunities?: Json | null
+          strengths_analysis?: Json | null
           suggested_angles?: Json | null
           user_id: string
+          weaknesses_analysis?: Json | null
         }
         Update: {
+          actionable_recommendations?: Json | null
+          audience_strategy?: Json | null
           competitor_id?: string | null
+          content_strategy_overview?: Json | null
           created_at?: string
           gaps?: Json | null
           id?: string
+          messaging_patterns?: Json | null
           overused_themes?: Json | null
           patterns?: Json | null
+          performance_insights?: Json | null
+          strategic_opportunities?: Json | null
+          strengths_analysis?: Json | null
           suggested_angles?: Json | null
           user_id?: string
+          weaknesses_analysis?: Json | null
         }
         Relationships: [
           {
@@ -674,34 +698,52 @@ export type Database = {
       }
       competitor_posts: {
         Row: {
+          comments: number | null
           competitor_id: string
           content: string
           created_at: string
           cta_type: string | null
           hook_style: string | null
           id: string
+          impressions: number | null
+          likes: number | null
+          post_analysis: Json | null
+          post_url: string | null
+          reposts: number | null
           tone: string | null
           topic: string | null
           user_id: string
         }
         Insert: {
+          comments?: number | null
           competitor_id: string
           content: string
           created_at?: string
           cta_type?: string | null
           hook_style?: string | null
           id?: string
+          impressions?: number | null
+          likes?: number | null
+          post_analysis?: Json | null
+          post_url?: string | null
+          reposts?: number | null
           tone?: string | null
           topic?: string | null
           user_id: string
         }
         Update: {
+          comments?: number | null
           competitor_id?: string
           content?: string
           created_at?: string
           cta_type?: string | null
           hook_style?: string | null
           id?: string
+          impressions?: number | null
+          likes?: number | null
+          post_analysis?: Json | null
+          post_url?: string | null
+          reposts?: number | null
           tone?: string | null
           topic?: string | null
           user_id?: string
