@@ -32,7 +32,8 @@ type Idea = {
 };
 
 type PersonaOption = { id: string; name: string };
-type CampaignOption = { id: string; name: string; language?: string };
+type CampaignOption = { id: string; name: string; language?: string; market_context_id?: string };
+type MarketContext = { id: string; region_code: string; region_name: string; audience_type: string; language_defaults: string[] };
 
 type PostType = "text" | "image_text" | "carousel";
 
@@ -52,7 +53,9 @@ const CreatePage = () => {
   const [viewMode, setViewMode] = useState<"list" | "compare">("list");
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [postType, setPostType] = useState<PostType>("text");
-  const [language, setLanguage] = useState<"english" | "bangla">("english");
+  const [language, setLanguage] = useState<string>("english");
+  const [marketContexts, setMarketContexts] = useState<MarketContext[]>([]);
+  const [selectedMarketId, setSelectedMarketId] = useState<string>("");
   const [knowledge, setKnowledge] = useState<KnowledgeContext>({
     productDescription: "",
     features: "",
