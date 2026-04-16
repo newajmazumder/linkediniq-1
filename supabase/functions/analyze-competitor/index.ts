@@ -167,13 +167,25 @@ async function analyzePostLevel(post: any, competitorName: string, userContext: 
     ? `\nEngagement Metrics: ${post.likes || 0} likes, ${post.comments || 0} comments, ${post.reposts || 0} reposts, ${post.impressions || 0} impressions`
     : "\nNo engagement metrics provided.";
 
+  const hasVisualData = post.post_format || post.visual_summary;
+  const visualInfo = hasVisualData
+    ? `\nVisual/Creative Info:\n- Post Format: ${post.post_format || "unknown"}\n- Visual Summary: ${post.visual_summary || "none"}\n- Source: ${post.source_type || "manual"}`
+    : "";
+
+  const creativeAnalysisBlock = hasVisualData ? `
+  "creative_analysis": {
+    "visual_assessment": "<what kind of visual they used and how it relates to the content>",
+    "message_alignment": "<does the visual support or weaken the message? Be specific>",
+    "performance_impact": "<is the visual likely helping or hurting engagement? Explain why>"
+  },` : "";
+
   const prompt = `You are an elite LinkedIn content strategist doing competitive intelligence analysis. Analyze this competitor post from "${competitorName || "Unknown"}".
 
 ${userContext}
 
 POST CONTENT:
 ${post.content}
-${metricsInfo}
+${metricsInfo}${visualInfo}
 
 Provide DEEP, SPECIFIC analysis. Reference actual lines from the post. NO generic phrases like "engaging content" or "good post".
 
@@ -204,7 +216,7 @@ Return JSON with this EXACT structure:
       "differentiation": "<specific issue or 'strong'>",
       "specificity": "<specific issue or 'strong'>"
     }
-  },
+  },${creativeAnalysisBlock}
   "engagement_insight": "<if metrics provided: explain WHY engagement is high/low tied to structure. If no metrics: skip>",
   "improvement_suggestions": ["<specific, actionable suggestions - NOT generic>"],
   "rewritten_hook": "<a better version of the hook, written as if the USER wrote it for THEIR audience>",
@@ -228,8 +240,19 @@ async function generateAggregateReport(
     const hookType = a?.post_breakdown?.hook_type || "unknown";
     const contentType = a?.post_breakdown?.content_type || "unknown";
     const tone = a?.post_breakdown?.tone || "unknown";
-    return `Post ${i + 1} ${metrics}: hook=${hookType}, type=${contentType}, tone=${tone}\nContent preview: ${p.content?.substring(0, 200)}...`;
+    const visual = p.post_format ? `, format=${p.post_format}` : "";
+    const visualDesc = p.visual_summary ? `, visual="${p.visual_summary}"` : "";
+    return `Post ${i + 1} ${metrics}: hook=${hookType}, type=${contentType}, tone=${tone}${visual}${visualDesc}\nContent preview: ${p.content?.substring(0, 200)}...`;
   }).join("\n\n");
+
+  const hasVisualPosts = posts.some((p: any) => p.post_format || p.visual_summary);
+  const visualStrategyBlock = hasVisualPosts ? `
+  "visual_strategy": {
+    "dominant_visual_types": ["<most common visual formats used>"],
+    "best_performing_visuals": "<which visual types get best engagement>",
+    "visual_gaps": ["<visual approaches they are NOT using>"],
+    "visual_consistency": "<how consistent is their visual branding>"
+  },` : "";
 
   const prompt = `You are an elite competitive intelligence analyst for LinkedIn strategy. Analyze ${posts.length} posts from competitor "${competitorName || "Unknown"}".
 
@@ -271,7 +294,7 @@ Return JSON with this EXACT structure:
     "worst_performing_type": "<which fail and why>",
     "engagement_triggers": ["<what triggers engagement>"],
     "engagement_killers": ["<what kills engagement>"]
-  },
+  },${visualStrategyBlock}
   "strategic_opportunities": [
     {
       "opportunity": "<specific opportunity>",

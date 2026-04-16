@@ -703,16 +703,23 @@ export type Database = {
           content: string
           created_at: string
           cta_type: string | null
+          extraction_confidence: Json | null
           hook_style: string | null
           id: string
           impressions: number | null
           likes: number | null
+          manual_corrections: Json | null
+          original_extraction: Json | null
           post_analysis: Json | null
+          post_format: string | null
           post_url: string | null
           reposts: number | null
+          screenshot_url: string | null
+          source_type: string
           tone: string | null
           topic: string | null
           user_id: string
+          visual_summary: string | null
         }
         Insert: {
           comments?: number | null
@@ -720,16 +727,23 @@ export type Database = {
           content: string
           created_at?: string
           cta_type?: string | null
+          extraction_confidence?: Json | null
           hook_style?: string | null
           id?: string
           impressions?: number | null
           likes?: number | null
+          manual_corrections?: Json | null
+          original_extraction?: Json | null
           post_analysis?: Json | null
+          post_format?: string | null
           post_url?: string | null
           reposts?: number | null
+          screenshot_url?: string | null
+          source_type?: string
           tone?: string | null
           topic?: string | null
           user_id: string
+          visual_summary?: string | null
         }
         Update: {
           comments?: number | null
@@ -737,16 +751,23 @@ export type Database = {
           content?: string
           created_at?: string
           cta_type?: string | null
+          extraction_confidence?: Json | null
           hook_style?: string | null
           id?: string
           impressions?: number | null
           likes?: number | null
+          manual_corrections?: Json | null
+          original_extraction?: Json | null
           post_analysis?: Json | null
+          post_format?: string | null
           post_url?: string | null
           reposts?: number | null
+          screenshot_url?: string | null
+          source_type?: string
           tone?: string | null
           topic?: string | null
           user_id?: string
+          visual_summary?: string | null
         }
         Relationships: [
           {
