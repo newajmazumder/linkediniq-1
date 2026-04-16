@@ -106,30 +106,36 @@ For engagement metrics:
 
 Return ONLY valid JSON. No markdown wrapping.`;
 
-    const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: `${prompt}\n\nYou are given ${allUrls.length} screenshot(s) of the SAME LinkedIn post. Analyze ALL images together to extract the complete picture — text from one, visuals/metrics from others. If an image contains a chart, infographic, or graphic, the post_format is NOT "text_only".` },
-              ...allUrls.map(url => ({ type: "image_url" as const, image_url: { url } })),
-            ],
-          },
-        ],
-        temperature: 0.1,
-      }),
-    });
+    // Retry logic for transient errors (502, 503)
+    let resp: Response | null = null;
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-pro",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: `${prompt}\n\nYou are given ${allUrls.length} screenshot(s) of the SAME LinkedIn post. Analyze ALL images together to extract the complete picture — text from one, visuals/metrics from others. If an image contains a chart, infographic, or graphic, the post_format is NOT "text_only".` },
+                ...allUrls.map(url => ({ type: "image_url" as const, image_url: { url } })),
+              ],
+            },
+          ],
+          temperature: 0.1,
+        }),
+      });
 
-    if (!resp.ok) {
+      if (resp.ok) break;
+
       const errText = await resp.text();
-      console.error("AI gateway error:", resp.status, errText);
+      console.error(`AI gateway error (attempt ${attempt}/${maxRetries}):`, resp.status, errText);
+
       if (resp.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limited. Please try again in a moment." }), {
           status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -140,7 +146,22 @@ Return ONLY valid JSON. No markdown wrapping.`;
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`AI extraction failed: ${resp.status}`);
+
+      // Retry on 502/503, fail on other errors
+      if ((resp.status === 502 || resp.status === 503) && attempt < maxRetries) {
+        await new Promise(r => setTimeout(r, 2000 * attempt));
+        continue;
+      }
+
+      return new Response(JSON.stringify({ error: `AI service temporarily unavailable (${resp.status}). Please try again.` }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!resp || !resp.ok) {
+      return new Response(JSON.stringify({ error: "AI service unavailable after retries. Please try again." }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await resp.json();
