@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Zap } from "lucide-react";
 
 interface GapRow {
   content_type: string;
@@ -22,7 +23,13 @@ const gapBadgeColors: Record<string, string> = {
   low: "text-green-700 bg-green-500/10 border-green-500/30",
 };
 
-export function ContentGapMatrix({ matrix }: { matrix: GapRow[] }) {
+export function ContentGapMatrix({
+  matrix,
+  onCreatePostForGap,
+}: {
+  matrix: GapRow[];
+  onCreatePostForGap?: (gap: GapRow) => void;
+}) {
   if (!matrix || matrix.length === 0) return null;
 
   return (
@@ -41,6 +48,7 @@ export function ContentGapMatrix({ matrix }: { matrix: GapRow[] }) {
               <TableHead className="text-[10px] font-semibold text-center">Ideal</TableHead>
               <TableHead className="text-[10px] font-semibold text-center">Gap</TableHead>
               <TableHead className="text-[10px] font-semibold">Action</TableHead>
+              <TableHead className="text-[10px] font-semibold w-[80px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -72,6 +80,13 @@ export function ContentGapMatrix({ matrix }: { matrix: GapRow[] }) {
                   </div>
                 </TableCell>
                 <TableCell className="text-[10px] text-muted-foreground max-w-[200px]">{row.action}</TableCell>
+                <TableCell>
+                  {onCreatePostForGap && (row.gap_level === "high" || row.gap_level === "medium") && (
+                    <Button size="sm" variant="ghost" className="h-6 text-[9px] px-2 text-primary" onClick={() => onCreatePostForGap(row)}>
+                      <Zap className="h-2.5 w-2.5 mr-0.5" /> Create
+                    </Button>
+                  )}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
