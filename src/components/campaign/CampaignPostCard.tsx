@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
   Clock, PenLine, Check, Eye, BarChart3, Loader2,
-  ArrowRight, CheckCircle, AlertTriangle, ShieldCheck, ShieldAlert,
+  ArrowRight, AlertTriangle, ShieldCheck, ShieldAlert,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,6 +47,33 @@ const CampaignPostCard = ({
 }) => {
   const [predicting, setPredicting] = useState(false);
   const [prediction, setPrediction] = useState<any>(null);
+  const [actualPerformance, setActualPerformance] = useState<any>(null);
+
+  useEffect(() => {
+    const loadPerformanceSignals = async () => {
+      if (!post.linked_draft_id) return;
+
+      const [{ data: predictionData }, { data: actualData }] = await Promise.all([
+        supabase
+          .from("prediction_scores")
+          .select("*")
+          .eq("draft_id", post.linked_draft_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from("post_performance")
+          .select("*")
+          .eq("draft_id", post.linked_draft_id)
+          .maybeSingle(),
+      ]);
+
+      if (predictionData) setPrediction(predictionData);
+      if (actualData) setActualPerformance(actualData);
+    };
+
+    loadPerformanceSignals();
+  }, [post.linked_draft_id]);
 
   const fetchPrediction = async () => {
     if (!post.linked_draft_id) return;
@@ -66,13 +92,20 @@ const CampaignPostCard = ({
   };
 
   const status = post.status || "planned";
+  const actualEngagementRate = actualPerformance?.impressions
+    ? (((actualPerformance.likes || 0) + (actualPerformance.comments || 0) + (actualPerformance.saves || 0)) / actualPerformance.impressions) * 100
+    : null;
+  const expectedEngagementRate = prediction?.predicted_score >= 80 ? 4 : prediction?.predicted_score >= 60 ? 2.5 : 1.5;
+  const performanceDelta = actualEngagementRate !== null && prediction
+    ? actualEngagementRate - expectedEngagementRate
+    : null;
 
   return (
     <div className="rounded-md border border-border bg-background p-3 space-y-1.5">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs font-medium text-foreground">Post {post.post_number}</span>
-          <Badge variant="outline" className={cn("text-[10px]", statusColors[status] || "")}>
+          <Badge variant="outline" className={cn("text-[10px]", statusColors[status] || "")}> 
             {status === "planned" && <Clock className="mr-0.5 h-2.5 w-2.5" />}
             {status === "drafted" && <PenLine className="mr-0.5 h-2.5 w-2.5" />}
             {status === "published" && <Check className="mr-0.5 h-2.5 w-2.5" />}
@@ -92,7 +125,6 @@ const CampaignPostCard = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {/* Predict button for drafted posts */}
           {status === "drafted" && post.linked_draft_id && !prediction && (
             <button
               onClick={fetchPrediction}
@@ -103,22 +135,23 @@ const CampaignPostCard = ({
               Predict
             </button>
           )}
-          {/* Actions based on status */}
+
           {status === "planned" && (
             <Link
               to={`/create?campaign_id=${campaignId}&post_plan_id=${post.id}`}
               className="flex items-center gap-1 text-xs text-primary hover:underline"
             >
-              <PenLine className="h-3 w-3" /> Create
+              <PenLine className="h-3 w-3" /> Create now
             </Link>
           )}
+
           {status === "drafted" && post.linked_draft_id && (
             <div className="flex items-center gap-2">
               <Link
-                to={`/drafts?highlight=${post.linked_draft_id}`}
+                to="/drafts"
                 className="flex items-center gap-1 text-xs text-primary hover:underline"
               >
-                <Eye className="h-3 w-3" /> View
+                <Clock className="h-3 w-3" /> Schedule this post
               </Link>
               <Link
                 to={`/create?campaign_id=${campaignId}&post_plan_id=${post.id}&edit_draft=${post.linked_draft_id}`}
@@ -128,16 +161,18 @@ const CampaignPostCard = ({
               </Link>
             </div>
           )}
-          {status === "published" && post.linked_post_id && (
+
+          {status === "published" && (
             <Link
-              to={`/performance/${post.linked_post_id}`}
+              to="/performance"
               className="flex items-center gap-1 text-xs text-primary hover:underline"
             >
-              <Eye className="h-3 w-3" /> View Post
+              <Eye className="h-3 w-3" /> Track performance
             </Link>
           )}
         </div>
       </div>
+
       <p className="text-xs text-foreground">{post.post_objective}</p>
       <p className="text-[10px] text-muted-foreground">{post.content_angle}</p>
       <div className="flex flex-wrap gap-1">
@@ -157,8 +192,41 @@ const CampaignPostCard = ({
       {post.strategic_rationale && (
         <p className="text-[10px] text-muted-foreground italic">📝 {post.strategic_rationale}</p>
       )}
-      {/* Prediction details */}
-      {prediction && (
+
+      {status === "published" && prediction && actualEngagementRate !== null && (
+        <div className="mt-2 rounded-md border border-border bg-muted/30 p-3 space-y-1.5">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <span className="text-[10px] font-semibold text-foreground">Prediction vs actual performance</span>
+            <span className={cn(
+              "text-[10px] font-medium",
+              performanceDelta !== null && performanceDelta >= 0 ? "text-green-600" : "text-destructive"
+            )}>
+              {performanceDelta !== null && performanceDelta >= 0 ? "Over expected" : "Under expected"}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-[10px]">
+            <div>
+              <p className="text-muted-foreground">Predicted</p>
+              <p className="font-semibold text-foreground">{prediction.predicted_score}/100</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Actual ER</p>
+              <p className="font-semibold text-foreground">{actualEngagementRate.toFixed(1)}%</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground">Signal</p>
+              <p className="font-semibold text-foreground">{actualPerformance.impressions || 0} views</p>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            {performanceDelta !== null && performanceDelta >= 0
+              ? "This angle outperformed the model. Double down on it in the next post."
+              : "This post likely underperformed the expectation. Tighten the hook, CTA, or positioning before repeating it."}
+          </p>
+        </div>
+      )}
+
+      {prediction && status !== "published" && (
         <div className="mt-2 rounded-md border border-border bg-muted/30 p-2 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium text-foreground">Prediction Details</span>
@@ -175,7 +243,7 @@ const CampaignPostCard = ({
               { label: "CTA", value: prediction.cta_alignment },
               { label: "Context", value: prediction.context_relevance },
             ].map((dim) => (
-              <div key={dim.label} className="flex justify-between">
+              <div key={dim.label} className="flex justify-between gap-1">
                 <span className="text-muted-foreground">{dim.label}</span>
                 <span className="text-foreground">{dim.value}</span>
               </div>

@@ -68,14 +68,14 @@ export function BestMoveCard({
 
         {/* SINGLE dominant CTA */}
         <Button size="lg" onClick={onExecuteBestMove} className="w-full h-14 text-base gap-3 font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 transition-all">
-          <Rocket className="h-5 w-5" /> Start Executing Now
+          <Rocket className="h-5 w-5" /> Start 7-Day Campaign
           <ArrowRight className="h-5 w-5" />
         </Button>
 
         {/* Secondary options - subtle */}
         <div className="flex gap-2 justify-center">
           <Button size="sm" variant="ghost" onClick={onBuildCampaign} className="h-8 text-xs text-muted-foreground">
-            or Preview Full Campaign Plan
+            Preview the plan first
           </Button>
           <span className="text-muted-foreground/30 self-center">|</span>
           <Button size="sm" variant="ghost" onClick={onExploitWeakness} className="h-8 text-xs text-muted-foreground">
