@@ -150,11 +150,28 @@ const CompetitorsPage = () => {
   const handleScreenshotSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    applyScreenshotFile(file);
+  };
+
+  const applyScreenshotFile = (file: File) => {
     if (file.size > 10 * 1024 * 1024) { toast.error("File too large. Max 10MB."); return; }
     setScreenshotFile(file);
     setScreenshotPreview(URL.createObjectURL(file));
     setExtraction(null);
     setReviewData({});
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.startsWith("image/")) {
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if (file) applyScreenshotFile(file);
+        return;
+      }
+    }
   };
 
   const runExtraction = async () => {
@@ -421,6 +438,7 @@ const CompetitorsPage = () => {
                                 reviewData={reviewData}
                                 setReviewData={setReviewData}
                                 onFileSelect={handleScreenshotSelect}
+                                onPaste={handlePaste}
                                 onExtract={runExtraction}
                                 onSave={() => saveScreenshotPost(comp.id)}
                                 onCancel={resetPostForm}
@@ -484,12 +502,13 @@ const CompetitorsPage = () => {
 
 function ScreenshotPostFlow({
   screenshotPreview, screenshotFile, extracting, extraction, reviewData, setReviewData,
-  onFileSelect, onExtract, onSave, onCancel, saving, fileInputRef,
+  onFileSelect, onPaste, onExtract, onSave, onCancel, saving, fileInputRef,
 }: {
   screenshotPreview: string | null; screenshotFile: File | null; extracting: boolean;
   extraction: ExtractionResult | null; reviewData: Record<string, any>;
   setReviewData: (d: Record<string, any>) => void;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onPaste: (e: React.ClipboardEvent) => void;
   onExtract: () => void; onSave: () => void; onCancel: () => void; saving: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
 }) {
@@ -498,15 +517,17 @@ function ScreenshotPostFlow({
   // Step 1: Upload
   if (!screenshotPreview) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" onPaste={onPaste}>
         <input ref={fileInputRef} type="file" accept="image/*" onChange={onFileSelect} className="hidden" />
         <button
           onClick={() => fileInputRef.current?.click()}
-          className="w-full border-2 border-dashed border-border rounded-lg p-8 hover:border-primary/50 hover:bg-muted/30 transition-colors flex flex-col items-center gap-2"
+          className="w-full border-2 border-dashed border-border rounded-lg p-8 hover:border-primary/50 hover:bg-muted/30 transition-colors flex flex-col items-center gap-2 focus:outline-none focus:border-primary/50"
+          tabIndex={0}
         >
           <Upload className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm font-medium text-foreground">Upload Screenshot</p>
-          <p className="text-xs text-muted-foreground">PNG, JPG, WebP — Max 10MB</p>
+          <p className="text-sm font-medium text-foreground">Upload or Paste Screenshot</p>
+          <p className="text-xs text-muted-foreground">Click to browse, or paste from clipboard (Ctrl+V / ⌘V)</p>
+          <p className="text-[10px] text-muted-foreground">PNG, JPG, WebP — Max 10MB</p>
         </button>
         <div className="flex justify-end">
           <Button size="sm" variant="ghost" onClick={onCancel}>Cancel</Button>
