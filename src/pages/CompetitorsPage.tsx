@@ -13,7 +13,7 @@ import {
   Target, TrendingUp, AlertTriangle, Lightbulb, Swords, Eye, Zap,
   BarChart3, Users, MessageSquare, ThumbsUp, Share2, ChevronRight,
   Camera, Upload, ImageIcon, CheckCircle2, AlertCircle, HelpCircle,
-  Flame, ToggleLeft, ToggleRight,
+  Flame, ToggleLeft, ToggleRight, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
