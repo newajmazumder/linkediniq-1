@@ -97,6 +97,7 @@ const AppSidebar = ({ collapsed, onToggle, onNavigate }: AppSidebarProps) => {
       <div className="px-2 pb-2">
         <NavLink
           to="/create"
+          onClick={onNavigate}
           title={collapsed ? "New post" : undefined}
           className={cn(
             "flex items-center gap-2.5 rounded-md border border-border/50 py-2 text-sm font-medium transition-colors hover:bg-sidebar-accent",
@@ -119,6 +120,7 @@ const AppSidebar = ({ collapsed, onToggle, onNavigate }: AppSidebarProps) => {
             <NavLink
               key={to}
               to={to}
+              onClick={onNavigate}
               title={collapsed ? label : undefined}
               className={cn(
                 "flex items-center gap-2.5 rounded-md py-2 text-sm font-medium transition-colors",
