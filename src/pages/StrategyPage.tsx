@@ -371,12 +371,25 @@ const StrategyPage = () => {
                   </Select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Language</label>
+                  <label className="text-xs font-medium text-foreground">Target Market</label>
+                  <Select value={form.market_context_id} onValueChange={(v) => setForm({ ...form, market_context_id: v })}>
+                    <SelectTrigger className="text-sm"><SelectValue placeholder="Select market" /></SelectTrigger>
+                    <SelectContent>
+                      {marketContexts.map((mc) => (
+                        <SelectItem key={mc.id} value={mc.id}>
+                          {mc.region_code === "BD" ? "🇧🇩" : mc.region_code === "US" ? "🇺🇸" : "🌍"} {mc.region_name} — {mc.audience_type.replace(/_/g, " ")}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Content Language</label>
                   <Select value={form.language} onValueChange={(v) => setForm({ ...form, language: v })}>
                     <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="english">🇺🇸 English</SelectItem>
-                      <SelectItem value="bangla">🇧🇩 Bangla</SelectItem>
+                      <SelectItem value="english">English</SelectItem>
+                      <SelectItem value="bangla">বাংলা (Bangla)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
