@@ -277,6 +277,8 @@ async function generateStrategyReport(
 
   const prompt = `You are an elite competitive intelligence strategist for LinkedIn. You speak in DECISIVE, SHARP language. Never say "you may consider" — say "you should prioritize." Every insight leads to action. Every action leads to content. Every content aims for an outcome.
 
+You MUST personalize every single recommendation to the user's specific product, audience, geography, and funnel stage. Generic advice = failure.
+
 Analyze ${posts.length} posts from "${competitorName || "Unknown"}" and generate an EXECUTION-READY competitive strategy.
 
 ${userContext}
