@@ -316,57 +316,104 @@ This is a standard text-only LinkedIn post. No images or carousels.
 Do NOT include "image_briefs" in the output (or set it to an empty array []).`;
 }
 
-function buildLanguageBlock(language: string): string {
-  if (language !== "bangla") return "";
+function buildMarketContextBlock(marketContext: any | null, language: string): string {
+  // If we have a full market context from DB, build a dynamic block
+  if (marketContext) {
+    const channels = Array.isArray(marketContext.primary_channels) ? marketContext.primary_channels.join(", ") : "";
+    const behaviors = Array.isArray(marketContext.common_customer_behaviors) ? marketContext.common_customer_behaviors.map((b: string) => `  - ${b}`).join("\n") : "";
+    const painPoints = Array.isArray(marketContext.common_pain_points) ? marketContext.common_pain_points.map((p: string) => `  - ${p}`).join("\n") : "";
+    const trustSignals = Array.isArray(marketContext.trust_signals) ? marketContext.trust_signals.map((t: string) => `  - ${t}`).join("\n") : "";
+    const examples = Array.isArray(marketContext.localized_examples) ? marketContext.localized_examples.map((e: any) => `  - Scenario: ${e.scenario || e} → Pain: ${e.pain || ""}`).join("\n") : "";
+    const phrases = marketContext.localized_phrases || {};
+    const ctaExamples = Array.isArray(phrases.cta_examples) ? phrases.cta_examples.map((c: string) => `  - ${c}`).join("\n") : "";
+    const emotionalHooks = Array.isArray(phrases.emotional_hooks) ? phrases.emotional_hooks.map((h: string) => `  - ${h}`).join("\n") : "";
+    const platform = marketContext.platform_reality || {};
+    const salesBehavior = marketContext.sales_conversation_behavior || {};
 
-  return `
+    let block = `
+
+MARKET CONTEXT: ${marketContext.region_name} (${marketContext.region_code})
+Audience Type: ${marketContext.audience_type}
+Tone Preference: ${marketContext.tone_preference}
+Buyer Maturity: ${marketContext.buyer_maturity}
+Content Style Bias: ${marketContext.content_style_bias}
+CTA Style: ${marketContext.preferred_cta_style}
+
+PRIMARY CHANNELS: ${channels}
+
+CUSTOMER BEHAVIORS:
+${behaviors}
+
+COMMON PAIN POINTS:
+${painPoints}
+
+TRUST SIGNALS THAT WORK:
+${trustSignals}
+
+LOCALIZED SCENARIOS (use these as inspiration):
+${examples}
+
+CTA EXAMPLES FOR THIS MARKET:
+${ctaExamples}
+
+EMOTIONAL HOOKS FOR THIS MARKET:
+${emotionalHooks}
+
+PLATFORM REALITY:
+  - Primary: ${platform.primary_platform || "N/A"}
+  - Sales Flow: ${platform.sales_flow || "N/A"}
+  - Content Format: ${platform.content_format || "N/A"}
+  - Peak Hours: ${platform.peak_hours || "N/A"}
+
+BUYER BEHAVIOR:
+  - Decision Style: ${salesBehavior.style || "N/A"}
+  - Decision Speed: ${salesBehavior.decision_speed || "N/A"}
+  - Price Sensitivity: ${salesBehavior.price_sensitivity || "N/A"}
+  - Trust Building: ${salesBehavior.trust_building || "N/A"}
+
+MARKET ADAPTATION RULES:
+- Generate content NATIVELY for this market — do NOT apply a generic template then localize
+- Use scenarios, examples, and references that feel natural to ${marketContext.region_name} professionals
+- Match the tone preference (${marketContext.tone_preference}) throughout
+- CTAs must match the market's preferred style (${marketContext.preferred_cta_style})
+- If buyer maturity is "${marketContext.buyer_maturity}", adjust content complexity accordingly
+- Content must pass the "native test": a ${marketContext.region_name} professional should feel this was written FOR them`;
+
+    // Add language-specific rules
+    const langDefaults = Array.isArray(marketContext.language_defaults) ? marketContext.language_defaults : ["english"];
+    if (language === "bangla" || langDefaults.includes("bangla")) {
+      if (language === "bangla") {
+        block += `
 
 LANGUAGE: BANGLA (বাংলা) — NATIVE GENERATION MODE
 
 CRITICAL DIRECTIVE: You MUST generate ALL content (hook, body, CTA, first_comment) directly in Bangla. 
 Do NOT generate in English then translate. Think in Bangla. Structure sentences in Bangla-first logic.
 
-BANGLA CONTENT QUALITY RULES:
+BANGLA RULES:
+- Use conversational, business-friendly Bangla — not literary/formal
+- Keep English product/tech terms in English: AI Agent, WhatsApp, Facebook, conversion, CRM
+- CTAs must feel natural in Bangla
+- Short sentences. Clear line breaks. Same formatting rules apply.
+- Self-validate: if this reads like translated English, regenerate`;
+      }
+    }
 
-1. TONE & STYLE:
-   - Use conversational, business-friendly Bangla
-   - Simple, direct phrasing that sounds like a real Bangladeshi business owner talking
-   - AVOID: overly formal literary Bangla, Sanskrit-heavy vocabulary, textbook style, robotic sentence structure
-   - Prefer: "আপনার দোকানে…", "মেসেজ আসে", "রিপ্লাই দিতে দেরি হচ্ছে"
+    return block;
+  }
 
-2. SMART ENGLISH MIXING (realistic usage):
-   - Keep English product/tech terms in English when natural: AI Agent, WhatsApp, Facebook inbox, conversion, CRM, SaaS, B2B, support ticket
-   - Sentence flow MUST remain Bangla-first
-   - Example: "আপনার WhatsApp inbox-এ প্রতিদিন কতো মেসেজ আসে?"
+  // Fallback: if no market context but language is bangla, use minimal language block
+  if (language === "bangla") {
+    return `
 
-3. CULTURAL CONTEXT (Bangladesh-specific):
-   - Reference real BD business scenarios: Friday night rush, WhatsApp orders, Messenger confusion
-   - eCommerce patterns: "Price koto?" behavior, COD orders, social commerce
-   - Use relatable situations Bangladeshi business owners face daily
-   - Mention local platforms: bKash, Pathao, Daraz when relevant
+LANGUAGE: BANGLA (বাংলা) — NATIVE GENERATION MODE
+CRITICAL DIRECTIVE: You MUST generate ALL content (hook, body, CTA, first_comment) directly in Bangla.
+Do NOT generate in English then translate. Think in Bangla.
+Use conversational, business-friendly Bangla. Keep English product terms in English.
+Self-validate: if this reads like translated English, regenerate.`;
+  }
 
-4. CTA LOCALIZATION:
-   - CTAs must feel natural in Bangla: "কমেন্ট করুন 'SCALE'", "আপনার অভিজ্ঞতা কী?", "এই সমস্যাটা কি আপনারও হচ্ছে?"
-   - Do NOT directly translate English CTA patterns
-   - Use Bangla conversational CTA tone
-
-5. READABILITY:
-   - Short sentences in Bangla (even shorter than English)
-   - Clear line breaks — same formatting rules apply
-   - Avoid long complex Bangla sentences
-   - 1-2 lines per paragraph max
-
-6. FORMATTING IN BANGLA:
-   - All formatting rules (line breaks, bullets, CTA isolation, emphasis) apply equally
-   - Bullet symbols (→ • ⚡ 👉) work the same way
-   - "Quoted concepts" can be in Bangla or mixed
-
-7. SELF-VALIDATION:
-   - Before returning: Does this sound like a native Bangladeshi wrote it?
-   - Is it easy to read out loud in Bangla?
-   - Does it avoid translation artifacts?
-   - If a native Bangladeshi reads it, they should NOT suspect AI
-   - If any check fails → regenerate in more natural Bangla`;
+  return "";
 }
 
 function buildFormattingIntelligenceBlock(postIndex: number, campaignGoal?: string): string {
@@ -655,7 +702,15 @@ serve(async (req) => {
 
     // Determine language: request param > campaign setting > default english
     const language = requestLanguage || (campaignData as any).language || "english";
-    const languageBlock = buildLanguageBlock(language);
+
+    // Fetch market context if campaign has one
+    let marketContext: any = null;
+    const marketContextId = (campaignData as any).market_context_id;
+    if (marketContextId) {
+      const { data: mc } = await supabase.from("market_contexts").select("*").eq("id", marketContextId).single();
+      marketContext = mc;
+    }
+    const marketContextBlock = buildMarketContextBlock(marketContext, language);
 
     // Fetch business context, chunks, AND learned patterns in parallel
     const [profileRes, chunksRes, patternsRes] = await Promise.all([
