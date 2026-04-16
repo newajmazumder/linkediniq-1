@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TrendingUp, BarChart3, Rocket } from "lucide-react";
+import { TrendingUp, BarChart3, Rocket, RefreshCw, ArrowRight, Lightbulb } from "lucide-react";
 
 interface PredictedOutcomes {
   engagement_improvement?: string;
@@ -19,9 +19,13 @@ const confidenceColors: Record<string, string> = {
 export function PredictedOutcomePanel({
   outcomes,
   onApplyStrategy,
+  onCreatePost,
+  onCreateCampaign,
 }: {
   outcomes: PredictedOutcomes;
   onApplyStrategy?: () => void;
+  onCreatePost?: () => void;
+  onCreateCampaign?: () => void;
 }) {
   if (!outcomes || !outcomes.engagement_improvement) return null;
 
@@ -73,13 +77,24 @@ export function PredictedOutcomePanel({
         </div>
       )}
 
-      {onApplyStrategy && (
-        <div className="pt-1">
+      {/* Close the loop: actions */}
+      <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
+        {onApplyStrategy && (
           <Button size="sm" onClick={onApplyStrategy} className="h-8 text-xs">
-            <Rocket className="h-3.5 w-3.5 mr-1" /> Apply This Strategy Now
+            <Rocket className="h-3.5 w-3.5 mr-1" /> Apply Strategy Now
           </Button>
-        </div>
-      )}
+        )}
+        {onCreatePost && (
+          <Button size="sm" variant="outline" onClick={onCreatePost} className="h-8 text-xs">
+            <ArrowRight className="h-3.5 w-3.5 mr-1" /> Create Post
+          </Button>
+        )}
+        {onCreateCampaign && (
+          <Button size="sm" variant="outline" onClick={onCreateCampaign} className="h-8 text-xs">
+            <Lightbulb className="h-3.5 w-3.5 mr-1" /> Create Campaign
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

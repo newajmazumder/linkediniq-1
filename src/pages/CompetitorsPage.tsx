@@ -30,11 +30,19 @@ import { ExecutionPlanTimeline } from "@/components/competitor/ExecutionPlanTime
 import { WhyPostsWorkPanel } from "@/components/competitor/WhyPostsWorkPanel";
 import { ConfidenceIndicator } from "@/components/competitor/ConfidenceIndicator";
 import { QuickActionsPanel } from "@/components/competitor/QuickActionsPanel";
-import { DecisionHeader } from "@/components/competitor/DecisionHeader";
+
 import { PostActionButtons } from "@/components/competitor/PostActionButtons";
+
+import { BestMoveCard } from "@/components/competitor/BestMoveCard";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
+};
+
+type BusinessProfile = {
+  product_summary: string | null;
+  target_audience: string | null;
+  company_summary: string | null;
 };
 
 type CompetitorPost = {
@@ -92,7 +100,7 @@ const CompetitorsPage = () => {
   const [analyzingPostId, setAnalyzingPostId] = useState<string | null>(null);
   const [expandedPostId, setExpandedPostId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"action" | "insight">("action");
-
+  const [businessProfile, setBusinessProfile] = useState<BusinessProfile | null>(null);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
@@ -117,7 +125,12 @@ const CompetitorsPage = () => {
   const [reviewData, setReviewData] = useState<Record<string, any>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (user) fetchCompetitors(); }, [user]);
+  useEffect(() => { if (user) { fetchCompetitors(); fetchBusinessProfile(); } }, [user]);
+
+  const fetchBusinessProfile = async () => {
+    const { data } = await supabase.from("business_profiles").select("product_summary, target_audience, company_summary").eq("user_id", user!.id).maybeSingle();
+    setBusinessProfile(data as BusinessProfile | null);
+  };
 
   const fetchCompetitors = async () => {
     setLoading(true);
@@ -521,19 +534,24 @@ const CompetitorsPage = () => {
                       <TabsContent value="strategy" className="px-4 pb-4 mt-2">
                         {compInsight ? (
                           <div className="space-y-6">
-                            {/* Decision Header - sticky top */}
-                            <DecisionHeader
+                            {/* "Your Best Move Right Now" - Start Here Layer */}
+                            <BestMoveCard
                               competitorName={comp.name}
-                              hasInsights={true}
-                              onGeneratePost={() => {
+                              winStrategy={compInsight.win_strategy}
+                              topAngle={compInsight.content_angles?.[0]}
+                              predictedOutcomes={compInsight.predicted_outcomes}
+                              userProduct={businessProfile?.product_summary || undefined}
+                              userAudience={businessProfile?.target_audience || undefined}
+                              onExecuteBestMove={() => {
                                 const angle = compInsight.content_angles?.[0];
-                                if (angle) navigateToCreate({
-                                  hook_type: angle.hook_type, intent: angle.intent,
-                                  title: angle.title, example_hook: angle.example_hook,
-                                  goal: angle.goal, cta_style: angle.cta_style,
+                                navigateToCreate({
+                                  hook_type: angle?.hook_type || "pain",
+                                  intent: angle?.intent || "conversion",
+                                  title: angle?.title || compInsight.win_strategy?.winning_strategy?.[0] || "Winning post",
+                                  example_hook: angle?.example_hook,
+                                  goal: angle?.goal, cta_style: angle?.cta_style,
                                   auto_generate: true,
                                 });
-                                else navigateToCreate({ hook_type: "pain", intent: "conversion", auto_generate: true });
                               }}
                               onBuildCampaign={() => navigateToCampaign(compInsight, comp.name)}
                               onExploitWeakness={() => navigateToCreate({
@@ -605,13 +623,23 @@ const CompetitorsPage = () => {
                               })}
                             />
 
-                            {/* Predicted Outcomes with action */}
+                            {/* Predicted Outcomes with actions */}
                             <PredictedOutcomePanel
                               outcomes={compInsight.predicted_outcomes}
                               onApplyStrategy={() => navigateToCreate({
                                 win_strategy: compInsight.win_strategy,
                                 winning_position: compInsight.winning_position,
                               })}
+                              onCreatePost={() => {
+                                const angle = compInsight.content_angles?.[0];
+                                navigateToCreate({
+                                  hook_type: angle?.hook_type || "pain",
+                                  intent: "conversion",
+                                  title: angle?.title || "Strategy-driven post",
+                                  auto_generate: true,
+                                });
+                              }}
+                              onCreateCampaign={() => navigateToCampaign(compInsight, comp.name)}
                             />
 
                             {/* Content Gap Matrix with per-row actions */}
