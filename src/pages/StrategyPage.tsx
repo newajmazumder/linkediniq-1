@@ -50,6 +50,9 @@ type Campaign = {
   target_quantity: number | null;
   target_timeframe: string | null;
   target_priority: string | null;
+  current_goal_value?: number | null;
+  goal_progress_percent?: number | null;
+  goal_status?: string | null;
 };
 
 type CampaignProgress = {
