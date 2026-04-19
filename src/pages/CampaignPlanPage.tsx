@@ -524,6 +524,7 @@ const CampaignPlanPage = () => {
           }, 350);
         }}
       />
+      )}
 
       {/* TABS — Plan first (default), then Outcome (live performance), then deep analysis */}
       <section className="space-y-3">
