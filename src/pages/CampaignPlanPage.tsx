@@ -30,6 +30,8 @@ import CampaignProjectionCard from "@/components/campaign/CampaignProjectionCard
 import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
 import TopPerformerCard from "@/components/campaign/TopPerformerCard";
 import TopContributorsStrip from "@/components/campaign/TopContributorsStrip";
+import CampaignAdvisorBanner from "@/components/campaign/CampaignAdvisorBanner";
+import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
 
 type Campaign = any;
