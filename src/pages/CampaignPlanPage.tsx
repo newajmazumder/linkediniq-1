@@ -31,14 +31,13 @@ import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
 import TopPerformerCard from "@/components/campaign/TopPerformerCard";
 import TopContributorsStrip from "@/components/campaign/TopContributorsStrip";
 import CampaignAdvisorBanner from "@/components/campaign/CampaignAdvisorBanner";
-import NextBestActionCard from "@/components/campaign/NextBestActionCard";
-import CampaignPacingStrip from "@/components/campaign/CampaignPacingStrip";
 import StrategyVersionsCard from "@/components/campaign/StrategyVersionsCard";
+import CampaignAlertCard from "@/components/campaign/CampaignAlertCard";
 import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
 import { computePacing } from "@/lib/execution";
 import { deriveLifecycleState, LIFECYCLE_META } from "@/lib/campaign-lifecycle";
-import type { NextBestAction } from "@/lib/campaign-intelligence";
+import { evaluateTriggers } from "@/lib/campaign-triggers";
 
 type Campaign = any;
 type WeekPlan = any;
