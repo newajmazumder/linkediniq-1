@@ -283,12 +283,49 @@ serve(async (req) => {
         target_post_id: nextPlannedPost?.id || null,
       };
     }
-    // 7. STEADY — honestly nothing actionable
+    // 7. PASSIVE OPTIMIZATION — on track but no winning pattern → design experiments
+    else if (isOnPace && signalStrength !== "high" && nextPlannedPost) {
+      // medium signal: confirm the emerging pattern with a controlled test
+      // low signal: run a 3-post hook variation experiment
+      const emergingHook = hookRanked.find(h => h.n >= 2);
+      if (signalStrength === "medium" && emergingHook) {
+        action = {
+          action_type: "optimization",
+          priority: "medium",
+          title: `Confirm the emerging "${emergingHook.k}" pattern on Post #${nextPlannedPost.post_number}`,
+          observation: `${posted}/${totalPosts} live, on pace. "${emergingHook.k}" hook leads after ${emergingHook.n} samples but needs 1 more confirming run.`,
+          why_now: `${daysRemaining !== null ? Math.ceil(daysRemaining) + " days of buffer remaining" : "You have execution buffer"} — the cheapest moment to lock in pattern certainty.`,
+          interpretation: "An emerging pattern that gets one confirming run becomes a high-confidence playbook. Without confirmation it stays a guess.",
+          impact: "One targeted test now → high-confidence pattern → every remaining post gets compounding lift.",
+          recommendation: `Use "${emergingHook.k}" hook on Post #${nextPlannedPost.post_number}, keep CTA + format constant from your top performer. If it wins again → exploit it on every remaining post.`,
+          confidence: "medium",
+          cta_label: `Open post #${nextPlannedPost.post_number}`,
+          target_post_id: nextPlannedPost?.id || null,
+          suggested_hook: emergingHook.k,
+        };
+      } else {
+        // low signal → design a 3-post hook variation experiment
+        action = {
+          action_type: "experiment",
+          priority: "medium",
+          title: "Optimize for signal — run a 3-post hook test",
+          observation: `On pace (${posted}/${totalPosts} live, ${daysRemaining !== null ? Math.ceil(daysRemaining) + " days remaining" : "buffer available"}) but no dominant conversion pattern yet.`,
+          why_now: "Stable execution + time buffer = the best moment to accelerate learning, not just maintain pace. Continuing blindly delays pattern discovery.",
+          interpretation: "You don't have a clear winning pattern yet. Continuing with random hooks means you'll still be guessing in 5 posts. A controlled test gives signal in 3.",
+          impact: "Faster pattern discovery → faster scale later. One disciplined test cycle beats 5 random posts.",
+          recommendation: `For the next 3 posts: test 3 different hook angles (e.g. financial-loss / operational-pain / authority-positioning). Keep CTA + audience constant. Return after 3 posts — system will refine strategy.`,
+          confidence: "medium",
+          cta_label: `Open post #${nextPlannedPost.post_number}`,
+          target_post_id: nextPlannedPost?.id || null,
+        };
+      }
+    }
+    // 8. STEADY — genuinely no useful action (rare: high signal + on pace + no winning hook)
     else {
       action = {
         action_type: "steady",
         priority: "low",
-        title: hasTimeBuffer ? "On track — no intervention needed" : "On track — keep executing",
+        title: "On track — keep executing",
         observation: `Goal at ${goalPct}%, ${posted}/${totalPosts} live, ${allSignals.length} signals, pace ratio ${paceRatio.toFixed(2)}.`,
         why_now: hasTimeBuffer
           ? `${Math.ceil(daysRemaining!)} days buffer remaining. Don't manufacture urgency.`
@@ -304,6 +341,19 @@ serve(async (req) => {
       };
     }
 
+    // ---- ALTERNATIVE PATH — the road not taken, and why it's inferior ----
+    const alternativeByType: Record<string, string> = {
+      blocker:      "Skip planning and generate posts ad-hoc — but you'll lose all ability to measure what works against a defined goal.",
+      execution:    "Wait and post when inspired — but the math no longer works once the campaign window closes.",
+      optimization: "Continue posting normally with random hooks — but you give up the compounding lift from a proven pattern.",
+      strategy:     "Keep posting on the current strategy — but more volume against a misaligned plan amplifies the leak instead of fixing it.",
+      experiment:   "Continue posting normally — but you'll still be guessing in 5 posts instead of having signal in 3.",
+      steady:       "Manufacture an intervention to feel productive — but acting on noise creates false patterns and wastes posts.",
+    };
+    action.alternative_path = alternativeByType[action.action_type] || alternativeByType.steady;
+    action.signal_strength = signalStrength;
+    action.signal_reason = signalReason;
+
     return new Response(JSON.stringify({
       ok: true,
       action,
@@ -314,6 +364,7 @@ serve(async (req) => {
         is_behind: isBehind, is_on_pace: isOnPace, is_ahead: isAhead,
         days_remaining: daysRemaining !== null ? Number(daysRemaining.toFixed(1)) : null,
         time_progress_pct: timeProgressPct,
+        signal_strength: signalStrength,
         winning_hook: winningHook || null,
         winning_cta: winningCta || null,
       },
