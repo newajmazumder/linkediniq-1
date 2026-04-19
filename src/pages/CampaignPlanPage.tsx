@@ -45,7 +45,7 @@ const CampaignPlanPage = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
-  const [tab, setTab] = useState<"plan" | "analytics" | "report">("plan");
+  const [tab, setTab] = useState<"plan" | "outcome" | "analytics" | "report">("plan");
   const [analytics, setAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [goalAgg, setGoalAgg] = useState<any>(null);
