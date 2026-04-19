@@ -1,25 +1,28 @@
-// Section 3 of the goal-aware analytics tab: lets the user enter the actual
-// total of their campaign goal metric (e.g. "we got 18 demo bookings this month"),
-// then derives "from posts" vs "unattributed" so they can see the gap between
-// what content drove vs what other channels drove.
+// Section 3 of the goal-aware analytics tab. NEW model:
+// - Posts contribution is the AUTO-ROLLED source of truth (read-only).
+// - Manual input is only for EXTERNAL / off-platform contributions
+//   (e.g. "12 demo bookings came from cold DMs"), not the campaign total.
+// - Total = posts + external. Bar handles overachievement.
 
 import { useEffect, useState } from "react";
-import { Loader2, Save, Target } from "lucide-react";
+import { Loader2, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
-import { goalMetricLabel } from "@/lib/goal-metrics";
+import { goalMetricLabel, goalUpdatedEvent } from "@/lib/goal-metrics";
+import CampaignGoalProgressBar from "./CampaignGoalProgressBar";
 
 type Props = {
   campaignId: string;
   goalMetric?: string | null;
   target?: number | null;
-  currentGoalValue: number;
-  totalPostContribution: number;
-  goalProgressPct: number;
+  /** Sum of post_metrics.goal_contribution — auto-rolled */
+  postsContribution: number;
+  /** Manually-entered external contributions (cold DMs, events, etc.) */
   unattributed: number;
+  /** posts + unattributed */
+  currentGoalValue: number;
   onSaved: () => void;
 };
 
@@ -27,21 +30,20 @@ const CampaignGoalProgressCard = ({
   campaignId,
   goalMetric,
   target,
-  currentGoalValue,
-  totalPostContribution,
-  goalProgressPct,
+  postsContribution,
   unattributed,
+  currentGoalValue,
   onSaved,
 }: Props) => {
-  const [value, setValue] = useState<string>(String(currentGoalValue ?? 0));
+  const [value, setValue] = useState<string>(String(unattributed ?? 0));
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setValue(String(currentGoalValue ?? 0));
-  }, [currentGoalValue]);
+    setValue(String(unattributed ?? 0));
+  }, [unattributed]);
 
   const label = goalMetricLabel(goalMetric);
-  const dirty = Number(value) !== currentGoalValue;
+  const dirty = Number(value) !== unattributed;
 
   const save = async () => {
     setSaving(true);
@@ -49,14 +51,17 @@ const CampaignGoalProgressCard = ({
       const next = Math.max(0, parseInt(value || "0", 10) || 0);
       const { error } = await supabase
         .from("campaigns")
-        .update({ current_goal_value: next, goal_value_updated_at: new Date().toISOString() })
+        .update({ unattributed_goal_value: next, goal_value_updated_at: new Date().toISOString() })
         .eq("id", campaignId);
       if (error) throw error;
-      // Re-aggregate so progress + score recompute immediately
+      // Re-aggregate so progress + score recompute and the rolled-up
+      // current_goal_value is rewritten on the campaign row.
       try {
         await supabase.functions.invoke("aggregate-campaign-goals", { body: { campaign_id: campaignId } });
       } catch { /* non-blocking */ }
-      toast.success(`Updated total ${label}`);
+      // Broadcast for any other open views (hero header, strategy list)
+      window.dispatchEvent(new CustomEvent(goalUpdatedEvent(campaignId)));
+      toast.success(`Updated external ${label}`);
       onSaved();
     } catch (e: any) {
       toast.error(e.message || "Failed to update");
@@ -66,57 +71,57 @@ const CampaignGoalProgressCard = ({
   };
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-4">
-      <div className="flex items-center gap-2">
-        <Target className="h-4 w-4 text-primary" />
-        <p className="text-xs font-semibold text-foreground">Campaign Progress</p>
-      </div>
+    <div className="space-y-4">
+      {/* Progress bar — primary signal */}
+      <CampaignGoalProgressBar
+        currentValue={currentGoalValue}
+        target={target}
+        goalMetric={goalMetric}
+        variant="full"
+      />
 
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs">
-          <span className="text-muted-foreground">Goal · {label}</span>
-          <span className="text-foreground font-medium tabular-nums">
-            {currentGoalValue} / {target ?? "?"}
-            {target ? <span className="text-muted-foreground"> ({goalProgressPct.toFixed(0)}%)</span> : null}
-          </span>
+      {/* Breakdown grid */}
+      <div className="rounded-lg border border-border bg-card p-4 space-y-4">
+        <div className="grid grid-cols-3 gap-3 text-xs">
+          <div className="rounded-md border border-border bg-muted/30 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">From posts</p>
+            <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">{postsContribution}</p>
+            <p className="text-[10px] text-muted-foreground">auto-rolled from contributions</p>
+          </div>
+          <div className="rounded-md border border-border bg-muted/30 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">External</p>
+            <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">{unattributed}</p>
+            <p className="text-[10px] text-muted-foreground">other channels</p>
+          </div>
+          <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-primary">Total</p>
+            <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">{currentGoalValue}</p>
+            <p className="text-[10px] text-muted-foreground">{label}</p>
+          </div>
         </div>
-        <Progress value={goalProgressPct} className="h-2" />
-      </div>
 
-      <div className="grid grid-cols-2 gap-3 text-xs">
-        <div className="rounded-md border border-border bg-muted/30 p-3">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">From posts</p>
-          <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">{totalPostContribution}</p>
-          <p className="text-[10px] text-muted-foreground">attributed by you</p>
+        <div className="space-y-1.5 border-t border-border pt-4">
+          <label className="block text-[11px] text-muted-foreground">
+            External / off-platform {label} (e.g. cold DMs, events, calls)
+          </label>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={0}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              className="h-9 text-sm"
+              placeholder="0"
+            />
+            <Button size="sm" onClick={save} disabled={saving || !dirty}>
+              {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
+              Save
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Post contributions roll up automatically as you save them per post. Use this only for outcomes that didn't come from a LinkedIn post.
+          </p>
         </div>
-        <div className="rounded-md border border-border bg-muted/30 p-3">
-          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Unattributed</p>
-          <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">{unattributed}</p>
-          <p className="text-[10px] text-muted-foreground">other channels</p>
-        </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <label className="block text-[11px] text-muted-foreground">
-          Total {label} for this campaign (manual entry)
-        </label>
-        <div className="flex items-center gap-2">
-          <Input
-            type="number"
-            min={0}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="h-9 text-sm"
-            placeholder="0"
-          />
-          <Button size="sm" onClick={save} disabled={saving || !dirty}>
-            {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1 h-3.5 w-3.5" />}
-            Save
-          </Button>
-        </div>
-        <p className="text-[10px] text-muted-foreground">
-          We can't pull this from LinkedIn — enter the real number from your CRM/calendar so the AI can interpret what's driving outcomes.
-        </p>
       </div>
     </div>
   );
