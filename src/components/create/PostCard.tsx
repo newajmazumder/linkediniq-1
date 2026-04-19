@@ -466,20 +466,71 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
         </div>
       </div>
 
-      {/* LinkedIn-style content preview */}
-      <LinkedInPostPreview
-        type={(post.post_type as "text" | "image_text" | "carousel") || "text"}
-        content={`${post.hook}\n\n${post.body}\n\n${post.cta}`}
-        slidesCount={post.image_briefs?.length || 5}
-        imageBriefs={post.image_briefs as any}
-        firstComment={compact ? null : post.first_comment}
-        contextRationale={compact ? null : (post.context_rationale || null)}
-        metadata={{
-          postStyle: post.post_style,
-          tone: post.tone || undefined,
-          hookType: post.hook_type || undefined,
-        }}
-      />
+      {/* Inline editor when editing an existing draft, otherwise the
+          LinkedIn-style preview. The toggle lets the user flip between
+          writing and previewing without losing their edits. */}
+      {editing ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground">
+              <Pencil className="h-3 w-3" /> Editing draft
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setEditing(false)}
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                title="Preview as LinkedIn post"
+              >
+                <Eye className="h-3 w-3" /> Preview
+              </button>
+              <button
+                onClick={saveDraft}
+                disabled={savingDraft}
+                className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {savingDraft ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                {draftId ? "Update draft" : "Save"}
+              </button>
+            </div>
+          </div>
+          <Textarea
+            value={editedContent}
+            onChange={(e) => setEditedContent(e.target.value)}
+            rows={16}
+            className="text-sm font-normal leading-relaxed resize-y min-h-[280px]"
+            placeholder="Write your post content here..."
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Separate hook, body, and CTA with blank lines. {editedContent.length} characters.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {!!draftId && !readOnly && (
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => setEditing(true)}
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Pencil className="h-3 w-3" /> Edit text
+              </button>
+            </div>
+          )}
+          <LinkedInPostPreview
+            type={(post.post_type as "text" | "image_text" | "carousel") || "text"}
+            content={editing ? editedContent : `${post.hook}\n\n${post.body}\n\n${post.cta}`}
+            slidesCount={post.image_briefs?.length || 5}
+            imageBriefs={post.image_briefs as any}
+            firstComment={compact ? null : post.first_comment}
+            contextRationale={compact ? null : (post.context_rationale || null)}
+            metadata={{
+              postStyle: post.post_style,
+              tone: post.tone || undefined,
+              hookType: post.hook_type || undefined,
+            }}
+          />
+        </div>
+      )}
 
 
 
