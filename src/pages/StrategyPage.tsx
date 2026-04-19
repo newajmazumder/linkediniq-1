@@ -675,62 +675,7 @@ const StrategyPage = () => {
                         </p>
                       </div>
 
-                      {/* LEVEL 2 — One quiet action row (only when there's a real problem) */}
-                      {isUrgent && (
-                        <button
-                          onClick={() => navigate(action.href)}
-                          className="group/act w-full flex items-center justify-between gap-3 rounded-md bg-muted/40 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">
-                              Why · {diag.why[0] || "Strategy gap"}
-                            </p>
-                            <p className="mt-0.5 text-sm font-medium text-foreground">
-                              {action.label}
-                            </p>
-                          </div>
-                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover/act:text-foreground group-hover/act:translate-x-0.5 transition-all" />
-                        </button>
-                      )}
-
-                      {/* LEVEL 3 — Goal · Execution · Velocity (compact, divided, not tinted) */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border border-y border-border">
-                        <div className="px-4 py-3 first:pl-0">
-                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Goal</p>
-                          <p className="mt-1 text-sm font-medium text-foreground">
-                            {c.target_quantity && c.target_metric
-                              ? `${c.target_quantity} ${metricLabels[c.target_metric] || c.target_metric}`
-                              : <span className="text-muted-foreground font-normal">Not set</span>}
-                          </p>
-                          {outcomePct !== null && (
-                            <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{prog!.current_value}/{prog!.target_value} · {outcomePct}%</p>
-                          )}
-                        </div>
-                        <div className="px-4 py-3">
-                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Execution</p>
-                          <p className="mt-1 text-sm font-medium text-foreground">
-                            {posting ? `${posting.drafted}/${posting.total} posts` : <span className="text-muted-foreground font-normal">No plan</span>}
-                          </p>
-                          {posting && (
-                            <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{(postingPct ?? 0)}% drafted</p>
-                          )}
-                        </div>
-                        <div className="px-4 py-3 last:pr-0">
-                          <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Velocity</p>
-                          {velocity ? (
-                            <>
-                              <p className="mt-1 text-sm font-medium text-foreground tabular-nums">
-                                {velocity.actual} <span className="text-muted-foreground font-normal">/ {velocity.required} per wk</span>
-                              </p>
-                              <p className={cn("mt-0.5 text-[11px]", velocity.onPace ? "text-muted-foreground" : meta.textClass)}>
-                                {velocity.onPace ? "On pace" : `${(velocity.required - velocity.actual).toFixed(1)} short / week`}
-                              </p>
-                            </>
-                          ) : (
-                            <p className="mt-1 text-sm text-muted-foreground font-normal">—</p>
-                          )}
-                        </div>
-                      </div>
+                      {/* Goal progress bar is the only stat surface — WHY row + stats grid removed for a calmer card. */}
 
                       {/* Goal Progress strip — auto-rolled from post contributions */}
                       {c.target_quantity && c.target_metric && (
