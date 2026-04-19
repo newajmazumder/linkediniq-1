@@ -100,6 +100,41 @@ const CampaignPlanPage = () => {
     }
   };
 
+  const fetchGoalAggregate = async () => {
+    setLoadingGoalAgg(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("aggregate-campaign-goals", {
+        body: { campaign_id: id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setGoalAgg(data);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load goal data");
+    } finally {
+      setLoadingGoalAgg(false);
+    }
+  };
+
+  const generateGoalInsights = async () => {
+    setGeneratingInsights(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("interpret-campaign-performance", {
+        body: { campaign_id: id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setInterpretation(data?.insight || null);
+      // Refresh aggregate so any newly-saved score is reflected
+      fetchGoalAggregate();
+      toast.success("Goal-aware insights generated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate insights");
+    } finally {
+      setGeneratingInsights(false);
+    }
+  };
+
   const generateReport = async () => {
     setLoadingReport(true);
     try {
