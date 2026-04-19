@@ -33,6 +33,8 @@ import TopContributorsStrip from "@/components/campaign/TopContributorsStrip";
 import CampaignAdvisorBanner from "@/components/campaign/CampaignAdvisorBanner";
 import StrategyVersionsCard from "@/components/campaign/StrategyVersionsCard";
 import CampaignAlertCard from "@/components/campaign/CampaignAlertCard";
+import StartCampaignDialog from "@/components/campaign/StartCampaignDialog";
+import { Pause, Play } from "lucide-react";
 import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
 import { computePacing } from "@/lib/execution";
@@ -66,6 +68,8 @@ const CampaignPlanPage = () => {
   const [loadingReport, setLoadingReport] = useState(false);
   const [advisorQuestions, setAdvisorQuestions] = useState<AdvisorQuestion[]>([]);
   const [intelligence, setIntelligence] = useState<CampaignIntelligence | null>(null);
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   useEffect(() => {
     if (user && id) {
@@ -120,6 +124,11 @@ const CampaignPlanPage = () => {
   };
 
   const generatePlan = async () => {
+    // Guard — plan generation requires a campaign window. Open the start dialog instead.
+    if (!campaign?.target_start_date || !campaign?.target_end_date) {
+      setStartDialogOpen(true);
+      return;
+    }
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-campaign-plan", {
@@ -130,10 +139,31 @@ const CampaignPlanPage = () => {
       setWeekPlans(data.week_plans || []);
       setPostPlans(data.post_plans || []);
       toast.success("Campaign plan generated!");
+      // Refresh campaign row in case execution_status changed.
+      fetchAll();
     } catch (err: any) {
       toast.error(err.message || "Failed to generate plan");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const togglePause = async () => {
+    if (!campaign) return;
+    setTogglingStatus(true);
+    try {
+      const next = campaign.execution_status === "paused" ? "active" : "paused";
+      const { error } = await supabase
+        .from("campaigns")
+        .update({ execution_status: next })
+        .eq("id", id);
+      if (error) throw error;
+      setCampaign({ ...campaign, execution_status: next });
+      toast.success(next === "paused" ? "Campaign paused" : "Campaign resumed");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update status");
+    } finally {
+      setTogglingStatus(false);
     }
   };
 
@@ -388,12 +418,37 @@ const CampaignPlanPage = () => {
                   </p>
                 </div>
               )}
-              {weekPlans.length === 0 && (
+              {/* Hero CTA — context-aware:
+                  - No dates yet → Start Campaign (opens date dialog, then auto-generates plan)
+                  - Dates set, no plan → Generate Plan (uses existing dates)
+                  - Plan exists & started → Pause / Resume toggle */}
+              {!campaign.target_start_date || !campaign.target_end_date ? (
+                <Button size="sm" onClick={() => setStartDialogOpen(true)} disabled={generating}>
+                  <Play className="mr-1 h-3.5 w-3.5" />
+                  Start Campaign
+                </Button>
+              ) : weekPlans.length === 0 ? (
                 <Button size="sm" onClick={generatePlan} disabled={generating}>
                   {generating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
                   Generate Plan
                 </Button>
-              )}
+              ) : campaign.started_at && (campaign.execution_status === "active" || campaign.execution_status === "paused") ? (
+                <Button
+                  size="sm"
+                  variant={campaign.execution_status === "paused" ? "default" : "outline"}
+                  onClick={togglePause}
+                  disabled={togglingStatus}
+                >
+                  {togglingStatus ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : campaign.execution_status === "paused" ? (
+                    <Play className="mr-1 h-3.5 w-3.5" />
+                  ) : (
+                    <Pause className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  {campaign.execution_status === "paused" ? "Resume" : "Pause"}
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -468,10 +523,17 @@ const CampaignPlanPage = () => {
               Once you publish 2–3 posts, we'll start analyzing patterns and recommending improvements.
             </p>
           </div>
-          <Button onClick={generatePlan} disabled={generating} size="lg">
-            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            Generate Plan
-          </Button>
+          {!campaign.target_start_date || !campaign.target_end_date ? (
+            <Button onClick={() => setStartDialogOpen(true)} disabled={generating} size="lg">
+              <Play className="mr-2 h-4 w-4" />
+              Start Campaign
+            </Button>
+          ) : (
+            <Button onClick={generatePlan} disabled={generating} size="lg">
+              {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Generate Plan
+            </Button>
+          )}
         </div>
       )}
 
@@ -1241,6 +1303,18 @@ const CampaignPlanPage = () => {
         </div>
       )}
       </section>
+
+      {/* Date capture dialog — required before plan generation. */}
+      <StartCampaignDialog
+        open={startDialogOpen}
+        onOpenChange={setStartDialogOpen}
+        campaignId={id!}
+        campaign={campaign}
+        onStarted={() => {
+          // Refresh the campaign row so date guards pass, then auto-generate plan.
+          fetchAll().then(() => generatePlan());
+        }}
+      />
     </div>
   );
 };
