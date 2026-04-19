@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { getScoreInterpretation } from "@/components/create/PostCard";
+import { deriveCampaignPostLifecycle, planStatusFromDraftStatus } from "@/lib/campaign-posts";
 
 type Draft = {
   id: string;
@@ -95,6 +96,7 @@ const DraftsPage = () => {
   const [predictions, setPredictions] = useState<Record<string, PredictionResult>>({});
   const [expandedPrediction, setExpandedPrediction] = useState<string | null>(null);
   const [markPostedDraft, setMarkPostedDraft] = useState<Draft | null>(null);
+  const [campaignFilter, setCampaignFilter] = useState<string>("all");
   // Campaign context per draft — keys the badge that says
   // "Revenue Recovery Blitz · Week 1 · Post 2 · Awareness".
   const [contextByDraftId, setContextByDraftId] = useState<Record<string, CampaignContext>>({});
@@ -138,6 +140,25 @@ const DraftsPage = () => {
 
   useEffect(() => { fetchDrafts(); }, [user]);
 
+  const syncLinkedPlan = async (draftId: string, nextDraftStatus?: string | null, scheduledAt?: string | null) => {
+    const ctx = contextByDraftId[draftId];
+    if (!ctx) return;
+
+    const nextPlanStatus = planStatusFromDraftStatus(nextDraftStatus);
+    const payload: Record<string, any> = {};
+    if (nextPlanStatus) payload.status = nextPlanStatus;
+    if (nextPlanStatus === "scheduled") payload.planned_date = scheduledAt;
+    if (nextPlanStatus === "drafted") payload.planned_date = scheduledAt ?? null;
+
+    if (Object.keys(payload).length > 0) {
+      await supabase.from("campaign_post_plans").update(payload).eq("id", ctx.plan_id);
+    }
+
+    if (ctx.campaign_id) {
+      supabase.functions.invoke("execution-tick", { body: { campaign_id: ctx.campaign_id } }).catch(() => {});
+    }
+  };
+
   const startEdit = (draft: Draft) => { setEditingId(draft.id); setEditContent(draft.custom_content || ""); };
 
   const saveEdit = async () => {
@@ -148,12 +169,20 @@ const DraftsPage = () => {
 
   const updateStatus = async (id: string, status: Status) => {
     const { error } = await supabase.from("drafts").update({ status }).eq("id", id);
-    if (error) { toast.error("Failed to update status"); } else { setDrafts((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d))); toast.success(`Marked as ${status}`); }
+    if (error) { toast.error("Failed to update status"); } else {
+      const existingDraft = drafts.find((d) => d.id === id);
+      setDrafts((prev) => prev.map((d) => (d.id === id ? { ...d, status } : d)));
+      await syncLinkedPlan(id, status, existingDraft?.scheduled_at ?? null);
+      toast.success(`Marked as ${status}`);
+    }
   };
 
   const scheduleDraft = async (id: string, date: Date) => {
     const { error } = await supabase.from("drafts").update({ scheduled_at: date.toISOString(), status: "scheduled" }).eq("id", id);
-    if (error) { toast.error("Failed to schedule"); } else { toast.success(`Scheduled for ${format(date, "PPP")}`); setScheduleId(null); fetchDrafts(); }
+    if (error) { toast.error("Failed to schedule"); } else {
+      await syncLinkedPlan(id, "scheduled", date.toISOString());
+      toast.success(`Scheduled for ${format(date, "PPP")}`); setScheduleId(null); fetchDrafts();
+    }
   };
 
   const deleteDraft = async (id: string) => {
@@ -177,7 +206,14 @@ const DraftsPage = () => {
     } finally { setScoringId(null); }
   };
 
-  const filtered = filter === "all" ? drafts : drafts.filter((d) => d.status === filter);
+  const campaignOptions = Array.from(new Map(Object.values(contextByDraftId).map((ctx) => [ctx.campaign_id, ctx])).values());
+
+  const filtered = drafts.filter((draft) => {
+    if (filter !== "all" && draft.status !== filter) return false;
+    const ctx = contextByDraftId[draft.id];
+    if (campaignFilter !== "all" && ctx?.campaign_id !== campaignFilter) return false;
+    return true;
+  });
 
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-sm text-muted-foreground">Loading...</p></div>;
 
@@ -198,6 +234,16 @@ const DraftsPage = () => {
         </TabsList>
       </Tabs>
 
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-muted-foreground">Campaign</span>
+        <button onClick={() => setCampaignFilter("all")} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", campaignFilter === "all" ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>All</button>
+        {campaignOptions.map((ctx) => (
+          <button key={ctx.campaign_id} onClick={() => setCampaignFilter(ctx.campaign_id)} className={cn("rounded-full border px-3 py-1 text-xs transition-colors", campaignFilter === ctx.campaign_id ? "border-primary bg-primary/5 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>
+            {ctx.campaign_name}
+          </button>
+        ))}
+      </div>
+
       {filtered.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border py-16 text-center">
           <p className="text-sm text-muted-foreground">{filter === "all" ? "No drafts saved yet." : `No ${filter} drafts.`}</p>
@@ -209,6 +255,12 @@ const DraftsPage = () => {
             const isExpanded = expandedPrediction === draft.id;
             const pubRec = prediction ? publishColors[prediction.publish_recommendation] || publishColors.revise : null;
             const ctx = contextByDraftId[draft.id];
+            const lifecycle = deriveCampaignPostLifecycle({
+              planStatus: ctx ? planStatusFromDraftStatus(draft.status) : null,
+              linkedDraftId: draft.id,
+              draftStatus: draft.status,
+              scheduledAt: draft.scheduled_at,
+            });
 
             return (
               <div key={draft.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
@@ -240,6 +292,7 @@ const DraftsPage = () => {
                     <p className="text-xs text-muted-foreground truncate">{(draft.ideas as any)?.idea_title || (draft.ideas as any)?.instruction || "Untitled"}</p>
                     <div className="mt-1 flex items-center gap-2 flex-wrap">
                       <span className="text-xs text-muted-foreground">{new Date(draft.created_at).toLocaleDateString()}</span>
+                      <Badge variant="outline" className="text-[10px] capitalize">{lifecycle}</Badge>
                       <div className="flex gap-1">
                         {statusOptions.map((s) => (
                           <button key={s} onClick={() => updateStatus(draft.id, s)} className={cn("rounded-md border px-2.5 py-1 text-[11px] font-medium capitalize transition-all", draft.status === s ? statusColors[s] + " border-transparent shadow-sm" : "border-border bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground hover:border-accent")}>{s}</button>
