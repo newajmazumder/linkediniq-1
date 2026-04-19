@@ -260,6 +260,10 @@ const PostDetailPage = () => {
         profile_visits: metrics.profile_visits,
         follower_gain: metrics.follower_gain,
         manual_notes: metrics.manual_notes || null,
+        // Goal-aware bridge — what outcome did this post drive?
+        goal_contribution: metrics.goal_contribution || 0,
+        goal_metric: metrics.goal_metric || campaignGoalCtx?.target_metric || null,
+        attribution_note: metrics.attribution_note || null,
         source: "manual",
       };
       const { error } = metrics.id
@@ -269,6 +273,13 @@ const PostDetailPage = () => {
       toast.success("Metrics saved");
       const { data } = await supabase.from("post_metrics").select("*").eq("linkedin_post_id", postId!).single();
       if (data) setMetrics(data);
+
+      // Recompute campaign-level goal aggregation when we have a campaign link.
+      if (campaignGoalCtx?.campaign_id) {
+        supabase.functions.invoke("aggregate-campaign-goals", {
+          body: { campaign_id: campaignGoalCtx.campaign_id },
+        }).catch(() => {});
+      }
 
       // Auto-trigger learning if enough data exists
       triggerAutoLearn();
@@ -482,6 +493,42 @@ const PostDetailPage = () => {
                   className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs min-h-[60px] resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
+
+              {/* Goal Contribution — the bridge between raw signals and campaign outcome.
+                  Only shown when the post is linked to a campaign with a defined goal metric. */}
+              {campaignGoalCtx?.target_metric && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Trophy className="h-3.5 w-3.5 text-primary" />
+                    <p className="text-xs font-semibold text-foreground">Goal Contribution</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {goalContributionPrompt(campaignGoalCtx.target_metric)}
+                  </p>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1 capitalize">
+                      {goalContributionFieldLabel(campaignGoalCtx.target_metric)}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={metrics.goal_contribution}
+                      onChange={e => setMetrics(m => ({ ...m, goal_contribution: parseInt(e.target.value) || 0 }))}
+                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Attribution note (optional)</label>
+                    <input
+                      type="text"
+                      value={metrics.attribution_note}
+                      onChange={e => setMetrics(m => ({ ...m, attribution_note: e.target.value }))}
+                      placeholder="e.g. from DM reply, comment thread, profile visit..."
+                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+              )}
               <button
                 onClick={saveMetrics}
                 disabled={savingMetrics}
