@@ -1159,8 +1159,11 @@ function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded
             ))}
           </div>
         )}
-        {(post.hook_style || post.tone || post.cta_type) && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
+        {(post.hook_style || post.tone || post.cta_type || post.post_analysis?.strategic_move?.recommended_move) && (
+          <div className="flex flex-wrap gap-1.5 mt-2 items-center">
+            {post.post_analysis?.strategic_move?.recommended_move && (
+              <StrategicMoveBadge move={post.post_analysis.strategic_move.recommended_move} />
+            )}
             {post.hook_style && <Badge variant="outline" className="text-[10px]">Hook: {post.hook_style}</Badge>}
             {post.tone && <Badge variant="outline" className="text-[10px]">Tone: {post.tone}</Badge>}
             {post.cta_type && <Badge variant="outline" className="text-[10px]">CTA: {post.cta_type}</Badge>}
