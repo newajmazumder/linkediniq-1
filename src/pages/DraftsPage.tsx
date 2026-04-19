@@ -318,6 +318,13 @@ const DraftsPage = () => {
                         <PopoverContent className="w-auto p-0" align="end"><Calendar mode="single" selected={draft.scheduled_at ? new Date(draft.scheduled_at) : undefined} onSelect={(date) => date && scheduleDraft(draft.id, date)} disabled={(date) => date < new Date()} className="p-3 pointer-events-auto" /></PopoverContent>
                       </Popover>
                     )}
+                    <Link
+                      to={`/create?draft_id=${draft.id}&mode=edit${ctx ? `&campaign_id=${ctx.campaign_id}&post_plan_id=${ctx.plan_id}` : ""}`}
+                      title="Edit in editor"
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors inline-flex items-center"
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                    </Link>
                     <button onClick={() => copyDraft(draft.custom_content)} className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors"><Copy className="h-3.5 w-3.5" /></button>
                     <button onClick={() => deleteDraft(draft.id)} className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
                   </div>
@@ -332,12 +339,15 @@ const DraftsPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div onClick={() => startEdit(draft)} className="cursor-pointer">
+                  <Link
+                    to={`/create?draft_id=${draft.id}&mode=view${ctx ? `&campaign_id=${ctx.campaign_id}&post_plan_id=${ctx.plan_id}` : ""}`}
+                    className="block cursor-pointer"
+                  >
                     <LinkedInPostPreview
                       type="text"
                       content={draft.custom_content || "No content"}
                     />
-                  </div>
+                  </Link>
                 )}
 
                 {/* Prediction Score Card */}

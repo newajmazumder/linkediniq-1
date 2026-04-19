@@ -71,6 +71,7 @@ const CampaignPostCard = ({
   const [draftStatus, setDraftStatus] = useState<string | null>(null);
   const [draftScheduledAt, setDraftScheduledAt] = useState<string | null>(null);
   const [draftContent, setDraftContent] = useState<string | null>(null);
+  const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(null);
   const [markOpen, setMarkOpen] = useState(false);
 
   // Load downstream signals when a draft has been linked.
@@ -78,7 +79,7 @@ const CampaignPostCard = ({
     const load = async () => {
       if (!post.linked_draft_id) return;
       const [{ data: draftRow }, { data: predictionData }, { data: actualData }] = await Promise.all([
-        supabase.from("drafts").select("status, scheduled_at, custom_content").eq("id", post.linked_draft_id).maybeSingle(),
+        supabase.from("drafts").select("status, scheduled_at, custom_content, updated_at").eq("id", post.linked_draft_id).maybeSingle(),
         supabase.from("prediction_scores").select("*").eq("draft_id", post.linked_draft_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("post_performance").select("*").eq("draft_id", post.linked_draft_id).maybeSingle(),
       ]);
@@ -86,6 +87,7 @@ const CampaignPostCard = ({
         setDraftStatus(draftRow.status);
         setDraftScheduledAt(draftRow.scheduled_at);
         setDraftContent(draftRow.custom_content);
+        setDraftUpdatedAt(draftRow.updated_at);
       }
       if (predictionData) setPrediction(predictionData);
       if (actualData) setActualPerformance(actualData);
@@ -173,6 +175,11 @@ const CampaignPostCard = ({
               · posted {new Date(post.posted_at).toLocaleDateString()}
             </span>
           )}
+          {!post.posted_at && draftUpdatedAt && (status === "drafted" || status === "scheduled") && (
+            <span className="text-[10px] text-muted-foreground">
+              · updated {new Date(draftUpdatedAt).toLocaleString()}
+            </span>
+          )}
         </div>
 
         {/* Right-side action — the most important affordance per state */}
@@ -189,13 +196,13 @@ const CampaignPostCard = ({
           {(status === "drafted" || status === "scheduled") && post.linked_draft_id && (
             <>
               <Link
-                to="/drafts"
+                to={`/create?draft_id=${post.linked_draft_id}&mode=view&campaign_id=${campaignId}&post_plan_id=${post.id}`}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
                 <Eye className="h-3 w-3" /> View
               </Link>
               <Link
-                to="/drafts"
+                to={`/create?draft_id=${post.linked_draft_id}&mode=edit&campaign_id=${campaignId}&post_plan_id=${post.id}`}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
                 <PenLine className="h-3 w-3" /> Edit
