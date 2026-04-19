@@ -41,6 +41,10 @@ const CampaignPlanPage = () => {
   const [tab, setTab] = useState<"plan" | "analytics" | "report">("plan");
   const [analytics, setAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [goalAgg, setGoalAgg] = useState<any>(null);
+  const [loadingGoalAgg, setLoadingGoalAgg] = useState(false);
+  const [interpretation, setInterpretation] = useState<any>(null);
+  const [generatingInsights, setGeneratingInsights] = useState(false);
   const [report, setReport] = useState<any>(null);
   const [loadingReport, setLoadingReport] = useState(false);
 
