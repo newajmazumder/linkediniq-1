@@ -29,7 +29,9 @@ type Props = {
 
 const PostContributionTable = ({ rows, goalMetric, target }: Props) => {
   const label = goalMetricLabel(goalMetric);
-  const posted = rows.filter((r) => r.status === "posted");
+  // A row counts as "posted" when it's either marked posted OR a LinkedIn post
+  // is already linked (plan status sometimes lags behind the publish action).
+  const posted = rows.filter((r) => r.status === "posted" || !!r.linkedin_post_id);
   const totalContributed = posted.reduce((s, r) => s + (r.contribution || 0), 0);
 
   if (posted.length === 0) {
