@@ -88,6 +88,7 @@ export default function NextBestActionCard({
               <span className="text-border">·</span>
               <span className="text-muted-foreground capitalize">{tone.label}</span>
               <ConfidenceBadge level={action.confidence} className="ml-1" />
+              {action.signal_strength && <SignalStrengthPill level={action.signal_strength} reason={action.signal_reason} />}
             </div>
 
             <h3 className="text-base sm:text-lg font-semibold text-foreground leading-snug">
@@ -111,6 +112,7 @@ export default function NextBestActionCard({
                   <Row label="Why" value={action.interpretation} />
                   <Row label="Impact" value={action.impact} muted />
                   <Row label="Do this" value={action.recommendation} highlight />
+                  {action.alternative_path && <Row label="Alternative" value={action.alternative_path} alternative />}
                 </div>
 
                 {action.cta_label && (
