@@ -18,6 +18,7 @@ import ExecutionDashboard from "@/components/strategy/ExecutionDashboard";
 import CampaignGoalProgressCard from "@/components/campaign/CampaignGoalProgressCard";
 import CampaignGoalProgressBar from "@/components/campaign/CampaignGoalProgressBar";
 import PostContributionTable from "@/components/campaign/PostContributionTable";
+import { formatGoalProgress, goalMetricLabel } from "@/lib/goal-metrics";
 import { goalUpdatedEvent } from "@/lib/goal-metrics";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
