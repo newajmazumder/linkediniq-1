@@ -1,65 +1,36 @@
 
 
-Looking at the user's feedback: they want Phase 2/3 upgraded so the "Next Best Action" engine moves from Level 2 (reactive insights) toward Level 3 (decision guidance) with "Passive Optimization Mode" + signal strength + alternative paths. This is a refinement of Phase 3, not a new phase.
+The user wants the Advisor question UI to be smarter: when the question is about data that already exists in the system (like persona, offer, CTA type, tone, etc.), show a **select dropdown** populated from existing records, with a fallback to free-text typing for cases where the answer doesn't exist yet.
 
-The user wants me to update PHASE_2_3_TEST_CASES.md based on the recommendations. But really they want me to **implement the upgrades** AND update the test cases.
+Let me find the Advisor component and understand current structure.
 
-Let me check what to change in `campaign-next-action`:
-- "steady" path currently just says "On track — keep executing" → needs to become "Passive Optimization Mode"
-- Add `signal_strength` field (low/medium/high) based on pattern discovery, not just sample count
-- Add `alternative_path` field showing the trade-off
-- Add experiment-design recommendations when on-pace + no winning pattern yet
+## Plan
 
-And `NextBestActionCard` needs to render the new fields.
+**1. Inspect the Advisor banner component** (`src/components/campaign/CampaignAdvisorBanner.tsx`) to see how questions are rendered and answered today.
 
-Plan below.
+**2. Map question_key → data source.** The advisor function emits `question_key` strings. I need to map known keys to dropdown options:
 
----
+| question_key (contains)    | source table                          | label field |
+|----------------------------|---------------------------------------|-------------|
+| `persona`, `audience`      | `audience_personas` (user's)          | name        |
+| `offer`                    | `business_profiles.offers_campaigns`  | name/title  |
+| `cta`                      | static enum (Comment / DM / Link / Demo / Download) |
+| `tone`                     | static enum (Authoritative / Friendly / Bold / Empathetic) |
+| `goal_metric`, `metric`    | static enum (Followers / DMs / Demo bookings / Leads / Clicks) |
+| `language`                 | static enum (English / Bangla / …) |
 
-# Plan — Phase 3.5: Passive Optimization & Signal Strength
+For unmapped keys → fall back to current textarea.
 
-Move "Next Best Action" from reactive observer to decision-driving strategist. When the user is on-pace, the system stops saying "keep going" and instead designs experiments to accelerate pattern discovery.
+**3. Add a hybrid input component:**
+- If options exist for this question_key → render a `<Select>` with the options + a "Custom answer…" option that swaps in a textarea.
+- If no options → render the existing textarea unchanged.
+- "Save answer" button stays the same; it just submits whichever value is active.
 
-## What changes
+**4. For persona-type questions, also auto-write the campaign field.** When the user picks a persona from the dropdown, set `campaigns.primary_persona_id` so the chosen persona is actually wired in (not just recorded as text on the question). For offer, write `campaigns.offer`. For tone, `campaigns.tone`. For language, `campaigns.language`. Otherwise the answer is informational only.
 
-**1. Decision engine (`supabase/functions/campaign-next-action/index.ts`)**
-- Add `signalStrength` calculation: `low` (<3 measured posts OR no dominant pattern), `medium` (3-5 posts + emerging pattern), `high` (6+ posts + dominant pattern with clear winner).
-- Replace the "steady" branch with **Passive Optimization Mode**:
-  - When on-pace AND signal strength is `low` → return an `experiment` action that designs the next 2–3 posts as controlled hook tests (variation > consistency).
-  - When on-pace AND signal strength is `medium` → return `optimization` action recommending one more confirming variation.
-  - When on-pace AND signal strength is `high` → return `optimization` action saying "exploit the winner" (existing behaviour, kept).
-- Add `alternative_path` field to every action: the path NOT chosen and why it's inferior (e.g., "Continue posting normally — slower pattern discovery").
-- Add `signal_strength` + `signal_reason` fields to the response payload.
+## Files to touch
 
-**2. Card UI (`src/components/campaign/NextBestActionCard.tsx`)**
-- Render new "Signal strength" pill next to the confidence pill (low = gray, medium = amber, high = emerald).
-- Render an "Alternative" row at the bottom of the structured schema (Observation / Why / Impact / Do this / **Alternative**), italic + muted so it reads as a trade-off note, not the recommendation.
-- Adjust the "Why now" microcopy to reference timing AND learning velocity.
+- `src/components/campaign/CampaignAdvisorBanner.tsx` — add resolver logic + hybrid Select/Textarea, and write back to campaign fields when applicable.
 
-**3. Client wrapper (`src/lib/campaign-intelligence.ts`)**
-- Extend the `NextBestAction` interface with `signal_strength`, `signal_reason`, and `alternative_path` (all optional for backwards compatibility).
-
-**4. Test case doc (`PHASE_2_3_TEST_CASES.md`)**
-- Add a new **Section E — Passive Optimization Mode** with 4 scenarios (E1–E4) covering the on-pace × signal-strength matrix.
-- Update the existing "A7 Healthy campaign" row so the expected action becomes "Optimize for signal" instead of "On track — keep executing".
-
-## Decision matrix the engine will use
-
-```text
-on-pace?  signal-strength  → action_type    title
-no        any              → execution      "Publish more posts"
-yes       low              → experiment     "Optimize for signal — run a hook test"
-yes       medium           → optimization   "Confirm the emerging pattern"
-yes       high             → optimization   "Double down on <winning hook>"
-behind +clicks no goal     → strategy       "Fix the conversion bottleneck"
-no plan   any              → blocker        "Generate your campaign plan"
-```
-
-## Files touched
-- `supabase/functions/campaign-next-action/index.ts` (decision tree + new fields)
-- `src/lib/campaign-intelligence.ts` (type extension)
-- `src/components/campaign/NextBestActionCard.tsx` (signal pill + alternative row)
-- `PHASE_2_3_TEST_CASES.md` (new Section E + revised A7)
-
-No DB migrations. No new edge functions. Existing dismissal/collapse behaviour preserved.
+That's it. Single file. No new edge functions, no migrations. Pure UX upgrade.
 
