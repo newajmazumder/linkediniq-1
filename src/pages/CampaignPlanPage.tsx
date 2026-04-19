@@ -428,8 +428,15 @@ const CampaignPlanPage = () => {
             }, 100);
             return;
           }
-          // Default: open the plan tab and scroll to the target post (if any), else top of plan.
+          // Default: open the plan tab, expand the week containing the target post, then scroll.
           setTab("plan");
+          if (a.target_post_id) {
+            const target = postPlans.find((p: any) => p.id === a.target_post_id);
+            if (target?.week_number) {
+              setExpandedWeek(target.week_number);
+            }
+          }
+          // Wait for tab + collapse animation before scrolling.
           setTimeout(() => {
             const el = a.target_post_id
               ? document.getElementById(`post-plan-${a.target_post_id}`)
@@ -437,9 +444,12 @@ const CampaignPlanPage = () => {
             if (el) {
               el.scrollIntoView({ behavior: "smooth", block: "center" });
               el.classList.add("ring-2", "ring-primary", "ring-offset-2", "rounded-xl");
-              setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "rounded-xl"), 2000);
+              setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "rounded-xl"), 2500);
+            } else {
+              // Fallback: scroll to top of plan
+              document.getElementById("plan-tab-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
             }
-          }, 150);
+          }, 350);
         }}
       />
 
