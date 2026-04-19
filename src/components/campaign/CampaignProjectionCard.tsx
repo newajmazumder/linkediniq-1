@@ -15,6 +15,8 @@ type Props = {
   goalMetric?: string | null;
   contributionRows?: { post_number: number; contribution: number; clicks: number; impressions: number }[];
   className?: string;
+  /** When true, render without outer card chrome (border, bg, rounded). Used when embedded inside another container. */
+  embedded?: boolean;
 };
 
 const borderTone: Record<string, string> = {
