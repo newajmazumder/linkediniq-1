@@ -22,7 +22,7 @@ export const deriveCampaignPostLifecycle = ({
   return "planned";
 };
 
-export const planStatusFromDraftStatus = (draftStatus?: string | null): CampaignPostLifecycle | null => {
+export const planStatusFromDraftStatus = (draftStatus?: string | null): "drafted" | "scheduled" | "posted" | null => {
   if (!draftStatus) return null;
   if (draftStatus === "scheduled") return "scheduled";
   if (draftStatus === "posted") return "posted";
