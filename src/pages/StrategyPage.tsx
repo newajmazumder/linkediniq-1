@@ -670,15 +670,10 @@ const StrategyPage = () => {
                           {c.name}
                         </h2>
 
-                        {/* Strategy label */}
-                        <div className="space-y-2">
-                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-semibold">
-                            Strategy
-                          </p>
-                          <p className="text-[15px] italic text-foreground/80 leading-relaxed">
-                            {c.core_message ? `“${c.core_message}”` : summary}
-                          </p>
-                        </div>
+                        {/* Strategy text */}
+                        <p className="text-[15px] text-foreground/80 leading-relaxed">
+                          {c.core_message ? `“${c.core_message}”` : summary}
+                        </p>
 
                         {/* Goal row */}
                         <div className="space-y-2 pt-1">
