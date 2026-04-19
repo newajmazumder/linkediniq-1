@@ -265,24 +265,7 @@ serve(async (req) => {
         cta_action: "revise_strategy",
       };
     }
-    // 6. EXPERIMENT — on track, not enough data yet → suggest a learning bet
-    else if (allSignals.length < 3 && nextPlannedPost) {
-      action = {
-        action_type: "experiment",
-        priority: "medium",
-        title: "Run a learning bet on Post #" + nextPlannedPost.post_number,
-        observation: `${allSignals.length} performance signal${allSignals.length === 1 ? "" : "s"} so far — too thin to detect patterns.`,
-        why_now: nextPostInDays !== null
-          ? `Post #${nextPlannedPost.post_number} is due in ${Math.ceil(nextPostInDays)} day${Math.ceil(nextPostInDays) === 1 ? "" : "s"}. Use it to test a clear hypothesis.`
-          : "You're still in learning mode. Each post should test one variable.",
-        interpretation: "Acting on noise this early creates false patterns. Better to design the next post as an explicit test.",
-        impact: "A focused test gives you signal in 1–2 posts instead of guessing for 5.",
-        recommendation: `Pick ONE variable to test on Post #${nextPlannedPost.post_number} (hook style, CTA, or format) and keep everything else constant.`,
-        confidence: "low",
-        cta_label: `Open post #${nextPlannedPost.post_number}`,
-        target_post_id: nextPlannedPost?.id || null,
-      };
-    }
+    // (Old experiment branch merged into #7 Passive Optimization Mode below.)
     // 7. PASSIVE OPTIMIZATION — on track but no winning pattern → design experiments
     else if (isOnPace && signalStrength !== "high" && nextPlannedPost) {
       // medium signal: confirm the emerging pattern with a controlled test
