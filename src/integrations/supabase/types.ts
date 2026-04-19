@@ -150,6 +150,7 @@ export type Database = {
         Row: {
           adjustments: Json
           applied_at: string | null
+          applied_changes: Json
           campaign_id: string
           created_at: string
           id: string
@@ -164,6 +165,7 @@ export type Database = {
         Insert: {
           adjustments?: Json
           applied_at?: string | null
+          applied_changes?: Json
           campaign_id: string
           created_at?: string
           id?: string
@@ -178,6 +180,7 @@ export type Database = {
         Update: {
           adjustments?: Json
           applied_at?: string | null
+          applied_changes?: Json
           campaign_id?: string
           created_at?: string
           id?: string
@@ -198,6 +201,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      campaign_advisor_questions: {
+        Row: {
+          answer: string | null
+          answered_at: string | null
+          campaign_id: string
+          created_at: string
+          id: string
+          question: string
+          question_key: string
+          severity: string
+          status: string
+          updated_at: string
+          user_id: string
+          why_it_matters: string | null
+        }
+        Insert: {
+          answer?: string | null
+          answered_at?: string | null
+          campaign_id: string
+          created_at?: string
+          id?: string
+          question: string
+          question_key: string
+          severity?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          why_it_matters?: string | null
+        }
+        Update: {
+          answer?: string | null
+          answered_at?: string | null
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          question?: string
+          question_key?: string
+          severity?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          why_it_matters?: string | null
+        }
+        Relationships: []
       }
       campaign_blueprints: {
         Row: {
@@ -534,6 +582,54 @@ export type Database = {
           },
         ]
       }
+      campaign_strategy_versions: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          cta_progression: Json
+          evidence_snapshot: Json
+          hypotheses: Json
+          id: string
+          is_active: boolean
+          phase_plan: Json
+          reason_for_revision: string | null
+          strategy_thesis: string | null
+          updated_at: string
+          user_id: string
+          version_number: number
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          cta_progression?: Json
+          evidence_snapshot?: Json
+          hypotheses?: Json
+          id?: string
+          is_active?: boolean
+          phase_plan?: Json
+          reason_for_revision?: string | null
+          strategy_thesis?: string | null
+          updated_at?: string
+          user_id: string
+          version_number: number
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          cta_progression?: Json
+          evidence_snapshot?: Json
+          hypotheses?: Json
+          id?: string
+          is_active?: boolean
+          phase_plan?: Json
+          reason_for_revision?: string | null
+          strategy_thesis?: string | null
+          updated_at?: string
+          user_id?: string
+          version_number?: number
+        }
+        Relationships: []
+      }
       campaign_week_plans: {
         Row: {
           audience_lens: string | null
@@ -621,6 +717,8 @@ export type Database = {
           goal_status: string | null
           goal_value_updated_at: string | null
           id: string
+          intelligence_snapshot: Json
+          intelligence_updated_at: string | null
           is_active: boolean | null
           language: string | null
           last_evaluated_at: string | null
@@ -661,6 +759,8 @@ export type Database = {
           goal_status?: string | null
           goal_value_updated_at?: string | null
           id?: string
+          intelligence_snapshot?: Json
+          intelligence_updated_at?: string | null
           is_active?: boolean | null
           language?: string | null
           last_evaluated_at?: string | null
@@ -701,6 +801,8 @@ export type Database = {
           goal_status?: string | null
           goal_value_updated_at?: string | null
           id?: string
+          intelligence_snapshot?: Json
+          intelligence_updated_at?: string | null
           is_active?: boolean | null
           language?: string | null
           last_evaluated_at?: string | null
