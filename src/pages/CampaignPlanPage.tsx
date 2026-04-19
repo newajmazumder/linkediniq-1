@@ -26,6 +26,8 @@ import {
 import ScoreBreakdownCard from "@/components/campaign/ScoreBreakdownCard";
 import CampaignProjectionCard from "@/components/campaign/CampaignProjectionCard";
 import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
+import TopPerformerCard from "@/components/campaign/TopPerformerCard";
+import { computeProjection } from "@/lib/campaign-projection";
 
 type Campaign = any;
 type WeekPlan = any;
