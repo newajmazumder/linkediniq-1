@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import {
   ArrowLeft, ExternalLink, Calendar, Target, Save, Loader2,
   ThumbsUp, MessageSquare, Share2, Eye, MousePointer, UserPlus, Users2,
-  Sparkles, CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronRight,
+  Sparkles, CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronRight, Trophy,
 } from "lucide-react";
+import { goalContributionFieldLabel, goalContributionPrompt } from "@/lib/goal-metrics";
 
 type PostData = {
   id: string;
@@ -102,6 +103,8 @@ const PostDetailPage = () => {
   const [recommendations, setRecommendations] = useState<RecommendationData | null>(null);
   const [personas, setPersonas] = useState<{ id: string; name: string }[]>([]);
   const [campaigns, setCampaigns] = useState<{ id: string; name: string }[]>([]);
+  // Linked campaign's goal metric — drives the dynamic Goal Contribution label.
+  const [campaignGoalCtx, setCampaignGoalCtx] = useState<CampaignGoalCtx | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingContext, setSavingContext] = useState(false);
   const [savingMetrics, setSavingMetrics] = useState(false);
@@ -136,12 +139,17 @@ const PostDetailPage = () => {
     }
 
     setPost(postRes.data);
+    let derivedCampaignId: string | null = null;
     if (ctxRes.data) {
       setContext({ ...emptyContext, ...ctxRes.data });
+      derivedCampaignId = ctxRes.data.campaign_id || null;
     } else if (postRes.data.linked_draft_id) {
       // Auto-fill context from the campaign this post originated from
       const auto = await deriveContextFromDraft(postRes.data.linked_draft_id);
-      if (auto) setContext(c => ({ ...c, ...auto }));
+      if (auto) {
+        setContext(c => ({ ...c, ...auto }));
+        derivedCampaignId = auto.campaign_id || null;
+      }
     }
     if (metricsRes.data) setMetrics({ ...emptyMetrics, ...metricsRes.data });
     setEvaluation(evalRes.data || null);
@@ -149,6 +157,29 @@ const PostDetailPage = () => {
     setRecommendations(recRes.data || null);
     setPersonas(personaRes.data || []);
     setCampaigns(campRes.data || []);
+
+    // Pull the linked campaign's goal so we can render the dynamic
+    // "demo bookings from this post" / "leads from this post" field.
+    if (derivedCampaignId) {
+      const { data: camp } = await supabase
+        .from("campaigns")
+        .select("id, target_metric, target_quantity")
+        .eq("id", derivedCampaignId)
+        .maybeSingle();
+      if (camp) {
+        setCampaignGoalCtx({
+          campaign_id: camp.id,
+          target_metric: camp.target_metric,
+          target_quantity: camp.target_quantity,
+        });
+        // If metrics row has no goal_metric snapshot yet, hydrate it from the campaign
+        if (metricsRes.data && !metricsRes.data.goal_metric && camp.target_metric) {
+          setMetrics(m => ({ ...m, goal_metric: camp.target_metric }));
+        } else if (!metricsRes.data && camp.target_metric) {
+          setMetrics(m => ({ ...m, goal_metric: camp.target_metric }));
+        }
+      }
+    }
     setLoading(false);
   };
 
