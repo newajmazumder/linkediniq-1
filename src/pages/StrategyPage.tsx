@@ -560,7 +560,7 @@ const StrategyPage = () => {
               <p className="mt-2 text-sm text-muted-foreground">No campaigns yet. Create one to guide your content.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {campaigns.map((c) => {
                 const prog = progress[c.id];
                 const posting = postingStats[c.id];
