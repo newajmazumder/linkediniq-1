@@ -148,6 +148,76 @@ const CreatePage = () => {
     }
   }, [user]);
 
+  // Hydrate the page from an existing draft when /create?draft_id=… is opened.
+  // This is the canonical "View / Edit existing draft" entry point so the
+  // campaign plan can round-trip Plan → Draft → View/Edit without 404ing.
+  useEffect(() => {
+    if (!user || !draftIdParam) return;
+    setDraftLoading(true);
+    setDraftMissing(false);
+    (async () => {
+      const { data: draft } = await supabase
+        .from("drafts")
+        .select("id, idea_id, selected_post_id, custom_content, status, scheduled_at, updated_at, ideas(idea_title, instruction, target_audience, objective, core_message, suggested_cta, persona_fit, emotional_trigger, resonance_reason)")
+        .eq("id", draftIdParam)
+        .maybeSingle();
+      if (!draft) {
+        setDraftMissing(true);
+        setDraftLoading(false);
+        return;
+      }
+      setDraftRow(draft);
+
+      // Hydrate idea brief if linked.
+      const ideaData: any = (draft as any).ideas;
+      if (ideaData) {
+        setInstruction(ideaData.instruction || "");
+        setIdea({
+          id: draft.idea_id,
+          idea_title: ideaData.idea_title,
+          target_audience: ideaData.target_audience,
+          objective: ideaData.objective,
+          core_message: ideaData.core_message,
+          suggested_cta: ideaData.suggested_cta,
+          persona_fit: ideaData.persona_fit,
+          emotional_trigger: ideaData.emotional_trigger,
+          resonance_reason: ideaData.resonance_reason,
+        });
+      }
+
+      // Synthesize a Post from the saved draft content so PostCard can render it.
+      const blocks = (draft.custom_content || "").split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+      const hook = blocks[0] || "";
+      const cta = blocks.length > 1 ? blocks[blocks.length - 1] : "";
+      const body = blocks.length > 2 ? blocks.slice(1, -1).join("\n\n") : "";
+
+      // If the draft was generated from a real post variation, hydrate from that.
+      let basePost: Post | null = null;
+      if (draft.selected_post_id) {
+        const { data: postRow } = await supabase.from("posts").select("*").eq("id", draft.selected_post_id).maybeSingle();
+        if (postRow) basePost = postRow as unknown as Post;
+      }
+
+      const synthesized: Post = basePost
+        ? { ...basePost, hook: hook || basePost.hook, body: body || basePost.body, cta: cta || basePost.cta }
+        : {
+            id: draft.selected_post_id || draft.id,
+            variation_number: 1,
+            hook,
+            body,
+            cta,
+            first_comment: null,
+            post_style: "founder_tone",
+            tone: null,
+            post_type: "text",
+            image_briefs: null,
+          };
+
+      setPosts([synthesized]);
+      setDraftLoading(false);
+    })();
+  }, [user, draftIdParam]);
+
   const handleGenerate = async () => {
     if (!user) return;
     if (!selectedPersonaId || selectedPersonaId === "none") {
