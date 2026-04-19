@@ -645,67 +645,67 @@ const StrategyPage = () => {
                     className="rounded-xl border border-border bg-card overflow-hidden transition-shadow hover:shadow-sm"
                   >
                     {/* Body — single column stacked layout */}
-                    <div className="p-6 sm:p-7 space-y-5">
+                    <div className="p-6 sm:p-7 space-y-4">
                       {/* Pills */}
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide", lifecycle.cls)}>
+                        <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide", lifecycle.cls)}>
                           {lifecycle.label}
                         </span>
                         {c.target_timeframe && (
-                          <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             {c.target_timeframe.replace(/_/g, " ")}
                           </span>
                         )}
                         {c.target_priority === "high" && (
-                          <span className="rounded-full bg-destructive/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-destructive">
+                          <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-destructive">
                             High Priority
                           </span>
                         )}
                       </div>
 
                       {/* Title */}
-                      <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
+                      <h2 className="text-lg sm:text-xl font-semibold text-foreground tracking-tight leading-snug">
                         {c.name}
                       </h2>
 
                       {/* Strategy text */}
-                      <p className="text-[15px] text-foreground/80 leading-relaxed">
+                      <p className="text-sm text-muted-foreground leading-relaxed">
                         {c.core_message ? `“${c.core_message}”` : summary}
                       </p>
 
                       {/* Goal row */}
-                      <div className="space-y-2 pt-1">
+                      <div className="space-y-2 pt-2">
                         <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">
                             Goal — <span className="text-foreground">{goalLabel}</span>
                           </span>
-                          <span className="font-semibold text-foreground tabular-nums">{goalPct}%</span>
+                          <span className="font-medium text-foreground tabular-nums">{goalPct}%</span>
                         </div>
-                        <Progress value={goalPct} className="h-1.5" />
+                        <Progress value={goalPct} className="h-1" />
                       </div>
                     </div>
 
                     {/* Footer — score on left, actions on right */}
-                    <div className="flex items-center justify-between gap-4 border-t border-border px-6 sm:px-7 py-5">
+                    <div className="flex items-center justify-between gap-4 border-t border-border px-6 sm:px-7 py-4">
                       <div className="flex items-baseline">
                         {c.started_at ? (
-                          <div className="font-serif text-4xl font-normal leading-none tabular-nums text-foreground">
+                          <div className="font-serif text-3xl font-normal leading-none tabular-nums text-foreground">
                             {score.total.toFixed(1)}
-                            <span className="text-sm text-muted-foreground ml-0.5">/10</span>
+                            <span className="text-xs text-muted-foreground ml-0.5">/10</span>
                           </div>
                         ) : (
                           <span className="text-sm text-muted-foreground">Not started</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button size="sm" onClick={() => navigate(`/campaign/${c.id}`)} className="h-10 px-5 text-sm font-medium">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button size="sm" onClick={() => navigate(`/campaign/${c.id}`)} className="h-9 px-4 text-xs font-medium">
                           View plan
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => startEdit(c)} className="h-10 w-10 p-0">
-                          <Edit2 className="h-4 w-4" />
+                        <Button size="sm" variant="outline" onClick={() => startEdit(c)} className="h-9 w-9 p-0">
+                          <Edit2 className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
-                          <Trash2 className="h-4 w-4" />
+                        <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
