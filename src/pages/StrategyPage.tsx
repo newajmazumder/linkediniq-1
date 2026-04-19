@@ -53,6 +53,7 @@ type Campaign = {
   current_goal_value?: number | null;
   goal_progress_percent?: number | null;
   goal_status?: string | null;
+  started_at?: string | null;
 };
 
 type CampaignProgress = {
