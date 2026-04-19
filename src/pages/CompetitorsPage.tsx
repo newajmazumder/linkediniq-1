@@ -617,6 +617,17 @@ const CompetitorsPage = () => {
         </Dialog>
       </div>
 
+      {/* Exploitation Command Card — fused next-best-post engine */}
+      {(competitors.length > 0 || exploitData) && (
+        <ExploitationCommandCard
+          data={exploitData}
+          loading={exploitLoading}
+          hasCampaign={!!activeCampaignId}
+          onRecompute={recomputeExploit}
+          onGenerate={(payload) => navigateToCreate(payload)}
+        />
+      )}
+
       {competitors.length === 0 ? (
         <div className="border border-dashed border-border rounded-lg p-8 text-center">
           <Search className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
