@@ -719,6 +719,16 @@ const StrategyPage = () => {
                         </div>
                       </div>
 
+                      {/* Goal Progress strip — auto-rolled from post contributions */}
+                      {c.target_quantity && c.target_metric && (
+                        <CampaignGoalProgressBar
+                          currentValue={c.current_goal_value ?? 0}
+                          target={c.target_quantity}
+                          goalMetric={c.target_metric}
+                          variant="compact"
+                        />
+                      )}
+
                       {/* LEVEL 4 — Quiet meta + actions */}
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
