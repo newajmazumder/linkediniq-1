@@ -53,6 +53,7 @@ type Campaign = {
   current_goal_value?: number | null;
   goal_progress_percent?: number | null;
   goal_status?: string | null;
+  started_at?: string | null;
 };
 
 type CampaignProgress = {
@@ -653,16 +654,19 @@ const StrategyPage = () => {
                           </h2>
                         </div>
 
-                        {/* DOMINANT Strategy Score — single calm accent */}
-                        <div className="shrink-0 text-right">
-                          <div className={cn("text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
-                            {score.total.toFixed(1)}
-                            <span className="text-base text-muted-foreground font-normal">/10</span>
+                        {/* DOMINANT Strategy Score — only meaningful once the campaign has started.
+                            Before start there's no execution signal to score against. */}
+                        {c.started_at && (
+                          <div className="shrink-0 text-right">
+                            <div className={cn("text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
+                              {score.total.toFixed(1)}
+                              <span className="text-base text-muted-foreground font-normal">/10</span>
+                            </div>
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              Strategy · <span className="text-foreground">{interp}</span>
+                            </p>
                           </div>
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            Strategy · <span className="text-foreground">{interp}</span>
-                          </p>
-                        </div>
+                        )}
                       </div>
 
                       {/* LEVEL 2 — Strategy Hook (editorial typography, no tint) */}
