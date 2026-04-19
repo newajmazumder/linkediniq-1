@@ -245,7 +245,15 @@ export type Database = {
           user_id?: string
           why_it_matters?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "campaign_advisor_questions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       campaign_blueprints: {
         Row: {
@@ -631,7 +639,15 @@ export type Database = {
           user_id?: string
           version_number?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "campaign_strategy_versions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       campaign_week_plans: {
         Row: {
@@ -730,6 +746,9 @@ export type Database = {
           offer: string | null
           primary_objective: string | null
           primary_persona_id: string | null
+          primary_score: number | null
+          primary_score_kind: string | null
+          score_breakdown: Json
           secondary_persona_id: string | null
           started_at: string | null
           strategy_strength_score: number | null
@@ -773,6 +792,9 @@ export type Database = {
           offer?: string | null
           primary_objective?: string | null
           primary_persona_id?: string | null
+          primary_score?: number | null
+          primary_score_kind?: string | null
+          score_breakdown?: Json
           secondary_persona_id?: string | null
           started_at?: string | null
           strategy_strength_score?: number | null
@@ -816,6 +838,9 @@ export type Database = {
           offer?: string | null
           primary_objective?: string | null
           primary_persona_id?: string | null
+          primary_score?: number | null
+          primary_score_kind?: string | null
+          score_breakdown?: Json
           secondary_persona_id?: string | null
           started_at?: string | null
           strategy_strength_score?: number | null
@@ -1741,6 +1766,152 @@ export type Database = {
           },
         ]
       }
+      post_lifecycle: {
+        Row: {
+          campaign_id: string | null
+          content: string | null
+          created_at: string
+          cta: string | null
+          cta_type: string | null
+          draft_id: string | null
+          format: string | null
+          hook: string | null
+          hook_type: string | null
+          id: string
+          idea_id: string | null
+          lifecycle_state: Database["public"]["Enums"]["post_lifecycle_state"]
+          linkedin_post_external_id: string | null
+          linkedin_post_ref_id: string | null
+          linkedin_post_url: string | null
+          planned_date: string | null
+          post_plan_id: string | null
+          post_style: string | null
+          posted_at: string | null
+          primary_score: number | null
+          primary_score_kind: string | null
+          scheduled_at: string | null
+          score_breakdown: Json
+          source: string
+          tone: string | null
+          updated_at: string
+          user_id: string
+          variation_post_id: string | null
+          week_plan_id: string | null
+        }
+        Insert: {
+          campaign_id?: string | null
+          content?: string | null
+          created_at?: string
+          cta?: string | null
+          cta_type?: string | null
+          draft_id?: string | null
+          format?: string | null
+          hook?: string | null
+          hook_type?: string | null
+          id?: string
+          idea_id?: string | null
+          lifecycle_state?: Database["public"]["Enums"]["post_lifecycle_state"]
+          linkedin_post_external_id?: string | null
+          linkedin_post_ref_id?: string | null
+          linkedin_post_url?: string | null
+          planned_date?: string | null
+          post_plan_id?: string | null
+          post_style?: string | null
+          posted_at?: string | null
+          primary_score?: number | null
+          primary_score_kind?: string | null
+          scheduled_at?: string | null
+          score_breakdown?: Json
+          source?: string
+          tone?: string | null
+          updated_at?: string
+          user_id: string
+          variation_post_id?: string | null
+          week_plan_id?: string | null
+        }
+        Update: {
+          campaign_id?: string | null
+          content?: string | null
+          created_at?: string
+          cta?: string | null
+          cta_type?: string | null
+          draft_id?: string | null
+          format?: string | null
+          hook?: string | null
+          hook_type?: string | null
+          id?: string
+          idea_id?: string | null
+          lifecycle_state?: Database["public"]["Enums"]["post_lifecycle_state"]
+          linkedin_post_external_id?: string | null
+          linkedin_post_ref_id?: string | null
+          linkedin_post_url?: string | null
+          planned_date?: string | null
+          post_plan_id?: string | null
+          post_style?: string | null
+          posted_at?: string | null
+          primary_score?: number | null
+          primary_score_kind?: string | null
+          scheduled_at?: string | null
+          score_breakdown?: Json
+          source?: string
+          tone?: string | null
+          updated_at?: string
+          user_id?: string
+          variation_post_id?: string | null
+          week_plan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pl_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pl_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pl_idea_id_fkey"
+            columns: ["idea_id"]
+            isOneToOne: false
+            referencedRelation: "ideas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pl_linkedin_post_ref_id_fkey"
+            columns: ["linkedin_post_ref_id"]
+            isOneToOne: false
+            referencedRelation: "linkedin_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pl_post_plan_id_fkey"
+            columns: ["post_plan_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_post_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pl_variation_post_id_fkey"
+            columns: ["variation_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pl_week_plan_id_fkey"
+            columns: ["week_plan_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_week_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_metrics: {
         Row: {
           attribution_note: string | null
@@ -2322,7 +2493,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      post_lifecycle_state:
+        | "idea"
+        | "drafted"
+        | "scheduled"
+        | "posted"
+        | "missed"
+        | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2449,6 +2626,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      post_lifecycle_state: [
+        "idea",
+        "drafted",
+        "scheduled",
+        "posted",
+        "missed",
+        "archived",
+      ],
+    },
   },
 } as const
