@@ -806,6 +806,7 @@ const CampaignPlanPage = () => {
           )}
         </div>
       )}
+      </section>
     </div>
   );
 };
