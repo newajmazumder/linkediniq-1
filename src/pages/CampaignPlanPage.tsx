@@ -606,14 +606,8 @@ const CampaignPlanPage = () => {
             );
           })()}
 
-          {goalAgg?.contribution_rows?.length > 0 && (
-            <TopPerformerCard
-              rows={goalAgg.contribution_rows}
-              goalMetric={goalAgg.goal_metric || campaign.target_metric}
-              campaignId={id!}
-            />
-          )}
-
+          {/* Per-post platform metrics live inside ExecutionDashboard.
+              Top performer / pattern analysis lives in the Analytics tab. */}
           <ExecutionDashboard
             campaignId={id!}
             campaign={campaign}
