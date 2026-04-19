@@ -129,9 +129,15 @@ type Props = {
    *  Plan → Create → Draft so the campaign view reflects real execution. */
   postPlanId?: string | null;
   campaignId?: string | null;
+  /** When set, Save updates this existing draft row instead of inserting a
+   *  new one. Used when editing a draft via /create?draft_id=…&mode=edit. */
+  draftId?: string | null;
+  /** Read-only mode disables rewrite/regenerate actions and changes the
+   *  save action label. Used by /create?draft_id=…&mode=view. */
+  readOnly?: boolean;
 };
 
-const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, compact, postPlanId, campaignId }: Props) => {
+const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, compact, postPlanId, campaignId, draftId, readOnly }: Props) => {
   const [rewriting, setRewriting] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [predicting, setPredicting] = useState(false);
