@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import {
   Loader2, Target, ChevronDown, ChevronUp, Sparkles,
   BarChart3, FileText, AlertTriangle, TrendingUp,
-  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench, Eye, ThumbsUp, MessageSquare, MousePointer,
+  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench, Eye, ThumbsUp, MessageSquare, MousePointer, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
@@ -27,6 +27,7 @@ import ScoreBreakdownCard from "@/components/campaign/ScoreBreakdownCard";
 import CampaignProjectionCard from "@/components/campaign/CampaignProjectionCard";
 import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
 import TopPerformerCard from "@/components/campaign/TopPerformerCard";
+import TopContributorsStrip from "@/components/campaign/TopContributorsStrip";
 import { computeProjection } from "@/lib/campaign-projection";
 
 type Campaign = any;
@@ -330,21 +331,25 @@ const CampaignPlanPage = () => {
             />
           )}
 
-          {/* Urgency micro-line — only when behind, anchors hero to outcome */}
+          {/* Urgency micro-line — concrete shortfall in goal units, not just % */}
           {showUrgency && (
-            <div className="rounded-md bg-muted/40 px-3 py-2 text-xs flex items-center gap-2 flex-wrap">
-              <AlertTriangle className={cn("h-3.5 w-3.5 shrink-0", meta.textClass)} />
+            <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-2 text-xs flex items-center gap-2 flex-wrap">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />
+              <span className="text-foreground">
+                At current pace you will <span className="font-semibold text-destructive">miss goal by {proj!.gap} {(campaign.target_metric || "").replace(/_/g, " ")}</span>
+              </span>
               {velocityShort && (
-                <span className={cn("font-medium", meta.textClass)}>
-                  {velocityShort} posts/wk behind schedule
-                </span>
+                <>
+                  <span className="text-border">·</span>
+                  <span className="text-muted-foreground">
+                    <span className="text-destructive font-medium">{velocityShort}</span> posts/wk behind
+                  </span>
+                </>
               )}
               {shortfallPct !== null && shortfallPct > 0 && (
                 <>
-                  {velocityShort && <span className="text-border">·</span>}
-                  <span className="text-muted-foreground">
-                    projected <span className={cn("font-semibold", meta.textClass)}>{shortfallPct}%</span> shortfall
-                  </span>
+                  <span className="text-border">·</span>
+                  <span className="text-muted-foreground tabular-nums">{shortfallPct}% short</span>
                 </>
               )}
             </div>
@@ -731,6 +736,11 @@ const CampaignPlanPage = () => {
                   postsContribution={goalAgg?.posts_contribution ?? 0}
                   goalMetric={goalAgg?.goal_metric}
                 />
+                {/* Per-post breakdown — connects metrics to actions */}
+                <TopContributorsStrip
+                  rows={goalAgg?.contribution_rows || []}
+                  goalMetric={goalAgg?.goal_metric}
+                />
               </div>
 
               {/* SECTION 2 — Post Goal Contribution (ROI ranking) */}
@@ -774,6 +784,23 @@ const CampaignPlanPage = () => {
                   </p>
                 ) : (
                   <div className="space-y-3">
+                    {/* Confidence label — prevents blind trust */}
+                    {(() => {
+                      const measuredPosts = (goalAgg?.contribution_rows || []).filter((r: any) => (r.contribution || 0) > 0).length;
+                      const conf = measuredPosts >= 5
+                        ? { label: "High", tone: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/30" }
+                        : measuredPosts >= 3
+                          ? { label: "Medium", tone: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30" }
+                          : { label: "Low", tone: "text-destructive", bg: "bg-destructive/10 border-destructive/30" };
+                      return (
+                        <div className={cn("rounded-md border px-2.5 py-1.5 flex items-center gap-2 text-[11px]", conf.bg)}>
+                          <ShieldCheck className={cn("h-3 w-3", conf.tone)} />
+                          <span className={cn("font-semibold", conf.tone)}>Confidence: {conf.label}</span>
+                          <span className="text-muted-foreground">based on {measuredPosts} measured {measuredPosts === 1 ? "post" : "posts"}</span>
+                        </div>
+                      );
+                    })()}
+
                     {interpretation.headline && (
                       <p className="text-sm font-medium text-foreground border-l-2 border-primary pl-3">
                         {interpretation.headline}
@@ -822,15 +849,38 @@ const CampaignPlanPage = () => {
 
                     {interpretation.recommendations?.length > 0 && (
                       <div className="space-y-2">
-                        <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Recommendations</p>
+                        <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Recommendations · ranked by impact</p>
                         {interpretation.recommendations.map((rec: any, i: number) => (
-                          <div key={i} className="rounded-md border border-border p-3">
-                            <p className="text-sm font-medium text-foreground">{rec.title}</p>
-                            {rec.why && <p className="mt-0.5 text-xs text-muted-foreground">{rec.why}</p>}
+                          <div key={i} className="rounded-md border border-border p-3 space-y-2">
+                            <div className="flex items-start gap-2">
+                              <span className="shrink-0 rounded-full bg-primary/10 text-primary text-[10px] font-bold w-5 h-5 flex items-center justify-center tabular-nums">
+                                #{i + 1}
+                              </span>
+                              <p className="text-sm font-semibold text-foreground leading-snug">{rec.title}</p>
+                            </div>
+                            {rec.why && (
+                              <div className="pl-7 space-y-1">
+                                <p className="text-[10px] uppercase tracking-wide font-semibold text-destructive flex items-center gap-1">
+                                  <AlertTriangle className="h-2.5 w-2.5" /> Problem
+                                </p>
+                                <p className="text-xs text-foreground">{rec.why}</p>
+                              </div>
+                            )}
                             {rec.action && (
-                              <p className="mt-1 text-xs text-foreground">
-                                <span className="font-semibold">Do:</span> {rec.action}
-                              </p>
+                              <div className="pl-7 space-y-1">
+                                <p className="text-[10px] uppercase tracking-wide font-semibold text-primary flex items-center gap-1">
+                                  <ArrowRight className="h-2.5 w-2.5" /> Action
+                                </p>
+                                <p className="text-xs text-foreground font-medium">{rec.action}</p>
+                              </div>
+                            )}
+                            {rec.expected && (
+                              <div className="pl-7 space-y-1">
+                                <p className="text-[10px] uppercase tracking-wide font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                  <TrendingUp className="h-2.5 w-2.5" /> Expected
+                                </p>
+                                <p className="text-xs text-foreground">{rec.expected}</p>
+                              </div>
                             )}
                           </div>
                         ))}
