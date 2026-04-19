@@ -644,10 +644,12 @@ const StrategyPage = () => {
                     key={c.id}
                     className="rounded-xl border border-border bg-card overflow-hidden transition-shadow hover:shadow-sm"
                   >
-                    <div className="p-6 sm:p-7 space-y-5">
-                      {/* Top row — pills (left) + score (right) */}
-                      <div className="flex items-start justify-between gap-6">
-                        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+                    {/* Body — 2 columns split by vertical separator */}
+                    <div className="flex">
+                      {/* LEFT — main content */}
+                      <div className="flex-1 min-w-0 p-6 sm:p-7 space-y-5">
+                        {/* Pills */}
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide", lifecycle.cls)}>
                             {lifecycle.label}
                           </span>
@@ -663,59 +665,63 @@ const StrategyPage = () => {
                           )}
                         </div>
 
-                        {c.started_at && (
-                          <div className="shrink-0 text-right">
-                            <div className="text-3xl sm:text-4xl font-semibold leading-none tabular-nums text-foreground">
-                              {score.total.toFixed(1)}
-                              <span className="text-sm font-normal text-muted-foreground">/10</span>
-                            </div>
-                            {personaSubtitle && (
-                              <p className="mt-1.5 text-[11px] text-muted-foreground truncate max-w-[180px]">{personaSubtitle}</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                        {/* Title */}
+                        <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
+                          {c.name}
+                        </h2>
 
-                      {/* Title */}
-                      <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
-                        {c.name}
-                      </h2>
-
-                      {/* Strategy label + italic core message */}
-                      <div className="space-y-2">
-                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-semibold">
-                          Strategy
-                        </p>
-                        <p className="text-[15px] italic text-foreground/80 leading-relaxed">
-                          {c.core_message ? `“${c.core_message}”` : summary}
-                        </p>
-                      </div>
-
-                      {/* Goal row */}
-                      <div className="space-y-2 pt-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Goal — <span className="text-foreground">{goalLabel}</span>
-                          </span>
-                          <span className="font-semibold text-primary tabular-nums">{goalPct}%</span>
+                        {/* Strategy label */}
+                        <div className="space-y-2">
+                          <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-semibold">
+                            Strategy
+                          </p>
+                          <p className="text-[15px] italic text-foreground/80 leading-relaxed">
+                            {c.core_message ? `“${c.core_message}”` : summary}
+                          </p>
                         </div>
-                        <Progress value={goalPct} className="h-1.5" />
+
+                        {/* Goal row */}
+                        <div className="space-y-2 pt-1">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Goal — <span className="text-foreground">{goalLabel}</span>
+                            </span>
+                            <span className="font-semibold text-primary tabular-nums">{goalPct}%</span>
+                          </div>
+                          <Progress value={goalPct} className="h-1.5" />
+                        </div>
+                      </div>
+
+                      {/* RIGHT — score column with vertical separator */}
+                      <div className="w-[180px] shrink-0 border-l border-border p-6 sm:p-7 flex flex-col items-center justify-start text-center">
+                        {c.started_at ? (
+                          <>
+                            <div className="font-serif text-4xl font-normal leading-none tabular-nums text-foreground">
+                              {score.total.toFixed(1)}
+                              <span className="text-sm text-muted-foreground">/10</span>
+                            </div>
+                            {primaryPersonaName && (
+                              <p className="mt-2 text-[12px] text-muted-foreground leading-snug">
+                                {primaryPersonaName}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <p className="text-[12px] text-muted-foreground leading-snug">
+                            Not started
+                          </p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Footer — tags + actions (no separator, no bg) */}
-                    <div className="flex items-center justify-between gap-3 px-6 sm:px-7 pb-6">
+                    {/* Footer — top border + subtle bg */}
+                    <div className="flex items-center justify-between gap-3 border-t border-border px-6 sm:px-7 py-4">
                       <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
                         {visibleTags.map((t) => (
                           <span key={t} className="rounded-md border border-border bg-background px-2.5 py-1 text-[12px] text-muted-foreground">
                             {t}
                           </span>
                         ))}
-                        {overflowCount > 0 && (
-                          <span className="rounded-md border border-border bg-background px-2.5 py-1 text-[12px] text-muted-foreground">
-                            +{overflowCount}
-                          </span>
-                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <Button size="sm" onClick={() => navigate(`/campaign/${c.id}`)} className="h-9 px-5 text-xs font-medium">
