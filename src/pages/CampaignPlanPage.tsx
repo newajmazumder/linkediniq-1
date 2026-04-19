@@ -276,9 +276,36 @@ const CampaignPlanPage = () => {
 
             <div className="flex items-start gap-4 shrink-0">
               <div className="text-right">
-                <div className={cn("text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
-                  {score.total.toFixed(1)}
-                  <span className="text-base text-muted-foreground font-normal">/10</span>
+                <div className={cn("flex items-center justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
+                  <span>
+                    {score.total.toFixed(1)}
+                    <span className="text-base text-muted-foreground font-normal">/10</span>
+                  </span>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Why this score"
+                        className="inline-flex items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent align="end" className="w-[360px] p-0">
+                      <ScoreBreakdownCard
+                        score={score}
+                        pillars={(() => {
+                          const hints = buildPillarHints(score, scoreInputs);
+                          return [
+                            { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
+                            { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
+                            { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
+                          ];
+                        })()}
+                        className="border-0"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   Strategy · <span className="text-foreground">{interp}</span>
