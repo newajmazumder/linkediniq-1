@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MarkPostedDialog from "@/components/strategy/MarkPostedDialog";
+import DraftPreviewDialog from "@/components/campaign/DraftPreviewDialog";
 import { deriveCampaignPostLifecycle, extractCampaignPostPreview } from "@/lib/campaign-posts";
 
 type PostPlan = {
@@ -73,6 +74,7 @@ const CampaignPostCard = ({
   const [draftContent, setDraftContent] = useState<string | null>(null);
   const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(null);
   const [markOpen, setMarkOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Load downstream signals when a draft has been linked.
   useEffect(() => {
@@ -195,12 +197,12 @@ const CampaignPostCard = ({
 
           {(status === "drafted" || status === "scheduled") && post.linked_draft_id && (
             <>
-              <Link
-                to={`/create?draft_id=${post.linked_draft_id}&mode=view&campaign_id=${campaignId}&post_plan_id=${post.id}`}
+              <button
+                onClick={() => setPreviewOpen(true)}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
                 <Eye className="h-3 w-3" /> View
-              </Link>
+              </button>
               <Link
                 to={`/create?draft_id=${post.linked_draft_id}&mode=edit&campaign_id=${campaignId}&post_plan_id=${post.id}`}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
@@ -225,13 +227,13 @@ const CampaignPostCard = ({
 
           {status === "posted" && (
             <>
-              {post.linked_post_id && (
-                <Link
-                  to={`/performance/${post.linked_post_id}`}
+              {post.linked_draft_id && (
+                <button
+                  onClick={() => setPreviewOpen(true)}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
                 >
                   <Eye className="h-3 w-3" /> View
-                </Link>
+                </button>
               )}
               {post.posted_url && (
                 <a
@@ -382,6 +384,20 @@ const CampaignPostCard = ({
         format={post.recommended_format}
         phase={post.phase}
         onMarked={onChange}
+      />
+
+      <DraftPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        draftId={post.linked_draft_id}
+        campaignId={campaignId}
+        postPlanId={post.id}
+        postNumber={post.post_number}
+        weekNumber={post.week_number}
+        phase={post.phase}
+        cachedContent={draftContent}
+        postedUrl={post.posted_url}
+        onMarkPosted={status !== "posted" ? () => setMarkOpen(true) : undefined}
       />
     </div>
   );
