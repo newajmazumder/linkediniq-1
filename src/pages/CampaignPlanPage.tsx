@@ -276,7 +276,7 @@ const CampaignPlanPage = () => {
 
             <div className="flex items-start gap-4 shrink-0">
               <div className="text-right">
-                <div className={cn("flex items-center justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
+                <div className={cn("flex items-end justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
                   <span>
                     {score.total.toFixed(1)}
                     <span className="text-base text-muted-foreground font-normal">/10</span>
