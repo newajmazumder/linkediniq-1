@@ -381,56 +381,129 @@ const CampaignPlanPage = () => {
       {/* PERFORMANCE TAB — live results: directive + progress + projection + top performer + execution */}
       {tab === "performance" && (
         <div className="space-y-3">
-          {/* DO THIS NEXT — single dominant directive (the brain of the page) */}
+          {/* DO THIS NEXT — adaptive directive (replication / volume / activation modes) */}
           {(() => {
-            const topRow = (goalAgg?.contribution_rows || [])
-              .filter((r: any) => (r.contribution || 0) > 0)
-              .sort((a: any, b: any) => b.contribution - a.contribution)[0];
+            const rows = (goalAgg?.contribution_rows || []).filter((r: any) => (r.contribution || 0) > 0);
+            const sorted = [...rows].sort((a, b) => b.contribution - a.contribution);
+            const topRow = sorted[0];
+            const totalContrib = rows.reduce((s, r: any) => s + (r.contribution || 0), 0);
+            const topShare = topRow && totalContrib > 0 ? Math.round((topRow.contribution / totalContrib) * 100) : 0;
             const goalLabel = (campaign.target_metric || "results").replace(/_/g, " ");
             const shortBy = velocity && !velocity.onPace
               ? Math.max(1, Math.ceil(velocity.required - velocity.actual))
               : null;
-            const avgPerPost = topRow ? topRow.contribution : null;
-            const expectedLow = shortBy && avgPerPost ? Math.round(shortBy * avgPerPost * 0.8) : null;
-            const expectedHigh = shortBy && avgPerPost ? Math.round(shortBy * avgPerPost * 1.5) : null;
 
-            // Pull pattern from top performer (best-effort, async resolved inside TopPerformerCard too)
-            const directive = shortBy
-              ? `Publish ${shortBy} ${shortBy === 1 ? "post" : "posts"} this week`
-              : (topRow ? `Replicate Post ${topRow.post_number}'s pattern` : "Mark posts as posted to start measuring");
+            // Mode selection — order matters: dominant winner > behind on volume > activation
+            type Mode = "replication" | "volume" | "activation";
+            let mode: Mode;
+            let postsToShip: number;
+            if (topRow && topShare >= 50 && rows.length >= 2) {
+              mode = "replication";
+              postsToShip = Math.max(2, Math.min(5, shortBy ?? 3));
+            } else if (shortBy) {
+              mode = "volume";
+              postsToShip = shortBy;
+            } else {
+              mode = "activation";
+              postsToShip = Math.max(1, totalPosts > 0 ? Math.min(3, week1Remaining || 1) : 1);
+            }
+
+            const avgPerPost = topRow ? topRow.contribution : null;
+            // Replication: top-performer rate. Volume: blended average. Activation: conservative seed.
+            const expectedLow = mode === "replication" && avgPerPost
+              ? Math.round(postsToShip * avgPerPost * 0.7)
+              : mode === "volume" && rows.length > 0
+                ? Math.round(postsToShip * (totalContrib / rows.length) * 0.6)
+                : null;
+            const expectedHigh = mode === "replication" && avgPerPost
+              ? Math.round(postsToShip * avgPerPost * 1.2)
+              : mode === "volume" && rows.length > 0
+                ? Math.round(postsToShip * (totalContrib / rows.length) * 1.1)
+                : null;
+
+            const focusLabel = mode === "replication"
+              ? "Replication"
+              : mode === "volume" ? "Volume" : "Activation";
+            const focusReason = mode === "replication"
+              ? "highest impact"
+              : mode === "volume" ? "behind schedule" : "kickstart";
+
+            const directive = mode === "replication"
+              ? `Publish ${postsToShip} ${postsToShip === 1 ? "post" : "posts"} replicating Post ${topRow.post_number}`
+              : mode === "volume"
+                ? `Publish ${postsToShip} ${postsToShip === 1 ? "post" : "posts"} this week`
+                : `Publish your first ${postsToShip === 1 ? "post" : `${postsToShip} posts`} this week`;
 
             return (
               <div className="rounded-xl border border-foreground/15 bg-card p-5 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Flame className="h-3.5 w-3.5 text-foreground" />
-                  <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-foreground">
-                    Do this next
-                  </p>
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-3.5 w-3.5 text-foreground" />
+                    <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-foreground">
+                      Do this next
+                    </p>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    Focus: <span className="text-foreground font-semibold">{focusLabel}</span>
+                    <span className="text-border mx-1">·</span>
+                    {focusReason}
+                  </span>
                 </div>
                 <p className="text-xl sm:text-2xl font-semibold text-foreground leading-tight">
                   {directive}
                 </p>
-                {topRow && (
+
+                {mode === "replication" && topRow && (
                   <div className="text-xs text-muted-foreground space-y-1">
-                    <p className="font-medium text-foreground/80">Focus on what's working:</p>
+                    <p className="font-medium text-foreground/80">Use Post {topRow.post_number}'s pattern:</p>
                     <ul className="space-y-0.5 pl-1">
-                      <li>• Replicate Post {topRow.post_number}'s structure ({topRow.contribution} {goalLabel})</li>
-                      <li>• Lead with the same hook angle</li>
-                      <li>• Use the same CTA style</li>
+                      <li>• Same hook angle</li>
+                      <li>• Same CTA style</li>
+                      <li>• Same structure / format</li>
                     </ul>
                   </div>
                 )}
-                {expectedLow !== null && expectedHigh !== null && expectedHigh > 0 && (
-                  <p className="text-xs text-foreground pt-1 border-t border-border">
-                    Expected impact: <span className="font-semibold tabular-nums">+{expectedLow}–{expectedHigh} {goalLabel}</span>
-                  </p>
+                {mode === "volume" && topRow && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground/80">Lead with what's working:</p>
+                    <ul className="space-y-0.5 pl-1">
+                      <li>• Match Post {topRow.post_number}'s hook ({topRow.contribution} {goalLabel})</li>
+                      <li>• Keep CTA outcome-focused</li>
+                    </ul>
+                  </div>
                 )}
+                {mode === "activation" && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground/80">Start measuring outcome signals:</p>
+                    <ul className="space-y-0.5 pl-1">
+                      <li>• Use a clear, single CTA</li>
+                      <li>• Mark posts as posted to log contribution</li>
+                    </ul>
+                  </div>
+                )}
+
+                {expectedLow !== null && expectedHigh !== null && expectedHigh > 0 && (
+                  <div className="pt-2 border-t border-border space-y-1">
+                    <p className="text-xs text-foreground">
+                      Expected impact: <span className="font-semibold tabular-nums">+{expectedLow}–{expectedHigh} {goalLabel}</span>
+                    </p>
+                    <p className="text-[10px] text-muted-foreground leading-snug">
+                      Based on:{" "}
+                      {mode === "replication"
+                        ? `Post ${topRow!.post_number} contribution rate (${topRow!.contribution} ${goalLabel}/post · ${topShare}% of total)`
+                        : `blended avg of ${rows.length} measured post${rows.length === 1 ? "" : "s"} (${(totalContrib / rows.length).toFixed(1)} ${goalLabel}/post)`}
+                    </p>
+                  </div>
+                )}
+
                 <Button
                   size="sm"
                   className="w-full justify-between"
-                  onClick={() => navigate(`/create?campaign_id=${id}${topRow ? `&clone_post=${topRow.post_number}` : ""}`)}
+                  onClick={() => navigate(`/create?campaign_id=${id}${topRow && (mode === "replication" || mode === "volume") ? `&clone_post=${topRow.post_number}` : ""}`)}
                 >
-                  Create the next post
+                  {mode === "replication" && topRow
+                    ? `Create ${postsToShip} ${postsToShip === 1 ? "post" : "posts"} using this pattern`
+                    : "Create the next post"}
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -576,9 +649,29 @@ const CampaignPlanPage = () => {
                             {week.cta_strategy && (
                               <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">CTA:</span> {week.cta_strategy}</p>
                             )}
-                            {weekPosts.map((post: any) => (
-                              <CampaignPostCard key={post.id} post={post} campaignId={id!} onChange={fetchAll} />
-                            ))}
+                            {(() => {
+                              // Build leaderboard rank lookup so each card can show "Top / Mid / Low performer"
+                              const allRows = (goalAgg?.contribution_rows || []) as any[];
+                              const totalC = allRows.reduce((s, r) => s + (r.contribution || 0), 0);
+                              const sorted = [...allRows].filter((r) => (r.contribution || 0) > 0).sort((a, b) => b.contribution - a.contribution);
+                              const rankByPostNumber = new Map<number, { rank: number; total: number; contribution: number; share: number }>();
+                              sorted.forEach((r, i) => rankByPostNumber.set(r.post_number, {
+                                rank: i + 1,
+                                total: sorted.length,
+                                contribution: r.contribution,
+                                share: totalC > 0 ? Math.round((r.contribution / totalC) * 100) : 0,
+                              }));
+                              return weekPosts.map((post: any) => (
+                                <CampaignPostCard
+                                  key={post.id}
+                                  post={post}
+                                  campaignId={id!}
+                                  onChange={fetchAll}
+                                  performanceRank={rankByPostNumber.get(post.post_number)}
+                                  goalLabel={(goalAgg?.goal_metric || campaign.target_metric || "").replace(/_/g, " ")}
+                                />
+                              ));
+                            })()}
                             {weekPosts.length - drafted > 0 && (
                               <button
                                 onClick={() => navigate(`/create?campaign_id=${id}`)}
