@@ -207,9 +207,33 @@ const DraftsPage = () => {
             const prediction = predictions[draft.id];
             const isExpanded = expandedPrediction === draft.id;
             const pubRec = prediction ? publishColors[prediction.publish_recommendation] || publishColors.revise : null;
+            const ctx = contextByDraftId[draft.id];
 
             return (
               <div key={draft.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+                {/* Campaign context badge — turns isolated drafts into
+                    campaign-aware execution units. Only shown when the draft
+                    is linked to a campaign post plan. */}
+                {ctx && (
+                  <Link
+                    to={`/campaign/${ctx.campaign_id}`}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/20 px-2 py-1 text-[11px] text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <Target className="h-3 w-3" />
+                    <span className="font-medium truncate max-w-[200px]">{ctx.campaign_name}</span>
+                    <span className="text-primary/60">·</span>
+                    <span>Week {ctx.week_number}</span>
+                    <span className="text-primary/60">·</span>
+                    <span>Post {ctx.post_number}</span>
+                    {ctx.phase && (
+                      <>
+                        <span className="text-primary/60">·</span>
+                        <span className="capitalize">{ctx.phase.replace(/_/g, " ")}</span>
+                      </>
+                    )}
+                  </Link>
+                )}
+
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground truncate">{(draft.ideas as any)?.idea_title || (draft.ideas as any)?.instruction || "Untitled"}</p>
