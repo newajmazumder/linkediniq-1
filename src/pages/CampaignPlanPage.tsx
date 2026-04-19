@@ -544,31 +544,67 @@ const CampaignPlanPage = () => {
             );
           })()}
 
-          {campaign.target_quantity && campaign.target_metric && (
-            <div className="rounded-lg border border-border bg-card overflow-hidden">
-              {/* Goal progress — primary signal */}
-              <div className="px-4 py-4">
-                <CampaignGoalProgressBar
-                  currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
-                  target={campaign.target_quantity}
+          {campaign.target_quantity && campaign.target_metric && (() => {
+            const cur = goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0;
+            const tgt = campaign.target_quantity;
+            const metricLabel = goalMetricLabel(campaign.target_metric);
+            const { pct, barPct, status, remaining, overTarget } = formatGoalProgress(cur, tgt);
+            const isAchieved = status === "achieved" || status === "overachieved";
+            const barClass = isAchieved ? "bg-emerald-500" : status === "not_started" ? "bg-muted-foreground/40" : "bg-primary";
+            const accentText = isAchieved ? "text-emerald-600 dark:text-emerald-400" : status === "not_started" ? "text-muted-foreground" : "text-foreground";
+            const statusBadge = status === "not_started"
+              ? "Not started"
+              : status === "achieved"
+                ? "Goal achieved"
+                : status === "overachieved"
+                  ? `+${overTarget} over target`
+                  : `${remaining} remaining`;
+
+            return (
+              <div className="rounded-lg border border-border bg-card overflow-hidden">
+                {/* Hero — outcome at a glance. Big number, single bar. No nested chrome. */}
+                <div className="px-5 pt-5 pb-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-3.5 w-3.5 text-muted-foreground" />
+                      <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-muted-foreground">
+                        Campaign Goal
+                      </p>
+                    </div>
+                    <span className={cn("text-[11px] font-medium tabular-nums", accentText)}>
+                      {tgt ? `${pct}%` : "—"} · {statusBadge}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-baseline gap-2">
+                    <span className="text-4xl sm:text-5xl font-semibold tabular-nums text-foreground leading-none">
+                      {cur}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      / {tgt} {metricLabel}
+                    </span>
+                  </div>
+                  <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className={cn("h-full transition-all", barClass)}
+                      style={{ width: `${barPct}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Projection — embedded, uses its own header as the section divider */}
+                <CampaignProjectionCard
+                  startedAt={startedRef}
+                  targetEndAt={endsRef}
+                  currentValue={cur}
+                  target={tgt}
                   goalMetric={campaign.target_metric}
-                  variant="full"
+                  contributionRows={goalAgg?.contribution_rows || []}
+                  embedded
+                  className="border-t border-border"
                 />
               </div>
-              {/* Visual separator */}
-              <div className="border-t border-border" />
-              {/* Projection — at current pace */}
-              <CampaignProjectionCard
-                startedAt={startedRef}
-                targetEndAt={endsRef}
-                currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
-                target={campaign.target_quantity}
-                goalMetric={campaign.target_metric}
-                contributionRows={goalAgg?.contribution_rows || []}
-                className="!rounded-none !border-0 !border-l-0"
-              />
-            </div>
-          )}
+            );
+          })()}
 
           {goalAgg?.contribution_rows?.length > 0 && (
             <TopPerformerCard
