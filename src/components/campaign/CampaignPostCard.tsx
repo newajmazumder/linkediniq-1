@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import MarkPostedDialog from "@/components/strategy/MarkPostedDialog";
+import { deriveCampaignPostLifecycle, extractCampaignPostPreview } from "@/lib/campaign-posts";
 
 type PostPlan = {
   id: string;
@@ -124,9 +125,16 @@ const CampaignPostCard = ({
     }
   };
 
-  const status = (post.status || "planned") as keyof typeof statusMeta;
+  const status = deriveCampaignPostLifecycle({
+    planStatus: post.status,
+    linkedDraftId: post.linked_draft_id,
+    linkedPostId: post.linked_post_id,
+    draftStatus,
+    scheduledAt: draftScheduledAt,
+  }) as keyof typeof statusMeta;
   const meta = statusMeta[status] || statusMeta.planned;
   const StatusIcon = meta.Icon;
+  const preview = extractCampaignPostPreview(draftContent);
 
   const actualEngagementRate = actualPerformance?.impressions
     ? (((actualPerformance.likes || 0) + (actualPerformance.comments || 0) + (actualPerformance.saves || 0)) / actualPerformance.impressions) * 100
@@ -184,7 +192,13 @@ const CampaignPostCard = ({
                 to="/drafts"
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
-                <PenLine className="h-3 w-3" /> Open draft
+                <Eye className="h-3 w-3" /> View
+              </Link>
+              <Link
+                to="/drafts"
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+              >
+                <PenLine className="h-3 w-3" /> Edit
               </Link>
               <button
                 onClick={() => setMarkOpen(true)}
@@ -193,11 +207,25 @@ const CampaignPostCard = ({
               >
                 <Send className="h-3 w-3" /> Mark posted
               </button>
+              <Link
+                to={`/create?campaign_id=${campaignId}&post_plan_id=${post.id}`}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+              >
+                <PenLine className="h-3 w-3" /> Duplicate
+              </Link>
             </>
           )}
 
           {status === "posted" && (
             <>
+              {post.linked_post_id && (
+                <Link
+                  to={`/performance/${post.linked_post_id}`}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  <Eye className="h-3 w-3" /> View
+                </Link>
+              )}
               {post.posted_url && (
                 <a
                   href={post.posted_url}
@@ -209,10 +237,16 @@ const CampaignPostCard = ({
                 </a>
               )}
               <Link
-                to="/performance"
+                to={`/create?campaign_id=${campaignId}&post_plan_id=${post.id}`}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+              >
+                <PenLine className="h-3 w-3" /> Duplicate
+              </Link>
+              <Link
+                to={post.linked_post_id ? `/performance/${post.linked_post_id}` : "/performance"}
                 className="flex items-center gap-1 text-xs text-primary hover:underline"
               >
-                <Eye className="h-3 w-3" /> Performance
+                <BarChart3 className="h-3 w-3" /> Performance
               </Link>
             </>
           )}
@@ -241,6 +275,16 @@ const CampaignPostCard = ({
 
       <p className="text-xs text-foreground">{post.post_objective}</p>
       <p className="text-[10px] text-muted-foreground">{post.content_angle}</p>
+      {(preview.title || preview.snippet || preview.cta || draftScheduledAt) && (
+        <div className="rounded-md border border-border bg-muted/20 p-2.5 space-y-1.5">
+          {preview.title && <p className="text-xs font-medium text-foreground line-clamp-1">{preview.title}</p>}
+          {preview.snippet && <p className="text-[11px] text-muted-foreground line-clamp-2">{preview.snippet}</p>}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
+            {preview.cta && <span>CTA: <span className="text-foreground">{preview.cta}</span></span>}
+            {draftScheduledAt && status === "scheduled" && <span>Scheduled: <span className="text-foreground">{new Date(draftScheduledAt).toLocaleString()}</span></span>}
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap gap-1">
         {post.suggested_hook_type && (
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{post.suggested_hook_type}</span>
