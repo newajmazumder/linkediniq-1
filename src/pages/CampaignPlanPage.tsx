@@ -12,6 +12,7 @@ import {
   CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench, Eye, ThumbsUp, MessageSquare, MousePointer, ShieldCheck, Info,
 } from "lucide-react";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
 import ExecutionDashboard from "@/components/strategy/ExecutionDashboard";
@@ -582,27 +583,23 @@ const CampaignPlanPage = () => {
       <section className="space-y-3">
 
       {/* Tabs */}
-      <div className="flex gap-1.5 border-b border-border">
-        {(["plan", "performance", "analytics", "report"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => {
-              setTab(t);
-              if (t === "analytics") {
-                if (!analytics) fetchAnalytics();
-                if (!goalAgg) fetchGoalAggregate();
-              }
-            }}
-            className={cn(
-              "relative -mb-px px-3 py-2 text-xs font-medium transition-colors capitalize border-b-2",
-              tab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {t === "plan" && "📅 "}{t === "performance" && "🎯 "}{t === "analytics" && "📈 "}{t === "report" && "📄 "}
-            {t}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        value={tab}
+        onValueChange={(v) => {
+          setTab(v as typeof tab);
+          if (v === "analytics") {
+            if (!analytics) fetchAnalytics();
+            if (!goalAgg) fetchGoalAggregate();
+          }
+        }}
+      >
+        <TabsList>
+          <TabsTrigger value="plan">Plan</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="report">Report</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* PERFORMANCE TAB — live results: directive + progress + projection + top performer + execution */}
       {tab === "performance" && (

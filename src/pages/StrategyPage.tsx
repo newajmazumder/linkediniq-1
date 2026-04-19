@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor,
@@ -389,19 +390,12 @@ const StrategyPage = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1.5">
-        {(["campaigns", "recommendations"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors capitalize ${
-              tab === t ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "campaigns" | "recommendations")}>
+        <TabsList>
+          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Campaigns tab */}
       {tab === "campaigns" && (
@@ -566,7 +560,7 @@ const StrategyPage = () => {
               <p className="mt-2 text-sm text-muted-foreground">No campaigns yet. Create one to guide your content.</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {campaigns.map((c) => {
                 const prog = progress[c.id];
                 const posting = postingStats[c.id];
