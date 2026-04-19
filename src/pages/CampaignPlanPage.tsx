@@ -318,46 +318,25 @@ const CampaignPlanPage = () => {
             </button>
           )}
 
-          {/* L3 — Goal · Execution · Velocity */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border border-y border-border">
-            <div className="px-4 py-3 first:pl-0">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Goal</p>
-              <p className="mt-1 text-sm font-medium text-foreground">
-                {campaign.target_quantity && campaign.target_metric
-                  ? `${campaign.target_quantity} ${campaign.target_metric.replace(/_/g, " ")}`
-                  : <span className="text-muted-foreground font-normal">Not set</span>}
-              </p>
-              {outcomePct !== null && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{outcomePct}% complete</p>
+          {/* Urgency micro-line — only when behind, anchors hero to outcome */}
+          {showUrgency && (
+            <div className="rounded-md bg-muted/40 px-3 py-2 text-xs flex items-center gap-2 flex-wrap">
+              <AlertTriangle className={cn("h-3.5 w-3.5 shrink-0", meta.textClass)} />
+              {velocityShort && (
+                <span className={cn("font-medium", meta.textClass)}>
+                  {velocityShort} posts/wk behind schedule
+                </span>
               )}
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Execution</p>
-              <p className="mt-1 text-sm font-medium text-foreground">
-                {totalPosts > 0 ? `${draftedPosts}/${totalPosts} posts` : <span className="text-muted-foreground font-normal">No plan</span>}
-              </p>
-              {totalPosts > 0 && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{postingPct ?? 0}% drafted</p>
-              )}
-            </div>
-            <div className="px-4 py-3 last:pr-0">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Velocity</p>
-              {velocity ? (
+              {shortfallPct !== null && shortfallPct > 0 && (
                 <>
-                  <p className="mt-1 text-sm font-medium text-foreground tabular-nums">
-                    {velocity.actual} <span className="text-muted-foreground font-normal">/ {velocity.required} per wk</span>
-                  </p>
-                  <p className={cn("mt-0.5 text-[11px]", velocity.onPace ? "text-muted-foreground" : meta.textClass)}>
-                    {velocity.onPace ? "On pace" : `${(velocity.required - velocity.actual).toFixed(1)} short / week`}
-                  </p>
+                  {velocityShort && <span className="text-border">·</span>}
+                  <span className="text-muted-foreground">
+                    projected <span className={cn("font-semibold", meta.textClass)}>{shortfallPct}%</span> shortfall
+                  </span>
                 </>
-              ) : (
-                <p className="mt-1 text-sm text-muted-foreground font-normal">—</p>
               )}
             </div>
-          </div>
-
-          {/* L4 — Score breakdown is now its own dedicated card below; keep hero clean */}
+          )}
         </div>
       </div>
 
