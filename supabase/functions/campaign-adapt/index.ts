@@ -77,10 +77,10 @@ serve(async (req) => {
         }
       }
 
-      const newApplied = [...(adaptation.applied_changes || []), { adjustment, applied, applied_at: new Date().toISOString() } as any];
-      // Rename to keep compiler happy without unused var warning
-      const adjustment = adj;
-      const persistedApplied = [...(adaptation.applied_changes || []), { adjustment, applied, applied_at: new Date().toISOString() }];
+      const persistedApplied = [
+        ...(adaptation.applied_changes || []),
+        { adjustment: adj, applied, applied_at: new Date().toISOString() },
+      ];
       await supabase.from("campaign_adaptations")
         .update({ applied_changes: persistedApplied, status: applied.length ? "applied" : adaptation.status, applied_at: new Date().toISOString() })
         .eq("id", adaptation_id);
