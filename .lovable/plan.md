@@ -1,93 +1,29 @@
 
+The user wants lifecycle-state-driven UI. Currently the campaign page shows a fake 3.5/10 score and "Next Best Action" even when no plan exists and nothing has been posted. Need to gate everything behind lifecycle state.
 
-The user wants Time-Aware Campaign Intelligence. Let me check what already exists vs what's missing.
+## Lifecycle states
+1. **SETUP** — no plan exists → only show "Generate Plan" CTA + onboarding guidance. No score, no NBA, no pacing strip, no progress bar.
+2. **PLANNED** — plan exists, 0 posts → show plan, hide score, NBA = "Generate content / publish first post" only. No performance claims.
+3. **EXECUTING** — 1-2 posts → show pacing, hide score (or show "—"), NBA limited to execution.
+4. **LEARNING** — 3+ posts → unlock score + full NBA intelligence.
 
-**What exists already** (from schema + code I've read):
-- `campaigns.target_start_date`, `started_at`, `completed_at` (no explicit `end_date`)
-- `campaign_post_plans.planned_date`, `posted_at`, `missed_at`
-- `execution.ts` already computes `daysElapsed`, `daysRemaining`, `velocityActual`, `velocityRequired`, posting %
-- `campaign-next-action` already has a `pacing` ratio and on-pace branching
+## Implementation
+1. **`src/lib/campaign-lifecycle.ts`** (new) — single `deriveLifecycleState(campaign, postPlans, postedCount)` returning `'setup' | 'planned' | 'executing' | 'learning'`.
+2. **`CampaignPlanPage.tsx`** — compute state, conditionally render:
+   - `setup`: hide score header, hide NBA, hide pacing strip, hide goal progress. Show big "Generate Plan" empty state.
+   - `planned`: hide score, show plan, NBA shows only "publish first post".
+   - `executing`: show pacing strip, score shows "—" with "Building signal" hint, NBA shows execution-only actions.
+   - `learning`: full current behavior.
+3. **`campaign-next-action`** edge function — gate by `posted_count`:
+   - `posted_count === 0` + no plan → `blocker` "Generate plan"
+   - `posted_count === 0` + plan exists → `blocker` "Publish first post"
+   - `posted_count < 3` → only execution actions, no pattern claims, confidence forced to `low`
+   - `posted_count >= 3` → existing logic
+4. **Block "Start Campaign"** without a plan — already implicitly true (no posts to start), but add explicit guard in any "start" action.
 
-**What's actually missing**:
-1. **No `end_date`** — currently inferred as `started_at + ceil(totalPlanned/5)*7 days`. Brittle and invisible to user.
-2. **No NOT_STARTED state surfaced** — when 0 posts and 0 elapsed, the engine still says "on track".
-3. **No "expected by today" pacing display** — UI shows goal progress but never "expected 3 / actual 1 / behind by 2".
-4. **No planned_time** — only `planned_date` (timestamptz, but date-only in practice).
-5. **Decision engine doesn't bucket BEHIND/ON_TRACK/AHEAD as primary state** — it derives nuanced action types but never says the simple verdict.
+## Files
+- New: `src/lib/campaign-lifecycle.ts`
+- Edit: `src/pages/CampaignPlanPage.tsx`, `supabase/functions/campaign-next-action/index.ts`
+- Edit: `src/components/campaign/NextBestActionCard.tsx` (handle `setup`/`planned` empty-state variant)
 
-I won't propose v2/v3 (own performance learning, competitor patterns) — user said don't overcomplicate v1.
-
----
-
-# Plan — Time-Aware Campaign Intelligence (v1)
-
-Make the system honest about *time*: surface NOT_STARTED, show "expected vs actual by today", and let the Next Best Action engine choose by the time × execution × data matrix.
-
-## 1. Schema additions (migration)
-
-Add to `campaigns`:
-- `target_end_date timestamptz` — explicit campaign deadline (replaces today's brittle 5-posts/week inference).
-- `duration_days int generated` — computed from start/end at read time (or just compute client-side).
-
-Add to `campaign_post_plans`:
-- `planned_time text` — e.g. `"10:30"` (24h, optional). `planned_date` continues to hold the date.
-
-Backfill: for existing campaigns, `target_end_date = target_start_date + INTERVAL '28 days'` if null.
-
-## 2. Pacing engine (`src/lib/execution.ts`)
-
-Add a single function:
-```text
-computePacing(campaign, postPlans, now):
-  expectedByNow  = round(daysElapsed / daysTotal * totalPlanned)
-  actual         = posted count
-  paceDelta      = actual - expectedByNow
-  state          = NOT_STARTED | BEHIND | ON_TRACK | AHEAD
-  requiredVelocity = postsRemaining / max(daysRemaining,1) * 7   // posts/week
-```
-
-Replace the existing `deriveExecutionStatus` "active vs at_risk" logic to use the new state buckets. Keep `at_risk`/`completed`/`failed`/`paused` as they were.
-
-## 3. Decision engine (`supabase/functions/campaign-next-action/index.ts`)
-
-Use the **Time × Execution × Data** matrix as the *first* gate:
-
-```text
-NOT_STARTED  → action = blocker      "Start campaign — publish your first post today"
-BEHIND       → action = execution    "Catch up — publish N posts in next 48h"
-ON_TRACK     → fall through to existing signal-strength matrix
-                (low → experiment, medium → optimization, high → exploit winner)
-AHEAD        → action = experiment   "You have buffer — use it to test something risky"
-```
-
-Adds `pace` block to the response payload: `{ expectedByNow, actual, delta, state }`.
-
-## 4. UI surfaces
-
-**a) Pacing Feedback strip** — new lightweight component `CampaignPacingStrip.tsx`, rendered above `NextBestActionCard`:
-```
-Expected by today: 3 posts   Actual: 1   Status: Behind (-2)
-```
-Color-coded: gray (NOT_STARTED), red (BEHIND), green (ON_TRACK), blue (AHEAD).
-
-**b) Next Best Action card** — show the new state badge (NOT_STARTED/BEHIND/etc) next to the existing priority chip.
-
-**c) Campaign edit form (`StrategyPage.tsx`)** — add `target_end_date` date picker next to `target_start_date`.
-
-**d) Post plan card (`CampaignPostCard.tsx`)** — show `planned_time` next to planned date when set; allow editing via existing post detail flow (out of scope here — just display).
-
-## 5. Files touched
-
-- **Migration**: add `target_end_date`, `planned_time`.
-- `src/lib/execution.ts` — `computePacing()` + state machine update.
-- `supabase/functions/campaign-next-action/index.ts` — time-first decision tree, pace payload.
-- `supabase/functions/execution-tick/index.ts` — use real `target_end_date` instead of inferred end.
-- `src/components/campaign/CampaignPacingStrip.tsx` — new component.
-- `src/pages/CampaignPlanPage.tsx` — render pacing strip; pass pace to card.
-- `src/components/campaign/NextBestActionCard.tsx` — render state badge.
-- `src/pages/StrategyPage.tsx` — `target_end_date` picker in form.
-- `src/components/campaign/CampaignPostCard.tsx` — display `planned_time` if present.
-- New `PHASE_5_TEST_CASES.md` — 4 scenarios (NOT_STARTED, BEHIND, ON_TRACK, AHEAD) + pacing strip + end-date editing.
-
-No v2/v3 timing intelligence (audience-region recommendations, own-performance learning) — kept out as the user requested.
-
+No DB migration. No new edge functions.
