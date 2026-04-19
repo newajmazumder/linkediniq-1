@@ -2,7 +2,7 @@
 // States: not_started | in_progress | achieved | overachieved
 // Variants: "compact" (one-line strip) and "full" (with breakdown)
 
-import { CheckCircle2, Target, TrendingUp } from "lucide-react";
+import { CheckCircle2, Target, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatGoalProgress, goalMetricLabel, type GoalStatus } from "@/lib/goal-metrics";
 
@@ -83,7 +83,7 @@ const CampaignGoalProgressBar = ({
   }
 
   return (
-    <div className={cn("rounded-lg border border-border p-4", styles.bg, className)}>
+    <div className={cn("rounded-lg border p-4", styles.bg, status === "overachieved" || status === "achieved" ? "border-emerald-500/40" : "border-border", className)}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {isAchieved ? (
@@ -122,9 +122,12 @@ const CampaignGoalProgressBar = ({
           </p>
         </div>
         {status === "overachieved" ? (
-          <div className="flex items-center gap-1 rounded-md bg-emerald-500/15 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
-            <TrendingUp className="h-3.5 w-3.5" />
-            +{overTarget} over
+          <div className="flex items-center gap-1.5 rounded-md bg-emerald-500/20 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+            <Sparkles className="h-3.5 w-3.5" />
+            <div className="text-right leading-tight">
+              <div className="tabular-nums">+{overTarget} over target</div>
+              <div className="text-[10px] font-normal opacity-80">{pct}% of goal</div>
+            </div>
           </div>
         ) : null}
       </div>
@@ -135,6 +138,13 @@ const CampaignGoalProgressBar = ({
           style={{ width: `${barPct}%` }}
         />
       </div>
+
+      {/* Overachievement celebration line */}
+      {status === "overachieved" && (
+        <p className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 leading-snug">
+          🎉 Goal smashed. Use the AI Insight panel to capture what worked so the next campaign starts here.
+        </p>
+      )}
     </div>
   );
 };
