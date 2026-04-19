@@ -140,7 +140,7 @@ const CampaignPostCard = ({
   const status = deriveCampaignPostLifecycle({
     planStatus: post.status,
     linkedDraftId: post.linked_draft_id,
-    linkedPostId: post.linked_post_id,
+    linkedPostId: resolvedLinkedPostId,
     draftStatus,
     scheduledAt: draftScheduledAt,
   }) as keyof typeof statusMeta;
