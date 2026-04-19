@@ -37,6 +37,7 @@ import StrategyVersionsCard from "@/components/campaign/StrategyVersionsCard";
 import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
 import { computePacing } from "@/lib/execution";
+import { deriveLifecycleState, LIFECYCLE_META } from "@/lib/campaign-lifecycle";
 import type { NextBestAction } from "@/lib/campaign-intelligence";
 
 type Campaign = any;
