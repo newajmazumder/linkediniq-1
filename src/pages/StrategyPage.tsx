@@ -389,19 +389,12 @@ const StrategyPage = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1.5">
-        {(["campaigns", "recommendations"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors capitalize ${
-              tab === t ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onValueChange={(v) => setTab(v as "campaigns" | "recommendations")}>
+        <TabsList>
+          <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
+          <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Campaigns tab */}
       {tab === "campaigns" && (
