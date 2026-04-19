@@ -1,0 +1,107 @@
+// The single most important action for this campaign right now.
+// Follows Observation → Interpretation → Impact → Recommendation → Confidence schema.
+import { useEffect, useState } from "react";
+import { ArrowRight, Loader2, RefreshCw, Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { getNextBestAction, PRIORITY_TONE, type NextBestAction } from "@/lib/campaign-intelligence";
+import ConfidenceBadge from "./ConfidenceBadge";
+
+export default function NextBestActionCard({
+  campaignId,
+  onAction,
+  refreshKey,
+}: {
+  campaignId: string;
+  onAction?: (action: NextBestAction) => void;
+  refreshKey?: number;
+}) {
+  const [action, setAction] = useState<NextBestAction | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const a = await getNextBestAction(campaignId);
+    setAction(a);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, [campaignId, refreshKey]);
+
+  if (loading) {
+    return (
+      <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Computing next best action…
+      </div>
+    );
+  }
+  if (!action) return null;
+
+  const tone = PRIORITY_TONE[action.priority];
+
+  return (
+    <div className={cn("rounded-xl border bg-card overflow-hidden", tone.ring)}>
+      <div className={cn("border-l-[3px] px-5 py-4 sm:px-6 sm:py-5", tone.ring)}>
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="flex items-center gap-2 flex-wrap text-[11px]">
+              <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
+              <span className={cn("font-medium uppercase tracking-wider", tone.text)}>Next best action</span>
+              <span className="text-border">·</span>
+              <span className="text-muted-foreground capitalize">{tone.label} priority</span>
+              <ConfidenceBadge level={action.confidence} className="ml-1" />
+            </div>
+
+            <h3 className="text-base sm:text-lg font-semibold text-foreground leading-snug">
+              {action.title}
+            </h3>
+
+            {/* Structured reasoning — Observation → Interpretation → Impact → Recommendation */}
+            <div className="space-y-2 text-xs sm:text-sm">
+              <Row label="Observation" value={action.observation} />
+              <Row label="Why" value={action.interpretation} />
+              <Row label="Impact" value={action.impact} muted />
+              <Row label="Do this" value={action.recommendation} highlight />
+            </div>
+
+            {action.cta_label && (
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  size="sm"
+                  onClick={() => onAction?.(action)}
+                  className="h-8"
+                >
+                  {action.cta_action === "generate_plan" ? <Sparkles className="h-3.5 w-3.5 mr-1" /> : <ArrowRight className="h-3.5 w-3.5 mr-1" />}
+                  {action.cta_label}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={async () => { setRefreshing(true); await load(); setRefreshing(false); }}
+                  disabled={refreshing}
+                  className="h-8 px-2 text-xs text-muted-foreground"
+                >
+                  {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({ label, value, muted, highlight }: { label: string; value: string; muted?: boolean; highlight?: boolean }) {
+  return (
+    <div className="flex gap-3">
+      <span className={cn("shrink-0 w-[78px] text-[10px] uppercase tracking-wider pt-0.5", muted ? "text-muted-foreground/70" : "text-muted-foreground")}>
+        {label}
+      </span>
+      <p className={cn("flex-1 leading-relaxed", highlight ? "text-foreground font-medium" : muted ? "text-muted-foreground" : "text-foreground")}>
+        {value}
+      </p>
+    </div>
+  );
+}
