@@ -37,6 +37,8 @@ import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 import { BestMoveCard } from "@/components/competitor/BestMoveCard";
 import { GuidedJourney } from "@/components/competitor/GuidedJourney";
 import { CompetitorPostAnalysis } from "@/components/competitor/CompetitorPostAnalysis";
+import { ExploitationCommandCard } from "@/components/competitor/ExploitationCommandCard";
+import { StrategicMoveBadge } from "@/components/competitor/StrategicMoveBadge";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
@@ -129,8 +131,37 @@ const CompetitorsPage = () => {
 
   const [activeMarketContextId, setActiveMarketContextId] = useState<string | null>(null);
   const [activeMarketName, setActiveMarketName] = useState<string | null>(null);
+  const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
+  const [exploitData, setExploitData] = useState<any>(null);
+  const [exploitLoading, setExploitLoading] = useState(false);
 
-  useEffect(() => { if (user) { fetchCompetitors(); fetchBusinessProfile(); fetchActiveMarketContext(); } }, [user]);
+  useEffect(() => { if (user) { fetchCompetitors(); fetchBusinessProfile(); fetchActiveMarketContext(); fetchCachedExploit(); } }, [user]);
+
+  const fetchCachedExploit = async () => {
+    const { data } = await supabase
+      .from("competitor_insights")
+      .select("predicted_outcomes")
+      .eq("user_id", user!.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const cached = (data?.predicted_outcomes as any)?.exploit_engine;
+    if (cached) setExploitData(cached);
+  };
+
+  const recomputeExploit = async () => {
+    setExploitLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("competitor-exploit-engine", { body: {} });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setExploitData(data);
+      toast.success("Next best move computed");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to compute strategy");
+    }
+    setExploitLoading(false);
+  };
 
   const fetchBusinessProfile = async () => {
     const { data } = await supabase.from("business_profiles").select("product_summary, target_audience, company_summary").eq("user_id", user!.id).maybeSingle();
@@ -139,7 +170,8 @@ const CompetitorsPage = () => {
 
   const fetchActiveMarketContext = async () => {
     const { data: campaign } = await supabase
-      .from("campaigns").select("market_context_id").eq("user_id", user!.id).eq("is_active", true).limit(1).maybeSingle();
+      .from("campaigns").select("id, market_context_id").eq("user_id", user!.id).eq("is_active", true).limit(1).maybeSingle();
+    if (campaign?.id) setActiveCampaignId(campaign.id);
     if (campaign?.market_context_id) {
       setActiveMarketContextId(campaign.market_context_id);
       const { data: mc } = await supabase.from("market_contexts").select("region_name, region_code").eq("id", campaign.market_context_id).maybeSingle();
@@ -584,6 +616,17 @@ const CompetitorsPage = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Exploitation Command Card — fused next-best-post engine */}
+      {(competitors.length > 0 || exploitData) && (
+        <ExploitationCommandCard
+          data={exploitData}
+          loading={exploitLoading}
+          hasCampaign={!!activeCampaignId}
+          onRecompute={recomputeExploit}
+          onGenerate={(payload) => navigateToCreate(payload)}
+        />
+      )}
 
       {competitors.length === 0 ? (
         <div className="border border-dashed border-border rounded-lg p-8 text-center">
@@ -1116,8 +1159,11 @@ function PostCard({ post, competitorId, onDelete, onAnalyze, analyzing, expanded
             ))}
           </div>
         )}
-        {(post.hook_style || post.tone || post.cta_type) && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
+        {(post.hook_style || post.tone || post.cta_type || post.post_analysis?.strategic_move?.recommended_move) && (
+          <div className="flex flex-wrap gap-1.5 mt-2 items-center">
+            {post.post_analysis?.strategic_move?.recommended_move && (
+              <StrategicMoveBadge move={post.post_analysis.strategic_move.recommended_move} />
+            )}
             {post.hook_style && <Badge variant="outline" className="text-[10px]">Hook: {post.hook_style}</Badge>}
             {post.tone && <Badge variant="outline" className="text-[10px]">Tone: {post.tone}</Badge>}
             {post.cta_type && <Badge variant="outline" className="text-[10px]">CTA: {post.cta_type}</Badge>}

@@ -387,8 +387,21 @@ Return JSON:
     "relevance_to_user": "<how this relates to YOUR audience>"
   },
   "engagement_insight": "<WHY engagement is high/low tied to structure>",
-  "improvement_suggestions": ["<specific actionable suggestions>"]
+  "improvement_suggestions": ["<specific actionable suggestions>"],
+  "strategic_move": {
+    "recommended_move": "<mirror|outperform|oppose>",
+    "reasoning": "<1 sentence: why this move beats this specific post>",
+    "your_version_hook": "<rewritten hook applying the chosen move — ready to use>",
+    "your_version_cta": "<stronger or differentiated CTA tied to user's funnel>",
+    "exploit_target": "<specific weakness or angle being exploited — 1 phrase>"
+  }
 }
+
+STRATEGIC MOVE RULES:
+- mirror: post is solid, same structure works for user (low risk, validated topic)
+- outperform: same topic but competitor's hook OR CTA is weak — write a sharper version
+- oppose: flip the narrative — they say X, you argue the opposite (high differentiation)
+Pick exactly ONE move that gives the user the best leverage.
 
 Return ONLY valid JSON.`;
 
