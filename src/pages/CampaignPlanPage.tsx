@@ -418,12 +418,37 @@ const CampaignPlanPage = () => {
                   </p>
                 </div>
               )}
-              {weekPlans.length === 0 && (
+              {/* Hero CTA — context-aware:
+                  - No dates yet → Start Campaign (opens date dialog, then auto-generates plan)
+                  - Dates set, no plan → Generate Plan (uses existing dates)
+                  - Plan exists & started → Pause / Resume toggle */}
+              {!campaign.target_start_date || !campaign.target_end_date ? (
+                <Button size="sm" onClick={() => setStartDialogOpen(true)} disabled={generating}>
+                  <Play className="mr-1 h-3.5 w-3.5" />
+                  Start Campaign
+                </Button>
+              ) : weekPlans.length === 0 ? (
                 <Button size="sm" onClick={generatePlan} disabled={generating}>
                   {generating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
                   Generate Plan
                 </Button>
-              )}
+              ) : campaign.started_at && (campaign.execution_status === "active" || campaign.execution_status === "paused") ? (
+                <Button
+                  size="sm"
+                  variant={campaign.execution_status === "paused" ? "default" : "outline"}
+                  onClick={togglePause}
+                  disabled={togglingStatus}
+                >
+                  {togglingStatus ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : campaign.execution_status === "paused" ? (
+                    <Play className="mr-1 h-3.5 w-3.5" />
+                  ) : (
+                    <Pause className="mr-1 h-3.5 w-3.5" />
+                  )}
+                  {campaign.execution_status === "paused" ? "Resume" : "Pause"}
+                </Button>
+              ) : null}
             </div>
           </div>
 
@@ -498,10 +523,17 @@ const CampaignPlanPage = () => {
               Once you publish 2–3 posts, we'll start analyzing patterns and recommending improvements.
             </p>
           </div>
-          <Button onClick={generatePlan} disabled={generating} size="lg">
-            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-            Generate Plan
-          </Button>
+          {!campaign.target_start_date || !campaign.target_end_date ? (
+            <Button onClick={() => setStartDialogOpen(true)} disabled={generating} size="lg">
+              <Play className="mr-2 h-4 w-4" />
+              Start Campaign
+            </Button>
+          ) : (
+            <Button onClick={generatePlan} disabled={generating} size="lg">
+              {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+              Generate Plan
+            </Button>
+          )}
         </div>
       )}
 
