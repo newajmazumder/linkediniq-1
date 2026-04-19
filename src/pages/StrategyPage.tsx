@@ -117,6 +117,7 @@ const emptyForm = {
   target_quantity: "",
   target_timeframe: "monthly",
   target_priority: "medium",
+  target_end_date: "",
   language: "english",
   market_context_id: "",
 };
@@ -279,6 +280,7 @@ const StrategyPage = () => {
         target_quantity: form.target_quantity ? parseInt(form.target_quantity) : null,
         target_timeframe: form.target_timeframe,
         target_priority: form.target_priority,
+        target_end_date: form.target_end_date ? new Date(form.target_end_date).toISOString() : null,
         language: form.language,
         market_context_id: form.market_context_id || null,
       };
@@ -328,6 +330,7 @@ const StrategyPage = () => {
       target_quantity: c.target_quantity?.toString() || "",
       target_timeframe: c.target_timeframe || "monthly",
       target_priority: c.target_priority || "medium",
+      target_end_date: (c as any).target_end_date ? new Date((c as any).target_end_date).toISOString().split("T")[0] : "",
       language: (c as any).language || "english",
       market_context_id: (c as any).market_context_id || "",
     });
@@ -479,6 +482,16 @@ const StrategyPage = () => {
                       <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
                       <SelectContent>{priorities.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
                     </Select>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <label className="text-xs font-medium text-foreground">Campaign End Date</label>
+                    <Input
+                      type="date"
+                      value={form.target_end_date}
+                      onChange={(e) => setForm({ ...form, target_end_date: e.target.value })}
+                      className="text-sm"
+                    />
+                    <p className="text-[10px] text-muted-foreground">When should this campaign be complete? Used for pacing & "expected by today" math.</p>
                   </div>
                 </div>
               </div>

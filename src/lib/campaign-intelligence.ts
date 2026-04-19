@@ -38,6 +38,8 @@ export interface NextBestAction {
   signal_strength?: Confidence;
   signal_reason?: string;
   alternative_path?: string;
+  // Phase 5 — time-aware pacing state surfaced from the engine
+  pacing_state?: "NOT_STARTED" | "BEHIND" | "ON_TRACK" | "AHEAD";
 }
 
 export async function listStrategyVersions(campaignId: string): Promise<StrategyVersion[]> {

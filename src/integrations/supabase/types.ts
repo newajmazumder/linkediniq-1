@@ -372,6 +372,7 @@ export type Database = {
           missed_at: string | null
           phase: string | null
           planned_date: string | null
+          planned_time: string | null
           post_number: number
           post_objective: string | null
           posted_at: string | null
@@ -398,6 +399,7 @@ export type Database = {
           missed_at?: string | null
           phase?: string | null
           planned_date?: string | null
+          planned_time?: string | null
           post_number: number
           post_objective?: string | null
           posted_at?: string | null
@@ -424,6 +426,7 @@ export type Database = {
           missed_at?: string | null
           phase?: string | null
           planned_date?: string | null
+          planned_time?: string | null
           post_number?: number
           post_objective?: string | null
           posted_at?: string | null
@@ -734,6 +737,7 @@ export type Database = {
           style_educational: number | null
           style_product_led: number | null
           style_storytelling: number | null
+          target_end_date: string | null
           target_metric: string | null
           target_priority: string | null
           target_quantity: number | null
@@ -776,6 +780,7 @@ export type Database = {
           style_educational?: number | null
           style_product_led?: number | null
           style_storytelling?: number | null
+          target_end_date?: string | null
           target_metric?: string | null
           target_priority?: string | null
           target_quantity?: number | null
@@ -818,6 +823,7 @@ export type Database = {
           style_educational?: number | null
           style_product_led?: number | null
           style_storytelling?: number | null
+          target_end_date?: string | null
           target_metric?: string | null
           target_priority?: string | null
           target_quantity?: number | null

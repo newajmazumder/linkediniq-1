@@ -32,9 +32,11 @@ import TopPerformerCard from "@/components/campaign/TopPerformerCard";
 import TopContributorsStrip from "@/components/campaign/TopContributorsStrip";
 import CampaignAdvisorBanner from "@/components/campaign/CampaignAdvisorBanner";
 import NextBestActionCard from "@/components/campaign/NextBestActionCard";
+import CampaignPacingStrip from "@/components/campaign/CampaignPacingStrip";
 import StrategyVersionsCard from "@/components/campaign/StrategyVersionsCard";
 import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
+import { computePacing } from "@/lib/execution";
 import type { NextBestAction } from "@/lib/campaign-intelligence";
 
 type Campaign = any;
@@ -250,9 +252,14 @@ const CampaignPlanPage = () => {
 
   // Pre-compute projection so we can show urgency micro-line in the hero.
   const startedRef = campaign.started_at || campaign.target_start_date;
-  const endsRef = startedRef && weekPlans.length > 0
-    ? new Date(new Date(startedRef).getTime() + weekPlans.length * 7 * 24 * 60 * 60 * 1000).toISOString()
-    : null;
+  // v5: prefer explicit target_end_date; fall back to legacy week-derived end.
+  const endsRef = campaign.target_end_date
+    ? campaign.target_end_date
+    : (startedRef && weekPlans.length > 0
+        ? new Date(new Date(startedRef).getTime() + weekPlans.length * 7 * 24 * 60 * 60 * 1000).toISOString()
+        : null);
+  // Pacing — calendar-aware verdict (NOT_STARTED / BEHIND / ON_TRACK / AHEAD)
+  const pacing = computePacing(postPlans as any, startedRef, endsRef);
   const proj = (campaign.target_quantity && campaign.target_metric)
     ? computeProjection(
         startedRef,
@@ -412,6 +419,9 @@ const CampaignPlanPage = () => {
 
       {/* PROACTIVE ADVISOR — surfaces blocking missing info as questions */}
       <CampaignAdvisorBanner questions={advisorQuestions} onChange={reloadAdvisorQuestions} />
+
+      {/* TIME-AWARE PACING STRIP — Expected vs Actual by today */}
+      {(postPlans.length > 0 || startedRef) && <CampaignPacingStrip pacing={pacing} />}
 
       {/* NEXT BEST ACTION — single prioritized recommendation, evidence-driven */}
       <NextBestActionCard

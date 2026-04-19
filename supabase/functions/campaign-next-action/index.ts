@@ -87,21 +87,43 @@ serve(async (req) => {
     const goalPct = goalTarget > 0 ? Math.round((goalCurrent / goalTarget) * 100) : 0;
     const totalClicks = allSignals.reduce((a: number, s: any) => a + (s.clicks || 0), 0);
 
-    // ---- TIME / SCHEDULE AWARENESS ----
+    // ---- TIME / SCHEDULE AWARENESS (v5: real target_end_date) ----
     const startedRef = campaign.started_at || campaign.target_start_date;
     const startMs = startedRef ? new Date(startedRef).getTime() : null;
     const nowMs = Date.now();
-    const campaignDays = totalWeeks * 7;
-    const endMs = startMs ? startMs + campaignDays * DAY_MS : null;
+    // Prefer explicit target_end_date; fall back to legacy week-derived end.
+    const explicitEndMs = campaign.target_end_date ? new Date(campaign.target_end_date).getTime() : null;
+    const fallbackEndMs = startMs ? startMs + (totalWeeks * 7 * DAY_MS) : null;
+    const endMs = explicitEndMs || fallbackEndMs;
+    const campaignDays = startMs && endMs ? Math.max(1, Math.round((endMs - startMs) / DAY_MS)) : (totalWeeks * 7);
     const elapsedDays = startMs ? Math.max(0, (nowMs - startMs) / DAY_MS) : 0;
     const daysRemaining = endMs ? Math.max(0, (endMs - nowMs) / DAY_MS) : null;
     const timeProgressPct = endMs && startMs ? Math.min(100, Math.round((elapsedDays / campaignDays) * 100)) : 0;
-    // Pace ratio: how much of the plan posted vs. how much time elapsed.
-    // <0.85 = behind, 0.85–1.15 = on pace, >1.15 = ahead
+
+    // ---- v5 PACING STATE — the simple verdict the user wants to hear ----
+    const elapsedRatio = campaignDays > 0 ? Math.max(0, Math.min(1, elapsedDays / campaignDays)) : 0;
+    const expectedByNow = totalPosts > 0 ? Math.round(elapsedRatio * totalPosts) : 0;
+    const paceDelta = posted - expectedByNow;
+    const ON_TRACK_TOLERANCE = 0.5;
+
+    let pacingState: "NOT_STARTED" | "BEHIND" | "ON_TRACK" | "AHEAD";
+    if (totalPosts === 0 || (posted === 0 && elapsedRatio < 0.05)) {
+      pacingState = "NOT_STARTED";
+    } else if (posted === 0 && expectedByNow > 0) {
+      pacingState = "BEHIND";
+    } else if (paceDelta < -ON_TRACK_TOLERANCE) {
+      pacingState = "BEHIND";
+    } else if (paceDelta > ON_TRACK_TOLERANCE) {
+      pacingState = "AHEAD";
+    } else {
+      pacingState = "ON_TRACK";
+    }
+
+    // Legacy ratio kept for the old branches that read it.
     const paceRatio = timeProgressPct > 0 ? (postingPct / Math.max(1, timeProgressPct)) : 1;
-    const isBehind = paceRatio < 0.85 && timeProgressPct > 10;
-    const isAhead = paceRatio > 1.15;
-    const isOnPace = !isBehind && !isAhead;
+    const isBehind = pacingState === "BEHIND";
+    const isAhead = pacingState === "AHEAD";
+    const isOnPace = pacingState === "ON_TRACK";
     const hasTimeBuffer = daysRemaining !== null && daysRemaining >= 1.5 && !isBehind;
 
     // ---- PATTERN DETECTION ----
@@ -192,19 +214,40 @@ serve(async (req) => {
         cta_action: "generate_plan",
       };
     }
+    // 1.5 NOT_STARTED — plan exists, but campaign hasn't begun executing
+    else if (pacingState === "NOT_STARTED" && totalPosts > 0) {
+      const firstPost = allPlans[0];
+      action = {
+        action_type: "blocker",
+        priority: "critical",
+        title: "Start campaign — publish your first post today",
+        observation: `Plan ready (${totalPosts} posts) but nothing published yet.`,
+        why_now: "Every day not posting is a day of expected output you can't recover linearly.",
+        interpretation: "The system can't measure, optimize, or learn anything until at least one post is live.",
+        impact: `You have ${campaignDays} days to ship ${totalPosts} posts. Time only runs forward.`,
+        recommendation: firstPost
+          ? `Open Post #${firstPost.post_number} and publish today.`
+          : "Open the first planned post and publish today.",
+        confidence: "high",
+        cta_label: firstPost ? `Open post #${firstPost.post_number}` : "Open plan",
+        target_post_id: firstPost?.id || null,
+      };
+    }
     // 2. EXECUTION — genuinely behind schedule (time-aware, not just count-aware)
-    else if (isBehind && daysRemaining !== null && daysRemaining < 7) {
-      const need = totalPosts - posted;
+    else if (pacingState === "BEHIND") {
+      const need = Math.max(1, expectedByNow - posted);
       action = {
         action_type: "execution",
-        priority: daysRemaining < 3 ? "critical" : "high",
-        title: `You're behind pace — ${need} posts in ${Math.ceil(daysRemaining)} days`,
-        observation: `${posted}/${totalPosts} posts live (${postingPct}%) but ${timeProgressPct}% of the campaign window has elapsed.`,
-        why_now: `Only ${Math.ceil(daysRemaining)} days left. Execution gap is real, not theoretical.`,
+        priority: daysRemaining !== null && daysRemaining < 3 ? "critical" : "high",
+        title: `You're behind pace — catch up ${need} ${need === 1 ? "post" : "posts"} in next 48h`,
+        observation: `Expected ${expectedByNow} posts by today, only ${posted} live (${postingPct}% of plan, ${timeProgressPct}% of time elapsed).`,
+        why_now: daysRemaining !== null
+          ? `${Math.ceil(daysRemaining)} days remaining. Execution gap is real, not theoretical.`
+          : "Execution gap is widening every day.",
         interpretation: "Strategy can't help if posts aren't going live. This is now a velocity problem.",
         impact: `Goal at ${goalPct}%. Without catching up, the math doesn't work.`,
         recommendation: nextPlannedPost
-          ? `Open Post #${nextPlannedPost.post_number} and ship today. Batch the next 2 in the same session.`
+          ? `Open Post #${nextPlannedPost.post_number} and ship today. Batch the next ${Math.min(need, 3)} in the same session.`
           : "Open the next planned post and publish today.",
         confidence: "high",
         cta_label: nextPlannedPost ? `Open post #${nextPlannedPost.post_number}` : "Open plan",
@@ -263,6 +306,22 @@ serve(async (req) => {
         confidence: confidenceFromSamples(allSignals.length),
         cta_label: "Revise strategy",
         cta_action: "revise_strategy",
+      };
+    }
+    // 6. AHEAD — buffer earned, use it to experiment instead of resting
+    else if (pacingState === "AHEAD" && nextPlannedPost) {
+      action = {
+        action_type: "experiment",
+        priority: "medium",
+        title: `You're ahead of pace — use the buffer to test something risky`,
+        observation: `${posted} of ${expectedByNow} expected by today (+${paceDelta} ahead). ${daysRemaining !== null ? Math.ceil(daysRemaining) + " days remaining" : ""}`.trim(),
+        why_now: "Being ahead is a one-time asset. Spend it on learning, not on resting.",
+        interpretation: "Safe posts when you're ahead = wasted buffer. A bolder hook or format here costs nothing if it underperforms — you've already banked the cadence.",
+        impact: "One experimental post now can unlock a pattern that lifts every remaining post.",
+        recommendation: `On Post #${nextPlannedPost.post_number}: try a hook angle or format you haven't used yet. Keep the goal-aligned CTA.`,
+        confidence: "medium",
+        cta_label: `Open post #${nextPlannedPost.post_number}`,
+        target_post_id: nextPlannedPost?.id || null,
       };
     }
     // (Old experiment branch merged into #7 Passive Optimization Mode below.)
@@ -336,14 +395,24 @@ serve(async (req) => {
     action.alternative_path = alternativeByType[action.action_type] || alternativeByType.steady;
     action.signal_strength = signalStrength;
     action.signal_reason = signalReason;
+    action.pacing_state = pacingState;
 
     return new Response(JSON.stringify({
       ok: true,
       action,
+      pace: {
+        state: pacingState,
+        expected_by_now: expectedByNow,
+        actual: posted,
+        delta: paceDelta,
+        days_remaining: daysRemaining !== null ? Number(daysRemaining.toFixed(1)) : null,
+        days_total: campaignDays,
+      },
       context: {
         posted, total_posts: totalPosts, posting_pct: postingPct,
         goal_pct: goalPct, signals: allSignals.length,
         pace_ratio: Number(paceRatio.toFixed(2)),
+        pacing_state: pacingState,
         is_behind: isBehind, is_on_pace: isOnPace, is_ahead: isAhead,
         days_remaining: daysRemaining !== null ? Number(daysRemaining.toFixed(1)) : null,
         time_progress_pct: timeProgressPct,

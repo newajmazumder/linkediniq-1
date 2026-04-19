@@ -18,6 +18,7 @@ type CampaignRow = {
   execution_status: string;
   started_at: string | null;
   target_start_date: string | null;
+  target_end_date: string | null;
   target_quantity: number | null;
   target_metric: string | null;
 };
@@ -64,8 +65,10 @@ async function tickCampaign(supabase: any, campaign: CampaignRow): Promise<{ id:
     : 0;
 
   const start = campaign.started_at ? new Date(campaign.started_at) : (campaign.target_start_date ? new Date(campaign.target_start_date) : null);
-  const totalWeeks = Math.max(1, Math.ceil(totalPlanned / 5)); // approx 5 posts/wk
-  const end = start ? new Date(start.getTime() + totalWeeks * 7 * dayMs) : null;
+  // v5: prefer explicit target_end_date; fall back to inferred 5-posts/wk window for legacy campaigns.
+  const end = campaign.target_end_date
+    ? new Date(campaign.target_end_date)
+    : (start ? new Date(start.getTime() + Math.max(1, Math.ceil(totalPlanned / 5)) * 7 * dayMs) : null);
   const daysTotal = start && end ? Math.max(1, Math.round((end.getTime() - start.getTime()) / dayMs)) : 7;
   const daysElapsed = start ? clamp(Math.round((now.getTime() - start.getTime()) / dayMs), 0, daysTotal) : 0;
   const daysRemaining = Math.max(0, daysTotal - daysElapsed);
@@ -132,7 +135,7 @@ serve(async (req) => {
       } catch { /* ignore */ }
     }
 
-    let q = supabase.from("campaigns").select("id, user_id, execution_status, started_at, target_start_date, target_quantity, target_metric");
+    let q = supabase.from("campaigns").select("id, user_id, execution_status, started_at, target_start_date, target_end_date, target_quantity, target_metric");
     if (campaignFilter.id) q = q.eq("id", campaignFilter.id);
     const { data: campaigns, error } = await q;
     if (error) throw error;
