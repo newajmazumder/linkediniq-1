@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
+import ExecutionDashboard from "@/components/strategy/ExecutionDashboard";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
@@ -282,6 +283,15 @@ const CampaignPlanPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Closed-loop execution dashboard */}
+      <ExecutionDashboard
+        campaignId={id!}
+        campaign={campaign}
+        postPlans={postPlans as any}
+        weekCount={weekPlans.length}
+        onChange={fetchAll}
+      />
 
       {/* Tabs */}
       <div className="flex gap-1.5 border-b border-border">

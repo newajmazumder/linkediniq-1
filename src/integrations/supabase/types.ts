@@ -146,6 +146,59 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_adaptations: {
+        Row: {
+          adjustments: Json
+          applied_at: string | null
+          campaign_id: string
+          created_at: string
+          id: string
+          patterns_observed: Json | null
+          predicted_impact: string | null
+          status: string
+          trigger_reason: string | null
+          updated_at: string
+          user_id: string
+          week_number: number | null
+        }
+        Insert: {
+          adjustments?: Json
+          applied_at?: string | null
+          campaign_id: string
+          created_at?: string
+          id?: string
+          patterns_observed?: Json | null
+          predicted_impact?: string | null
+          status?: string
+          trigger_reason?: string | null
+          updated_at?: string
+          user_id: string
+          week_number?: number | null
+        }
+        Update: {
+          adjustments?: Json
+          applied_at?: string | null
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          patterns_observed?: Json | null
+          predicted_impact?: string | null
+          status?: string
+          trigger_reason?: string | null
+          updated_at?: string
+          user_id?: string
+          week_number?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_adaptations_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_blueprints: {
         Row: {
           ai_recommendations: Json | null
@@ -264,11 +317,17 @@ export type Database = {
           campaign_id: string
           content_angle: string | null
           created_at: string | null
+          expected_outcome: string | null
           id: string
           linked_draft_id: string | null
           linked_post_id: string | null
+          missed_at: string | null
+          phase: string | null
+          planned_date: string | null
           post_number: number
           post_objective: string | null
+          posted_at: string | null
+          posted_url: string | null
           recommended_format: string | null
           status: string | null
           strategic_rationale: string | null
@@ -284,11 +343,17 @@ export type Database = {
           campaign_id: string
           content_angle?: string | null
           created_at?: string | null
+          expected_outcome?: string | null
           id?: string
           linked_draft_id?: string | null
           linked_post_id?: string | null
+          missed_at?: string | null
+          phase?: string | null
+          planned_date?: string | null
           post_number: number
           post_objective?: string | null
+          posted_at?: string | null
+          posted_url?: string | null
           recommended_format?: string | null
           status?: string | null
           strategic_rationale?: string | null
@@ -304,11 +369,17 @@ export type Database = {
           campaign_id?: string
           content_angle?: string | null
           created_at?: string | null
+          expected_outcome?: string | null
           id?: string
           linked_draft_id?: string | null
           linked_post_id?: string | null
+          missed_at?: string | null
+          phase?: string | null
+          planned_date?: string | null
           post_number?: number
           post_objective?: string | null
+          posted_at?: string | null
+          posted_url?: string | null
           recommended_format?: string | null
           status?: string | null
           strategic_rationale?: string | null
@@ -537,19 +608,26 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          completed_at: string | null
+          conversion_signal_count: number | null
           core_message: string | null
           created_at: string
           cta_type: string | null
+          execution_score: number | null
+          execution_status: string
           goal: string | null
           id: string
           is_active: boolean | null
           language: string | null
+          last_evaluated_at: string | null
           market_context_id: string | null
           name: string
           offer: string | null
           primary_objective: string | null
           primary_persona_id: string | null
           secondary_persona_id: string | null
+          started_at: string | null
+          strategy_strength_score: number | null
           style_authority: number | null
           style_educational: number | null
           style_product_led: number | null
@@ -562,21 +640,29 @@ export type Database = {
           tone: string | null
           updated_at: string
           user_id: string
+          velocity_score: number | null
         }
         Insert: {
+          completed_at?: string | null
+          conversion_signal_count?: number | null
           core_message?: string | null
           created_at?: string
           cta_type?: string | null
+          execution_score?: number | null
+          execution_status?: string
           goal?: string | null
           id?: string
           is_active?: boolean | null
           language?: string | null
+          last_evaluated_at?: string | null
           market_context_id?: string | null
           name: string
           offer?: string | null
           primary_objective?: string | null
           primary_persona_id?: string | null
           secondary_persona_id?: string | null
+          started_at?: string | null
+          strategy_strength_score?: number | null
           style_authority?: number | null
           style_educational?: number | null
           style_product_led?: number | null
@@ -589,21 +675,29 @@ export type Database = {
           tone?: string | null
           updated_at?: string
           user_id: string
+          velocity_score?: number | null
         }
         Update: {
+          completed_at?: string | null
+          conversion_signal_count?: number | null
           core_message?: string | null
           created_at?: string
           cta_type?: string | null
+          execution_score?: number | null
+          execution_status?: string
           goal?: string | null
           id?: string
           is_active?: boolean | null
           language?: string | null
+          last_evaluated_at?: string | null
           market_context_id?: string | null
           name?: string
           offer?: string | null
           primary_objective?: string | null
           primary_persona_id?: string | null
           secondary_persona_id?: string | null
+          started_at?: string | null
+          strategy_strength_score?: number | null
           style_authority?: number | null
           style_educational?: number | null
           style_product_led?: number | null
@@ -616,6 +710,7 @@ export type Database = {
           tone?: string | null
           updated_at?: string
           user_id?: string
+          velocity_score?: number | null
         }
         Relationships: [
           {
@@ -1678,6 +1773,104 @@ export type Database = {
             columns: ["linkedin_post_id"]
             isOneToOne: true
             referencedRelation: "linkedin_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_signals: {
+        Row: {
+          ai_evaluation: Json | null
+          campaign_id: string | null
+          clicks: number | null
+          comment_quality: string | null
+          conversion_intent: string | null
+          conversion_signal_score: number | null
+          created_at: string
+          cta_type: string | null
+          draft_id: string | null
+          engagement: number | null
+          format: string | null
+          hook_type: string | null
+          id: string
+          impressions: number | null
+          linkedin_post_id: string | null
+          phase: string | null
+          post_plan_id: string | null
+          post_style: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_evaluation?: Json | null
+          campaign_id?: string | null
+          clicks?: number | null
+          comment_quality?: string | null
+          conversion_intent?: string | null
+          conversion_signal_score?: number | null
+          created_at?: string
+          cta_type?: string | null
+          draft_id?: string | null
+          engagement?: number | null
+          format?: string | null
+          hook_type?: string | null
+          id?: string
+          impressions?: number | null
+          linkedin_post_id?: string | null
+          phase?: string | null
+          post_plan_id?: string | null
+          post_style?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_evaluation?: Json | null
+          campaign_id?: string | null
+          clicks?: number | null
+          comment_quality?: string | null
+          conversion_intent?: string | null
+          conversion_signal_score?: number | null
+          created_at?: string
+          cta_type?: string | null
+          draft_id?: string | null
+          engagement?: number | null
+          format?: string | null
+          hook_type?: string | null
+          id?: string
+          impressions?: number | null
+          linkedin_post_id?: string | null
+          phase?: string | null
+          post_plan_id?: string | null
+          post_style?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_signals_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_signals_draft_id_fkey"
+            columns: ["draft_id"]
+            isOneToOne: false
+            referencedRelation: "drafts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_signals_linkedin_post_id_fkey"
+            columns: ["linkedin_post_id"]
+            isOneToOne: false
+            referencedRelation: "linkedin_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "post_signals_post_plan_id_fkey"
+            columns: ["post_plan_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_post_plans"
             referencedColumns: ["id"]
           },
         ]
