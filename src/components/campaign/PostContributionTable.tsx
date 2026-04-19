@@ -69,7 +69,7 @@ const PostContributionTable = ({ rows, goalMetric }: Props) => {
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-semibold",
-                        i === 0 ? "bg-amber-500/15 text-amber-600" : "bg-muted text-muted-foreground",
+                        i === 0 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
                       )}>
                         {i + 1}
                       </span>

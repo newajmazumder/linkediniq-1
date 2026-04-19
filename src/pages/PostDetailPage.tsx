@@ -39,6 +39,17 @@ type MetricsData = {
   profile_visits: number;
   follower_gain: number;
   manual_notes: string;
+  // Goal-aware bridge layer — connects raw signals to campaign outcomes.
+  goal_contribution: number;
+  goal_metric: string | null;
+  attribution_note: string;
+};
+
+// Linked campaign metadata used to drive the Goal Contribution UI.
+type CampaignGoalCtx = {
+  campaign_id: string;
+  target_metric: string | null;
+  target_quantity: number | null;
 };
 
 type EvaluationData = {
@@ -69,7 +80,10 @@ type RecommendationData = {
 };
 
 const emptyContext: ContextData = { goal: "", persona_id: "", campaign_id: "", strategy_type: "", tone: "", hook_type: "", cta_type: "" };
-const emptyMetrics: MetricsData = { reactions: 0, comments: 0, reposts: 0, impressions: 0, clicks: 0, profile_visits: 0, follower_gain: 0, manual_notes: "" };
+const emptyMetrics: MetricsData = {
+  reactions: 0, comments: 0, reposts: 0, impressions: 0, clicks: 0, profile_visits: 0, follower_gain: 0, manual_notes: "",
+  goal_contribution: 0, goal_metric: null, attribution_note: "",
+};
 
 const goals = ["brand_awareness", "education", "storytelling", "lead_generation"];
 const strategies = ["storytelling", "educational", "authority", "product_led", "soft_promotion"];
