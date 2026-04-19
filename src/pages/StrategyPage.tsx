@@ -642,10 +642,10 @@ const StrategyPage = () => {
                 return (
                   <div
                     key={c.id}
-                    className="rounded-xl border border-border bg-card overflow-hidden transition-shadow hover:shadow-sm"
+                    className="flex flex-col rounded-xl border border-border bg-card overflow-hidden transition-shadow hover:shadow-sm"
                   >
                     {/* Body — single column stacked layout */}
-                    <div className="p-6 sm:p-7 space-y-4">
+                    <div className="flex-1 p-6 sm:p-7 space-y-4">
                       {/* Pills */}
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wide", lifecycle.cls)}>
