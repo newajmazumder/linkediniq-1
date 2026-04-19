@@ -1,66 +1,99 @@
 
+## Investigation summary
 
-## Investigation
+Looking at the current model:
+- `post_metrics` already stores raw LinkedIn signals (impressions/reactions/comments/reposts/clicks/profile_visits/follower_gain) — this is our **Layer 1 (Raw)**.
+- `campaigns` defines `target_metric` + `target_quantity` — the goal definition exists.
+- `campaign_progress` tracks `metric_name` / `current_value` / `target_value` — already supports campaign-level goal totals (great, no new table needed).
+- **Missing**: per-post `goal_contribution` field (the bridge between raw signals and goal outcome).
+- **Missing**: a UI to enter per-post goal contribution and per-campaign current goal value.
+- **Missing**: aggregation/interpretation that compares contribution vs. unattributed and produces goal-aware insights/score.
 
-Looking at the current code:
-- `CampaignPostCard.tsx` routes "View" and "Edit" buttons to `/drafts` (which is the drafts list, not a specific draft).
-- The screenshot shows the user clicked View/Edit and got a 404 — likely because somewhere it routes to `/posts/:id` or similar that doesn't exist.
-- Looking at `App.tsx` summary: routes include `/create`, `/posts`, `/performance/:postId`. There's no `/drafts/:id` or `/posts/:id` route for drafts.
-- `DraftsPage.tsx` exists at `/posts` route (it's the drafts list page).
-- `CreatePage.tsx` accepts query params (`idea`, `post_plan_id`, `campaign_id`) for prefilling — but no `draft_id` for editing existing drafts.
+Earlier the user approved a broader "performance feedback loop" plan. This message refines/locks the **goal-aware model**: raw stays fixed, goal is dynamic, and a `goal_contribution` field per post is the new bridge. We'll fold this into the existing `post_metrics` + `campaign_progress` tables instead of creating new ones.
 
-The core gap: **there is no way to load an existing draft into the Create page for view/edit**. The `CreatePage` only generates new posts — it doesn't hydrate from an existing draft record.
+## Plan: Goal-Aware Performance System
 
-## Plan
+### 1. Database (one small migration)
 
-### 1. Extend `CreatePage` to support draft view/edit modes
-Add support for new query params:
-- `?draft_id=<uuid>` — load an existing draft into the page
-- `?mode=view` or `?mode=edit` — control whether fields are editable
+Add the bridge field + lightweight insight cache:
 
-When `draft_id` is present:
-- Fetch the draft from `drafts` table (with linked campaign/post-plan context)
-- Hydrate the form: persona, campaign, language, post type, instruction, knowledge
-- Render the generated post as a `PostCard` in the right panel using draft content
-- Show context header banner: `Campaign: X · Week N · Post N · Status: Draft · Last updated: ...`
-- In **view mode**: disable inputs, hide "Generate" button, show "Edit Draft" + "Back to Campaign" CTAs, disable PostCard rewrite/regenerate actions
-- In **edit mode**: enable inputs, change "Save" button to "Update Draft" (updates existing row instead of inserting)
+```sql
+ALTER TABLE post_metrics
+  ADD COLUMN goal_contribution integer DEFAULT 0,
+  ADD COLUMN goal_metric text,        -- snapshot of campaign metric at entry time
+  ADD COLUMN attribution_note text;   -- optional user note ("from DM reply")
 
-### 2. Update `PostCard` save logic
-Currently `saveDraft` always inserts a new row. Add support for updating an existing draft when `draftId` is provided as a prop, so edits to a linked draft don't create duplicates.
+ALTER TABLE campaigns
+  ADD COLUMN current_goal_value integer DEFAULT 0,
+  ADD COLUMN goal_value_updated_at timestamptz;
+```
 
-### 3. Fix routing in `CampaignPostCard`
-Replace the broken `/drafts` links for View/Edit with:
-- **View** → `/create?draft_id=<linked_draft_id>&mode=view&campaign_id=<id>&post_plan_id=<id>`
-- **Edit** → `/create?draft_id=<linked_draft_id>&mode=edit&campaign_id=<id>&post_plan_id=<id>`
+Reuse existing tables — no new tables required. `campaign_progress` continues to track historical snapshots if needed.
 
-### 4. Recoverable error handling
-In `CreatePage`, if `draft_id` is provided but the draft row is not found:
-- Don't 404
-- Show an inline recoverable error card: *"This draft could not be found."* with two CTAs: **Recreate Draft** (clears `draft_id`, keeps `post_plan_id` so the user can regenerate) and **Back to Campaign**.
+### 2. Edge function: `aggregate-campaign-goals`
 
-### 5. State-based action UI in `CampaignPostCard` (already mostly correct)
-Confirm the action set per state matches spec:
-- **Planned** → `Create Now` only
-- **Drafted** → `View`, `Edit`, `Mark Posted`, `Duplicate` (no Create Now) ✓ already hides Create Now
-- **Scheduled** → `View`, `Edit`, `Mark Posted`, `Duplicate` ✓
-- **Posted** → `View Post`, `View Metrics`, `Duplicate` ✓
-- **Missed** → `Recover` ✓
+Lightweight, no AI required for the math:
+- Sum `goal_contribution` across posts linked to campaign (via `linked_draft_id` → `campaign_post_plans` → campaign).
+- Compute: `total_post_contribution`, `unattributed = current_goal_value − total_post_contribution`, `goal_progress %`.
+- Compute derived: per-post `efficiency = contribution / impressions`, `conversion_rate = contribution / clicks`, ROI ranking.
+- Update `campaigns.execution_score` with new formula:
+  `0.5 × goal_progress + 0.3 × execution_rate + 0.2 × content_efficiency`.
 
-Add "last updated" time below the status badge in the drafted/scheduled states (using draft's `updated_at`).
+### 3. Edge function: `interpret-campaign-performance` (AI layer)
 
-### 6. Drafts list page — make rows clickable
-On `DraftsPage` (`/posts`), each draft card should also link to `/create?draft_id=<id>&mode=view` so users can reach the same view/edit experience from the drafts list (consistency).
+Only runs when user clicks "Generate insights":
+- Inputs: posts with raw metrics + contributions, campaign goal/target, top/bottom performers.
+- Output: goal-aware recommendations (e.g. "Posts with direct CTA drive 80% of bookings — replicate Post 3 format").
+- Saves into existing `campaign_reports` table (`report_type: "goal_interpretation"`).
 
-## Files to edit
+### 4. UI changes
 
-- `src/pages/CreatePage.tsx` — add `draft_id`/`mode` handling, hydration, view/edit UI states, recoverable error
-- `src/components/create/PostCard.tsx` — support updating existing draft when `draftId` prop set; respect read-only mode
-- `src/components/campaign/CampaignPostCard.tsx` — fix View/Edit routes to `/create?draft_id=...&mode=...`; add last-updated timestamp
-- `src/pages/DraftsPage.tsx` — wire row click/View/Edit to `/create?draft_id=...&mode=...`
+**A. Performance form on `PostDetailPage`** (the screenshot shown):
+- Keep all 7 raw metric fields exactly as-is (locked, platform-native).
+- Add a new highlighted section **"Goal Contribution"** below raw metrics:
+  - Dynamic label driven by campaign goal — e.g. "Demo bookings from this post" / "Leads generated" / "Followers gained from this post".
+  - Single integer input + optional attribution note.
+  - Only shown if post is linked to a campaign with a `target_metric`.
+  - Helper text: "How many [metric] can you attribute to this post?"
+
+**B. Campaign Analytics tab** (`CampaignPlanPage` analytics tab):
+Restructure into 4 sections per spec:
+1. **Raw Performance** — totals across posts (impressions, likes, comments, clicks).
+2. **Post Goal Contribution** — table ranking posts by contribution (Post → contribution → efficiency).
+3. **Campaign Progress** — input field for `current_goal_value`, derived `From posts: X · Unattributed: Y`, progress bar `X / target`.
+4. **AI Insight** — button "Generate goal-aware insights" → renders interpretation output.
+
+**C. Inline on `CampaignPostCard`** (posted state):
+- Add a tiny line under the existing "Posted" pill: `Impressions: 1.2k · [goal metric]: 3` when contribution exists.
+
+### 5. Score recomputation
+
+Replace planning-only execution score with the goal-aware formula in `aggregate-campaign-goals`. Trigger it whenever metrics or `current_goal_value` change. Fallback to old formula when no contributions yet (so score isn't 0 on day 1).
+
+### 6. Auto-trigger flow
+
+- `MarkPostedDialog` → already creates the metrics row, now also writes `goal_metric` snapshot.
+- Saving `post_metrics` (raw + contribution) → invokes `aggregate-campaign-goals`.
+- Saving `current_goal_value` on campaign → invokes `aggregate-campaign-goals`.
+
+## Files to edit/create
+
+**New**:
+- `supabase/migrations/<ts>_goal_aware_metrics.sql`
+- `supabase/functions/aggregate-campaign-goals/index.ts`
+- `supabase/functions/interpret-campaign-performance/index.ts`
+- `src/lib/goal-metrics.ts` — pure helpers: `goalMetricLabel(metric)`, `computeEfficiency`, `rankByContribution`.
+- `src/components/campaign/CampaignGoalProgressCard.tsx` — section 3 UI.
+- `src/components/campaign/PostContributionTable.tsx` — section 2 UI.
+
+**Edit**:
+- `src/pages/PostDetailPage.tsx` — add "Goal Contribution" section to metrics form; pass campaign metric label.
+- `src/pages/CampaignPlanPage.tsx` — restructure analytics tab into 4 sections.
+- `src/components/campaign/CampaignPostCard.tsx` — show inline contribution under posted state.
+- `src/components/strategy/MarkPostedDialog.tsx` — snapshot `goal_metric` on first metrics row.
 
 ## Out of scope (deferred)
 
-- New dedicated `/posts/:postId/view` or `/posts/:postId/edit` routes — using `/create?draft_id=...&mode=...` per spec's "Same page, different mode" Option A is faster and reuses all existing form/preview UI.
-- Draft regeneration controls in view mode — hidden per spec.
-
+- Auto-pulling LinkedIn metrics via API (manual entry only for now).
+- Time-series snapshots (Day 1/3/7) — current `last_updated_at` is enough; can add later.
+- Multi-goal campaigns (single primary goal only).
