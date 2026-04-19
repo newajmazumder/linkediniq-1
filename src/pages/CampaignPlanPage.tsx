@@ -1305,6 +1305,7 @@ const CampaignPlanPage = () => {
         </div>
       )}
       </section>
+      )}
 
       {/* Date capture dialog — required before plan generation. */}
       <StartCampaignDialog
