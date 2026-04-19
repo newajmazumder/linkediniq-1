@@ -103,6 +103,26 @@ const TopPerformerCard = ({ rows, goalMetric, campaignId, className }: Props) =>
         {conv !== null && <Tag label="Conv." value={`${conv}%`} accent />}
       </div>
 
+      {/* Why it worked — causal logic, not just tags */}
+      {(pattern?.hook || pattern?.cta || pattern?.format) && (
+        <div className="rounded-md bg-muted/40 p-3 space-y-1">
+          <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">
+            Why it worked
+          </p>
+          <ul className="text-xs text-foreground space-y-0.5">
+            {pattern?.hook && (
+              <li>• <span className="capitalize">{pattern.hook.replace(/_/g, " ")}</span> hook → {hookEffect(pattern.hook)}</li>
+            )}
+            {pattern?.format && (
+              <li>• <span className="capitalize">{pattern.format.replace(/_/g, " ")}</span> format → {formatEffect(pattern.format)}</li>
+            )}
+            {pattern?.cta && (
+              <li>• <span className="capitalize">{pattern.cta.replace(/_/g, " ")}</span> CTA → {ctaEffect(pattern.cta)}</li>
+            )}
+          </ul>
+        </div>
+      )}
+
       <div className="pt-1">
         <Button
           size="sm"
@@ -110,12 +130,42 @@ const TopPerformerCard = ({ rows, goalMetric, campaignId, className }: Props) =>
           className="w-full justify-between"
           onClick={() => navigate(`/create?campaign_id=${campaignId}&clone_post=${top.post_number}`)}
         >
-          Replicate this pattern
+          Apply this pattern to next 3 posts
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>
     </div>
   );
+};
+
+// Causal mapping: pattern attribute → why it likely drove the outcome
+const hookEffect = (h: string) => {
+  const k = h.toLowerCase();
+  if (k.includes("loss") || k.includes("financial") || k.includes("fear")) return "high urgency";
+  if (k.includes("question")) return "high engagement";
+  if (k.includes("contrarian") || k.includes("controversial")) return "high attention";
+  if (k.includes("story") || k.includes("personal")) return "high relatability";
+  if (k.includes("data") || k.includes("stat")) return "high credibility";
+  if (k.includes("how") || k.includes("tutorial")) return "high practical value";
+  return "strong attention capture";
+};
+
+const formatEffect = (f: string) => {
+  const k = f.toLowerCase();
+  if (k.includes("story") || k.includes("narrative")) return "high retention";
+  if (k.includes("carousel")) return "high dwell time";
+  if (k.includes("list")) return "high scannability";
+  if (k.includes("image")) return "high visual stop";
+  if (k.includes("video")) return "high completion";
+  return "good readability";
+};
+
+const ctaEffect = (c: string) => {
+  const k = c.toLowerCase();
+  if (k.includes("direct") || k.includes("hard") || k.includes("demo") || k.includes("book")) return "high conversion";
+  if (k.includes("soft") || k.includes("comment")) return "high social proof";
+  if (k.includes("dm") || k.includes("message")) return "high qualified intent";
+  return "clear next step";
 };
 
 const Tag = ({ label, value, accent }: { label: string; value: string; accent?: boolean }) => (
