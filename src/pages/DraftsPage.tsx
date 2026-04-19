@@ -8,7 +8,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle, Loader2, BarChart3, AlertTriangle, CheckCircle, Lightbulb, ShieldAlert, ShieldCheck, Zap, ArrowUp, ArrowDown } from "lucide-react";
+import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle, Loader2, BarChart3, AlertTriangle, CheckCircle, Lightbulb, ShieldAlert, ShieldCheck, Zap, ArrowUp, ArrowDown, Send } from "lucide-react";
+import MarkPostedDialog from "@/components/strategy/MarkPostedDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -79,6 +80,7 @@ const DraftsPage = () => {
   const [scoringId, setScoringId] = useState<string | null>(null);
   const [predictions, setPredictions] = useState<Record<string, PredictionResult>>({});
   const [expandedPrediction, setExpandedPrediction] = useState<string | null>(null);
+  const [markPostedDraft, setMarkPostedDraft] = useState<Draft | null>(null);
 
   const fetchDrafts = async () => {
     if (!user) return;
@@ -185,6 +187,9 @@ const DraftsPage = () => {
                       </button>
                     )}
                     {draft.status === "draft" && <button onClick={() => updateStatus(draft.id, "approved")} title="Approve" className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"><Check className="h-3.5 w-3.5" /></button>}
+                    {(draft.status === "approved" || draft.status === "scheduled" || draft.status === "draft") && (
+                      <button onClick={() => setMarkPostedDraft(draft)} title="Mark as posted" className="rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"><Send className="h-3.5 w-3.5" /></button>
+                    )}
                     {draft.status === "approved" && <button onClick={() => updateStatus(draft.id, "draft")} title="Send back" className="rounded-md p-1.5 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"><XCircle className="h-3.5 w-3.5" /></button>}
                     {(draft.status === "approved" || draft.status === "draft") && (
                       <Popover open={scheduleId === draft.id} onOpenChange={(o) => setScheduleId(o ? draft.id : null)}>
@@ -336,6 +341,14 @@ const DraftsPage = () => {
           })}
         </div>
       )}
+
+      <MarkPostedDialog
+        open={!!markPostedDraft}
+        onOpenChange={(o) => !o && setMarkPostedDraft(null)}
+        draftId={markPostedDraft?.id}
+        content={markPostedDraft?.custom_content || ""}
+        onMarked={fetchDrafts}
+      />
     </div>
   );
 };
