@@ -51,9 +51,24 @@ serve(async (req) => {
     const allPlans = plans || [];
     const allSignals = signals || [];
     const totalPosts = allPlans.length;
-    const posted = allPlans.filter((p: any) => p.status === "posted" || !!p.linked_post_id).length;
-    const drafted = allPlans.filter((p: any) => p.status === "drafted").length;
-    const planned = allPlans.filter((p: any) => p.status === "planned" || !p.status).length;
+
+    // Self-healing: a plan also counts as posted if its draft has a published linkedin_post,
+    // even when the plan row was never reconciled (status still 'drafted', linked_post_id null).
+    const draftIds = allPlans.map((p: any) => p.linked_draft_id).filter(Boolean);
+    let publishedDraftIds = new Set<string>();
+    if (draftIds.length) {
+      const { data: liPosts } = await supabase
+        .from("linkedin_posts")
+        .select("linked_draft_id")
+        .in("linked_draft_id", draftIds as string[]);
+      publishedDraftIds = new Set((liPosts || []).map((r: any) => r.linked_draft_id).filter(Boolean));
+    }
+    const isPosted = (p: any) =>
+      p.status === "posted" || !!p.linked_post_id || (p.linked_draft_id && publishedDraftIds.has(p.linked_draft_id));
+
+    const posted = allPlans.filter(isPosted).length;
+    const drafted = allPlans.filter((p: any) => !isPosted(p) && p.status === "drafted").length;
+    const planned = allPlans.filter((p: any) => !isPosted(p) && (p.status === "planned" || !p.status)).length;
     const postingPct = totalPosts > 0 ? Math.round((posted / totalPosts) * 100) : 0;
     const goalCurrent = campaign.current_goal_value || 0;
     const goalTarget = campaign.target_quantity || 0;
@@ -75,8 +90,8 @@ serve(async (req) => {
       .sort((a, b) => b.avg_conv - a.avg_conv);
     const winningHook = hookRanked.find(h => h.n >= 2 && h.avg_conv > 0);
 
-    // Find the next planned post (where execution should land next)
-    const nextPlannedPost = allPlans.find((p: any) => p.status === "planned" || !p.status);
+    // Find the next planned post (where execution should land next) — skip ones already posted via draft.
+    const nextPlannedPost = allPlans.find((p: any) => !isPosted(p) && (p.status === "planned" || !p.status));
 
     // ---- DECISION TREE — pick the single most important action ----
     // Each branch returns one structured action.
