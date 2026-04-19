@@ -171,6 +171,19 @@ const StrategyPage = () => {
     }
   }, [user]);
 
+  // Live refresh when any campaign's goal aggregate updates from elsewhere
+  useEffect(() => {
+    const handler = () => { fetchCampaigns(); };
+    const off: (() => void)[] = [];
+    campaigns.forEach((c) => {
+      const evt = goalUpdatedEvent(c.id);
+      window.addEventListener(evt, handler);
+      off.push(() => window.removeEventListener(evt, handler));
+    });
+    return () => off.forEach((f) => f());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaigns.map((c) => c.id).join(",")]);
+
   const fetchProgress = async () => {
     const { data } = await supabase
       .from("campaign_progress")
