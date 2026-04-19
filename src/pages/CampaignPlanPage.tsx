@@ -9,11 +9,13 @@ import { toast } from "sonner";
 import {
   Loader2, Target, ChevronDown, ChevronUp, Sparkles,
   BarChart3, FileText, AlertTriangle, TrendingUp,
-  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench,
+  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench, Eye, ThumbsUp, MessageSquare, MousePointer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
 import ExecutionDashboard from "@/components/strategy/ExecutionDashboard";
+import CampaignGoalProgressCard from "@/components/campaign/CampaignGoalProgressCard";
+import PostContributionTable from "@/components/campaign/PostContributionTable";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,

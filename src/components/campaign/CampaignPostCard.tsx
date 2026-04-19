@@ -306,6 +306,18 @@ const CampaignPostCard = ({
 
       <p className="text-xs text-foreground">{post.post_objective}</p>
       <p className="text-[10px] text-muted-foreground">{post.content_angle}</p>
+      {/* Inline goal-aware metrics — quiet line under the posted state. */}
+      {status === "posted" && postMetrics && (postMetrics.impressions > 0 || postMetrics.goal_contribution > 0) && (
+        <p className="text-[10px] text-muted-foreground">
+          Impressions: <span className="text-foreground tabular-nums">{postMetrics.impressions.toLocaleString()}</span>
+          {postMetrics.goal_metric && (
+            <>
+              {" · "}
+              {postMetrics.goal_metric.replace(/_/g, " ")}: <span className="text-foreground tabular-nums">{postMetrics.goal_contribution}</span>
+            </>
+          )}
+        </p>
+      )}
       {(preview.title || preview.snippet || preview.cta || draftScheduledAt) && (
         <div className="rounded-md border border-border bg-muted/20 p-2.5 space-y-1.5">
           {preview.title && <p className="text-xs font-medium text-foreground line-clamp-1">{preview.title}</p>}
