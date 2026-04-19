@@ -388,6 +388,9 @@ const CampaignPlanPage = () => {
         </div>
       </div>
 
+      {/* PROACTIVE ADVISOR — surfaces blocking missing info as questions */}
+      <CampaignAdvisorBanner questions={advisorQuestions} onChange={reloadAdvisorQuestions} />
+
       {/* TABS — Plan first (default), then Outcome (live performance), then deep analysis */}
       <section className="space-y-3">
 
