@@ -606,13 +606,23 @@ const CampaignPlanPage = () => {
             );
           })()}
 
-          {goalAgg?.contribution_rows?.length > 0 && (
-            <TopPerformerCard
-              rows={goalAgg.contribution_rows}
-              goalMetric={goalAgg.goal_metric || campaign.target_metric}
-              campaignId={id!}
-            />
-          )}
+          {/* Raw Performance — platform-native totals (operator view).
+              Interpretation, conversion insight & winning patterns live in the Analytics tab. */}
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xs font-semibold text-foreground">Raw Performance</p>
+              </div>
+              <span className="text-[10px] text-muted-foreground">Platform-native · LinkedIn signals</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border border border-border rounded-md overflow-hidden">
+              <RawTotal icon={Eye} label="Impressions" value={goalAgg?.raw_totals?.impressions ?? 0} />
+              <RawTotal icon={ThumbsUp} label="Reactions" value={goalAgg?.raw_totals?.reactions ?? 0} />
+              <RawTotal icon={MessageSquare} label="Comments" value={goalAgg?.raw_totals?.comments ?? 0} />
+              <RawTotal icon={MousePointer} label="Clicks" value={goalAgg?.raw_totals?.clicks ?? 0} />
+            </div>
+          </div>
 
           <ExecutionDashboard
             campaignId={id!}
@@ -760,33 +770,40 @@ const CampaignPlanPage = () => {
             <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
           ) : (
             <>
-              {/* SECTION 1 — Raw Performance (platform-native, locked) */}
-              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+              {/* SECTION 1 — What's Driving Results
+                  Combines top contributors + conversion rate + winning pattern into a single narrative.
+                  Raw platform metrics (impressions/reactions/comments/clicks) live in the Performance tab. */}
+              <div className="rounded-lg border border-border bg-card p-4 space-y-4">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                    <p className="text-xs font-semibold text-foreground">Raw Performance</p>
+                    <Flame className="h-4 w-4 text-foreground" />
+                    <p className="text-xs font-semibold text-foreground">What's driving results</p>
                   </div>
-                  <span className="text-[10px] text-muted-foreground">Platform-native · LinkedIn signals</span>
+                  <span className="text-[10px] text-muted-foreground">Top contributors · conversion · winning pattern</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border border border-border rounded-md overflow-hidden">
-                  <RawTotal icon={Eye} label="Impressions" value={goalAgg?.raw_totals?.impressions ?? 0} />
-                  <RawTotal icon={ThumbsUp} label="Reactions" value={goalAgg?.raw_totals?.reactions ?? 0} />
-                  <RawTotal icon={MessageSquare} label="Comments" value={goalAgg?.raw_totals?.comments ?? 0} />
-                  <RawTotal icon={MousePointer} label="Clicks" value={goalAgg?.raw_totals?.clicks ?? 0} />
-                </div>
-                {/* Causal bridge — clicks → goal contribution interpretation */}
+
+                {/* Top contributors — which posts moved the goal */}
+                <TopContributorsStrip
+                  rows={goalAgg?.contribution_rows || []}
+                  goalMetric={goalAgg?.goal_metric}
+                />
+
+                {/* Conversion insight — clicks → goal interpretation with benchmark */}
                 <RawToGoalInsight
                   clicks={goalAgg?.raw_totals?.clicks ?? 0}
                   impressions={goalAgg?.raw_totals?.impressions ?? 0}
                   postsContribution={goalAgg?.posts_contribution ?? 0}
                   goalMetric={goalAgg?.goal_metric}
                 />
-                {/* Per-post breakdown — connects metrics to actions */}
-                <TopContributorsStrip
-                  rows={goalAgg?.contribution_rows || []}
-                  goalMetric={goalAgg?.goal_metric}
-                />
+
+                {/* Winning pattern — top performer's hook/CTA/format fingerprint */}
+                {goalAgg?.contribution_rows?.length > 0 && (
+                  <TopPerformerCard
+                    rows={goalAgg.contribution_rows}
+                    goalMetric={goalAgg.goal_metric || campaign.target_metric}
+                    campaignId={id!}
+                  />
+                )}
               </div>
 
               {/* SECTION 2 — Post Goal Contribution (ROI ranking) */}
