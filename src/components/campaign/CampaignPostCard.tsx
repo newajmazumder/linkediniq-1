@@ -175,6 +175,11 @@ const CampaignPostCard = ({
               · posted {new Date(post.posted_at).toLocaleDateString()}
             </span>
           )}
+          {!post.posted_at && draftUpdatedAt && (status === "drafted" || status === "scheduled") && (
+            <span className="text-[10px] text-muted-foreground">
+              · updated {new Date(draftUpdatedAt).toLocaleString()}
+            </span>
+          )}
         </div>
 
         {/* Right-side action — the most important affordance per state */}

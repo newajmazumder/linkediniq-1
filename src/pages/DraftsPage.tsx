@@ -332,12 +332,15 @@ const DraftsPage = () => {
                     </div>
                   </div>
                 ) : (
-                  <div onClick={() => startEdit(draft)} className="cursor-pointer">
+                  <Link
+                    to={`/create?draft_id=${draft.id}&mode=view${ctx ? `&campaign_id=${ctx.campaign_id}&post_plan_id=${ctx.plan_id}` : ""}`}
+                    className="block cursor-pointer"
+                  >
                     <LinkedInPostPreview
                       type="text"
                       content={draft.custom_content || "No content"}
                     />
-                  </div>
+                  </Link>
                 )}
 
                 {/* Prediction Score Card */}
