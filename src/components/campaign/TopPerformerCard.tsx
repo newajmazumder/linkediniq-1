@@ -130,7 +130,7 @@ const TopPerformerCard = ({ rows, goalMetric, campaignId, className }: Props) =>
           className="w-full justify-between"
           onClick={() => navigate(`/create?campaign_id=${campaignId}&clone_post=${top.post_number}`)}
         >
-          Apply this pattern to next 3 posts
+          Create 3 posts using this pattern
           <ArrowRight className="h-3.5 w-3.5" />
         </Button>
       </div>
