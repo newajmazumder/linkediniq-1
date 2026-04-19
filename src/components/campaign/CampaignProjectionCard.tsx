@@ -1,5 +1,6 @@
 // Predictive layer: at current pace, will the campaign hit its target?
-// Surfaces time-vs-goal comparison + expected outcome + next best action.
+// Confidence-aware — suppresses hard numbers when sample is too thin.
+// Minimalist: thin left-border accent + colored verdict text only.
 
 import { TrendingUp, TrendingDown, Clock, Target, AlertTriangle, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,14 @@ type Props = {
   className?: string;
 };
 
+const borderTone: Record<string, string> = {
+  ahead: "border-l-emerald-500",
+  on_pace: "border-l-emerald-500",
+  behind: "border-l-yellow-500",
+  critical: "border-l-destructive",
+  unknown: "border-l-border",
+};
+
 const CampaignProjectionCard = ({
   startedAt,
   targetEndAt,
@@ -25,30 +34,51 @@ const CampaignProjectionCard = ({
   contributionRows = [],
   className,
 }: Props) => {
-  const proj = computeProjection(startedAt, targetEndAt, currentValue, target);
+  const proj = computeProjection(startedAt, targetEndAt, currentValue, target, contributionRows);
   const meta = trajectoryMeta[proj.trajectory];
   const label = goalMetricLabel(goalMetric);
-  const isOverachieving = proj.gap < 0;
-  const Icon = isOverachieving ? TrendingUp : proj.trajectory === "behind" || proj.trajectory === "critical" ? TrendingDown : Target;
+  const isOverachieving = (proj.gap ?? 0) < 0;
+  const Icon = isOverachieving
+    ? TrendingUp
+    : proj.trajectory === "behind" || proj.trajectory === "critical"
+      ? TrendingDown
+      : Target;
 
-  const nextAction = buildNextBestAction(contributionRows, label, Math.max(0, proj.gap));
+  const nextAction = proj.stable ? buildNextBestAction(contributionRows, label, Math.max(0, proj.gap)) : null;
 
-  if (proj.trajectory === "unknown") {
+  // Unstable / unknown — calm, honest empty state
+  if (!proj.stable) {
     return (
-      <div className={cn("rounded-lg border border-border bg-card p-4 space-y-2", className)}>
+      <div className={cn("rounded-lg border border-border bg-card border-l-2 p-4 space-y-2", borderTone.unknown, className)}>
         <div className="flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
-          <p className="text-xs font-semibold text-foreground">Projection</p>
+          <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+          <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">
+            Projection · pending
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">{meta.verdict}</p>
+        <p className="text-sm text-foreground">
+          {proj.postsWithContribution === 0
+            ? "Need posts with contributions to project."
+            : `Projection unstable — based on ${proj.postsWithContribution} post${proj.postsWithContribution === 1 ? "" : "s"} only.`}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          We&apos;ll start projecting once you have 3+ posts and at least 10% of the timeline elapsed.
+        </p>
+        {/* Always show time / goal even when projection is suppressed */}
+        {target && target > 0 && (
+          <div className="grid grid-cols-2 gap-3 pt-2">
+            <MiniBar label="Time elapsed" value={`${proj.timeProgressPct}%`} sub={`Day ${proj.daysElapsed} / ${proj.totalDays}`} pct={proj.timeProgressPct} />
+            <MiniBar label="Goal achieved" value={`${proj.goalProgressPct}%`} sub={`${currentValue} / ${target} ${label}`} pct={proj.goalProgressPct} />
+          </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className={cn("rounded-lg border", meta.bg, className)}>
-      {/* Header: verdict */}
-      <div className="border-b border-border/50 px-4 py-3 flex items-center justify-between gap-3">
+    <div className={cn("rounded-lg border border-border bg-card border-l-2", borderTone[proj.trajectory], className)}>
+      {/* Header: verdict (tone color on text only, no fill tint) */}
+      <div className="border-b border-border px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
           <Icon className={cn("h-4 w-4", meta.tone)} />
           <div className="min-w-0">
@@ -58,77 +88,42 @@ const CampaignProjectionCard = ({
             <p className={cn("text-sm font-semibold", meta.tone)}>{meta.verdict}</p>
           </div>
         </div>
-        <span
-          className={cn(
-            "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-            meta.tone,
-            "bg-background/40",
-          )}
-        >
-          {meta.label}
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {proj.confidence} conf.
+          </span>
+          <span className={cn("text-[11px] font-semibold uppercase tracking-wide", meta.tone)}>
+            {meta.label}
+          </span>
+        </div>
       </div>
 
-      {/* Body: time vs goal + expected outcome */}
+      {/* Body */}
       <div className="px-4 py-4 space-y-4">
         {/* Time vs Goal comparison */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Clock className="h-3 w-3" />
-              <p className="text-[10px] uppercase tracking-wide">Time elapsed</p>
-            </div>
-            <p className="mt-0.5 text-lg font-semibold text-foreground tabular-nums">
-              {proj.timeProgressPct}%
-            </p>
-            <p className="text-[11px] text-muted-foreground tabular-nums">
-              Day {proj.daysElapsed} / {proj.totalDays}
-            </p>
-            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full bg-muted-foreground/50 transition-all"
-                style={{ width: `${Math.min(100, proj.timeProgressPct)}%` }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Target className="h-3 w-3" />
-              <p className="text-[10px] uppercase tracking-wide">Goal achieved</p>
-            </div>
-            <p className={cn("mt-0.5 text-lg font-semibold tabular-nums", meta.tone)}>
-              {proj.goalProgressPct}%
-            </p>
-            <p className="text-[11px] text-muted-foreground tabular-nums">
-              {currentValue} / {target ?? "?"} {label}
-            </p>
-            <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn("h-full transition-all", meta.tone.replace("text-", "bg-"))}
-                style={{ width: `${Math.min(100, proj.goalProgressPct)}%` }}
-              />
-            </div>
-          </div>
+          <MiniBar label="Time elapsed" value={`${proj.timeProgressPct}%`} sub={`Day ${proj.daysElapsed} / ${proj.totalDays}`} pct={proj.timeProgressPct} />
+          <MiniBar label="Goal achieved" value={`${proj.goalProgressPct}%`} sub={`${currentValue} / ${target ?? "?"} ${label}`} pct={proj.goalProgressPct} valueClass={meta.tone} />
         </div>
 
         {/* Pace verdict line */}
-        {proj.paceDelta > 5 || proj.paceDelta < -5 ? (
-          <div className={cn("rounded-md px-3 py-2 text-xs flex items-center gap-2", meta.bg)}>
+        {(proj.paceDelta > 5 || proj.paceDelta < -5) && (
+          <div className="flex items-center gap-2 text-xs">
             <AlertTriangle className={cn("h-3.5 w-3.5 shrink-0", meta.tone)} />
             <span className={cn("font-medium", meta.tone)}>{proj.paceDeltaLabel}</span>
           </div>
-        ) : null}
+        )}
 
-        {/* Expected outcome */}
-        {target && target > 0 ? (
-          <div className="rounded-md border border-border bg-card/60 px-3 py-3">
+        {/* Expected outcome — bigger numbers */}
+        {target && target > 0 && proj.expectedAtEnd !== null && (
+          <div className="rounded-md border border-border px-3 py-3">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
               Expected outcome at end
             </p>
             <div className="mt-1 flex items-baseline justify-between gap-3 flex-wrap">
-              <p className={cn("text-2xl font-semibold tabular-nums", meta.tone)}>
+              <p className={cn("text-3xl sm:text-4xl font-semibold tabular-nums leading-none", meta.tone)}>
                 {proj.expectedAtEnd}
-                <span className="ml-1 text-sm font-normal text-muted-foreground">
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
                   / {target} {label}
                 </span>
               </p>
@@ -142,8 +137,13 @@ const CampaignProjectionCard = ({
                 )}
               </p>
             </div>
+            {proj.expectedLow !== null && proj.expectedHigh !== null && (
+              <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">
+                Range: {proj.expectedLow}–{proj.expectedHigh} (medium confidence, ±30%)
+              </p>
+            )}
           </div>
-        ) : null}
+        )}
 
         {/* Next best action */}
         {nextAction && (
@@ -160,5 +160,26 @@ const CampaignProjectionCard = ({
     </div>
   );
 };
+
+const MiniBar = ({
+  label, value, sub, pct, valueClass,
+}: { label: string; value: string; sub: string; pct: number; valueClass?: string }) => (
+  <div>
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Clock className="h-3 w-3" />
+      <p className="text-[10px] uppercase tracking-wide">{label}</p>
+    </div>
+    <p className={cn("mt-0.5 text-2xl font-semibold tabular-nums leading-none", valueClass ?? "text-foreground")}>
+      {value}
+    </p>
+    <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">{sub}</p>
+    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+      <div
+        className={cn("h-full transition-all", valueClass ? valueClass.replace("text-", "bg-") : "bg-muted-foreground/50")}
+        style={{ width: `${Math.min(100, pct)}%` }}
+      />
+    </div>
+  </div>
+);
 
 export default CampaignProjectionCard;
