@@ -260,7 +260,7 @@ const CampaignPostCard = ({
                 <PenLine className="h-3 w-3" /> Duplicate
               </Link>
               <Link
-                to={post.linked_post_id ? `/performance/${post.linked_post_id}` : "/performance"}
+                to={resolvedLinkedPostId ? `/performance/${resolvedLinkedPostId}` : "/performance"}
                 className="flex items-center gap-1 text-xs text-primary hover:underline"
               >
                 <BarChart3 className="h-3 w-3" /> Performance
