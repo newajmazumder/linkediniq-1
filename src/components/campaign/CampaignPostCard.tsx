@@ -190,6 +190,23 @@ const CampaignPostCard = ({
             <StatusIcon className="h-2.5 w-2.5" />
             {meta.label}
           </Badge>
+          {/* Performance rank — converts the Plan view into a learning surface */}
+          {performanceRank && (() => {
+            const { rank, total, contribution, share } = performanceRank;
+            const isTop = rank === 1;
+            const isMid = rank <= Math.ceil(total / 2);
+            const tone = isTop
+              ? "border-emerald-500/50 text-emerald-700 dark:text-emerald-400 bg-emerald-500/5"
+              : isMid
+                ? "border-yellow-500/40 text-yellow-700 dark:text-yellow-400 bg-yellow-500/5"
+                : "border-border text-muted-foreground";
+            const label = isTop ? "Top performer" : isMid ? "Mid performer" : "Low performer";
+            return (
+              <Badge variant="outline" className={cn("text-[10px] gap-1 tabular-nums", tone)}>
+                {contribution} {goalLabel || ""} ({share}%) · {label}
+              </Badge>
+            );
+          })()}
           {prediction && (() => {
             const info = getScoreLabel(prediction.predicted_score);
             const Icon = info.icon;
