@@ -24,8 +24,69 @@ serve(async (req) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
-    const { campaign_id } = await req.json();
+    const body = await req.json();
+    const { campaign_id, action, adaptation_id, adjustment_index } = body || {};
     if (!campaign_id) return new Response(JSON.stringify({ error: "campaign_id required" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+    // ---- APPLY ACTION: actually mutate the plan based on a stored adjustment ----
+    if (action === "apply" && adaptation_id) {
+      const { data: adaptation, error: aErr } = await supabase
+        .from("campaign_adaptations").select("*").eq("id", adaptation_id).maybeSingle();
+      if (aErr || !adaptation) {
+        return new Response(JSON.stringify({ error: "Adaptation not found" }), { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const adj = (adaptation.adjustments || [])[adjustment_index ?? 0];
+      if (!adj) return new Response(JSON.stringify({ error: "No such adjustment" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      // Parse "Post N" target → mutate that plan row
+      const m = String(adj.where || adj.target || "").match(/Post\s*(\d+)/i);
+      const applied: any[] = [];
+      if (m) {
+        const postNumber = parseInt(m[1], 10);
+        const { data: planRow } = await supabase
+          .from("campaign_post_plans")
+          .select("*")
+          .eq("campaign_id", campaign_id)
+          .eq("post_number", postNumber)
+          .maybeSingle();
+        if (planRow) {
+          const updates: Record<string, any> = {};
+          const what = String(adj.what || adj.change || "").toLowerCase();
+          // Pattern-match command verbs onto plan fields
+          if (adj.type === "hook_shift" || /hook|headline|opening/.test(what)) {
+            // Try to extract a hook type from the command itself
+            const hookMatch = String(adj.what || "").match(/(financial[-\s]?loss|pain|curiosity|story|stat|contrarian|question|authority|how[-\s]?to)/i);
+            if (hookMatch) updates.suggested_hook_type = hookMatch[1].toLowerCase().replace(/[\s-]/g, "_");
+          }
+          if (adj.type === "cta_change" || /cta/.test(what)) {
+            const ctaMatch = String(adj.what || "").match(/(direct|soft|book|demo|signup|download|reply|comment)/i);
+            if (ctaMatch) updates.suggested_cta_type = ctaMatch[1].toLowerCase();
+          }
+          if (adj.type === "format" || /format|carousel|video|text/.test(what)) {
+            const fmtMatch = String(adj.what || "").match(/(text|carousel|video|image)/i);
+            if (fmtMatch) updates.recommended_format = fmtMatch[1].toLowerCase();
+          }
+          // Always append the AI rationale to strategic_rationale so the user sees why
+          const reasonAppend = `[Adapted: ${adj.what || ""} — ${adj.why || ""}]`;
+          updates.strategic_rationale = planRow.strategic_rationale
+            ? `${planRow.strategic_rationale}\n${reasonAppend}`
+            : reasonAppend;
+
+          await supabase.from("campaign_post_plans").update(updates).eq("id", planRow.id);
+          applied.push({ post_number: postNumber, updates });
+        }
+      }
+
+      const newApplied = [...(adaptation.applied_changes || []), { adjustment, applied, applied_at: new Date().toISOString() } as any];
+      // Rename to keep compiler happy without unused var warning
+      const adjustment = adj;
+      const persistedApplied = [...(adaptation.applied_changes || []), { adjustment, applied, applied_at: new Date().toISOString() }];
+      await supabase.from("campaign_adaptations")
+        .update({ applied_changes: persistedApplied, status: applied.length ? "applied" : adaptation.status, applied_at: new Date().toISOString() })
+        .eq("id", adaptation_id);
+
+      return new Response(JSON.stringify({ ok: true, applied }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const [{ data: campaign }, { data: signals }, { data: plans }] = await Promise.all([
       supabase.from("campaigns").select("*").eq("id", campaign_id).maybeSingle(),
