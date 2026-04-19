@@ -435,6 +435,11 @@ const CampaignPlanPage = () => {
                   const phase = weekPhaseLabel(week.week_number, weekPlans.length);
                   const drafted = weekPosts.filter((p: any) => p.status !== "planned").length;
                   const isLast = idx === weekPlans.length - 1;
+                  // Performance funnel — bookings contributed by this week's posts
+                  const weekBookings = (goalAgg?.contribution_rows || [])
+                    .filter((r: any) => weekPosts.some((wp: any) => wp.post_number === r.post_number))
+                    .reduce((s: number, r: any) => s + (r.contribution || 0), 0);
+                  const weekGoalLabel = (goalAgg?.goal_metric || campaign.target_metric || "").replace(/_/g, " ");
 
                   return (
                     <div key={week.id}>
@@ -458,10 +463,17 @@ const CampaignPlanPage = () => {
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
-                              {drafted}<span className="text-border">/</span>{weekPosts.length}
-                            </span>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="text-right">
+                              <span className="block text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                                Posts {drafted}<span className="text-border">/</span>{weekPosts.length}
+                              </span>
+                              {weekBookings > 0 && weekGoalLabel && (
+                                <span className="block text-[11px] text-foreground tabular-nums whitespace-nowrap">
+                                  {weekBookings} {weekGoalLabel}
+                                </span>
+                              )}
+                            </div>
                             {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                           </div>
                         </button>
