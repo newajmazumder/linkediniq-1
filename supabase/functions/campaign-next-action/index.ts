@@ -308,6 +308,22 @@ serve(async (req) => {
         cta_action: "revise_strategy",
       };
     }
+    // 6. AHEAD — buffer earned, use it to experiment instead of resting
+    else if (pacingState === "AHEAD" && nextPlannedPost) {
+      action = {
+        action_type: "experiment",
+        priority: "medium",
+        title: `You're ahead of pace — use the buffer to test something risky`,
+        observation: `${posted} of ${expectedByNow} expected by today (+${paceDelta} ahead). ${daysRemaining !== null ? Math.ceil(daysRemaining) + " days remaining" : ""}`.trim(),
+        why_now: "Being ahead is a one-time asset. Spend it on learning, not on resting.",
+        interpretation: "Safe posts when you're ahead = wasted buffer. A bolder hook or format here costs nothing if it underperforms — you've already banked the cadence.",
+        impact: "One experimental post now can unlock a pattern that lifts every remaining post.",
+        recommendation: `On Post #${nextPlannedPost.post_number}: try a hook angle or format you haven't used yet. Keep the goal-aligned CTA.`,
+        confidence: "medium",
+        cta_label: `Open post #${nextPlannedPost.post_number}`,
+        target_post_id: nextPlannedPost?.id || null,
+      };
+    }
     // (Old experiment branch merged into #7 Passive Optimization Mode below.)
     // 7. PASSIVE OPTIMIZATION — on track but no winning pattern → design experiments
     else if (isOnPace && signalStrength !== "high" && nextPlannedPost) {
