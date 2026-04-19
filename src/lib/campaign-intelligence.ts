@@ -40,6 +40,8 @@ export interface NextBestAction {
   alternative_path?: string;
   // Phase 5 — time-aware pacing state surfaced from the engine
   pacing_state?: "NOT_STARTED" | "BEHIND" | "ON_TRACK" | "AHEAD";
+  // Phase 6 — lifecycle gating (don't claim intelligence we don't have)
+  lifecycle?: "setup" | "planned" | "executing" | "learning";
 }
 
 export async function listStrategyVersions(campaignId: string): Promise<StrategyVersion[]> {

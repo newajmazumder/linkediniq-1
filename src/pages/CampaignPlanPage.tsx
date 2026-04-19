@@ -37,6 +37,7 @@ import StrategyVersionsCard from "@/components/campaign/StrategyVersionsCard";
 import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
 import { computePacing } from "@/lib/execution";
+import { deriveLifecycleState, LIFECYCLE_META } from "@/lib/campaign-lifecycle";
 import type { NextBestAction } from "@/lib/campaign-intelligence";
 
 type Campaign = any;
@@ -213,10 +214,19 @@ const CampaignPlanPage = () => {
 
   const totalPosts = postPlans.length;
   const draftedPosts = postPlans.filter((p: any) => p.status !== "planned").length;
+  const postedPosts = postPlans.filter((p: any) => p.status === "posted" || !!p.linked_post_id).length;
   const postingPct = totalPosts > 0 ? Math.round((draftedPosts / totalPosts) * 100) : null;
   const week1Remaining = postPlans.filter((p: any) => p.week_number === 1 && (!p.status || p.status === "planned")).length;
 
   const outcomePct = analytics?.outcome_progress?.progress_pct ?? null;
+
+  // Lifecycle gating — don't simulate intelligence we don't have.
+  const lifecycle = deriveLifecycleState({
+    totalPlanned: totalPosts,
+    weekPlansCount: weekPlans.length,
+    postedCount: postedPosts,
+  });
+  const lifecycleMeta = LIFECYCLE_META[lifecycle];
 
   const state = computeCampaignState({
     outcomePct,
@@ -307,60 +317,78 @@ const CampaignPlanPage = () => {
             </div>
 
             <div className="flex items-start gap-4 shrink-0">
-              <div className="text-right">
-                <div className={cn("flex items-end justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
-                  <span>
-                    {score.total.toFixed(1)}
-                    <span className="text-base text-muted-foreground font-normal">/10</span>
-                  </span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Why this score"
-                        className="inline-flex items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-[360px] p-0">
-                      <ScoreBreakdownCard
-                        score={score}
-                        pillars={(() => {
-                          const hints = buildPillarHints(score, scoreInputs);
-                          return [
-                            { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
-                            { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
-                            { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
-                          ];
-                        })()}
-                        className="border-0"
-                      />
-                    </PopoverContent>
-                  </Popover>
+              {lifecycleMeta.showScore ? (
+                <div className="text-right">
+                  <div className={cn("flex items-end justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
+                    <span>
+                      {score.total.toFixed(1)}
+                      <span className="text-base text-muted-foreground font-normal">/10</span>
+                    </span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Why this score"
+                          className="inline-flex items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-[360px] p-0">
+                        <ScoreBreakdownCard
+                          score={score}
+                          pillars={(() => {
+                            const hints = buildPillarHints(score, scoreInputs);
+                            return [
+                              { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
+                              { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
+                              { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
+                            ];
+                          })()}
+                          className="border-0"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Strategy · <span className="text-foreground">{interp}</span>
+                  </p>
+                  {(() => {
+                    // Identify the weakest pillar — that's where the score is bleeding from.
+                    const pillars = [
+                      { key: "Positioning", v: score.positioning },
+                      { key: "Execution", v: score.execution },
+                      { key: "Conversion", v: score.conversion },
+                    ].sort((a, b) => a.v - b.v);
+                    const weakest = pillars[0];
+                    const lostPts = (10 - weakest.v).toFixed(0);
+                    if (Number(lostPts) <= 1 || !diag.fixes[0]) return null;
+                    return (
+                      <p className="mt-1.5 text-[11px] text-foreground max-w-[200px] ml-auto leading-snug">
+                        <span className="text-muted-foreground">Main issue:</span> {weakest.key} <span className="text-muted-foreground tabular-nums">(−{lostPts} pts)</span>
+                        <br />
+                        <span className="text-muted-foreground">Fix:</span> {diag.fixes[0]}
+                      </p>
+                    );
+                  })()}
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Strategy · <span className="text-foreground">{interp}</span>
-                </p>
-                {(() => {
-                  // Identify the weakest pillar — that's where the score is bleeding from.
-                  const pillars = [
-                    { key: "Positioning", v: score.positioning },
-                    { key: "Execution", v: score.execution },
-                    { key: "Conversion", v: score.conversion },
-                  ].sort((a, b) => a.v - b.v);
-                  const weakest = pillars[0];
-                  const lostPts = (10 - weakest.v).toFixed(0);
-                  if (Number(lostPts) <= 1 || !diag.fixes[0]) return null;
-                  return (
-                    <p className="mt-1.5 text-[11px] text-foreground max-w-[200px] ml-auto leading-snug">
-                      <span className="text-muted-foreground">Main issue:</span> {weakest.key} <span className="text-muted-foreground tabular-nums">(−{lostPts} pts)</span>
-                      <br />
-                      <span className="text-muted-foreground">Fix:</span> {diag.fixes[0]}
-                    </p>
-                  );
-                })()}
-              </div>
+              ) : (
+                // Honest placeholder — no fake score before evidence exists.
+                <div className="text-right max-w-[220px]">
+                  <div className="flex items-end justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums text-muted-foreground/40">
+                    <span>
+                      {lifecycleMeta.scorePlaceholder}
+                      <span className="text-base font-normal">/10</span>
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Status · <span className="text-foreground">{lifecycleMeta.label}</span>
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground leading-snug">
+                    {lifecycleMeta.scorePlaceholderReason}
+                  </p>
+                </div>
+              )}
               {weekPlans.length === 0 && (
                 <Button size="sm" onClick={generatePlan} disabled={generating}>
                   {generating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
@@ -381,8 +409,9 @@ const CampaignPlanPage = () => {
             )}
           </div>
 
-          {/* Minimal goal progress strip — anchors the hero to the actual outcome */}
-          {campaign.target_quantity && campaign.target_metric && (
+          {/* Minimal goal progress strip — anchors the hero to the actual outcome.
+              Hidden in setup: there's no goal context to anchor without a plan. */}
+          {lifecycleMeta.showGoalProgress && campaign.target_quantity && campaign.target_metric && (
             <CampaignGoalProgressBar
               currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
               target={campaign.target_quantity}
@@ -391,8 +420,8 @@ const CampaignPlanPage = () => {
             />
           )}
 
-          {/* Urgency micro-line — concrete shortfall in goal units, not just % */}
-          {showUrgency && (
+          {/* Urgency micro-line — only meaningful once we have a plan + posts to project from. */}
+          {lifecycle === "learning" && showUrgency && (
             <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-2 text-xs flex items-center gap-2 flex-wrap">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />
               <span className="text-foreground">
@@ -417,13 +446,46 @@ const CampaignPlanPage = () => {
         </div>
       </div>
 
-      {/* PROACTIVE ADVISOR — surfaces blocking missing info as questions */}
-      <CampaignAdvisorBanner questions={advisorQuestions} onChange={reloadAdvisorQuestions} />
+      {/* SETUP empty state — onboarding guidance, no fake intelligence. */}
+      {lifecycle === "setup" && (
+        <div className="rounded-xl border border-border bg-card p-6 sm:p-8 text-center space-y-4">
+          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-lg font-semibold text-foreground">This campaign hasn't started yet</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              No plan or posts exist. We can't evaluate performance, score strategy, or recommend optimizations until your campaign begins.
+            </p>
+          </div>
+          <div className="text-left max-w-md mx-auto bg-muted/30 border border-border rounded-md px-4 py-3 space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Next step</p>
+            <ol className="text-sm text-foreground space-y-1.5 leading-relaxed">
+              <li><span className="text-muted-foreground tabular-nums mr-2">1.</span>Generate your weekly plan</li>
+              <li><span className="text-muted-foreground tabular-nums mr-2">2.</span>Review and approve post structure</li>
+              <li><span className="text-muted-foreground tabular-nums mr-2">3.</span>Publish your first post</li>
+            </ol>
+            <p className="text-[11px] text-muted-foreground pt-1">
+              Once you publish 2–3 posts, we'll start analyzing patterns and recommending improvements.
+            </p>
+          </div>
+          <Button onClick={generatePlan} disabled={generating} size="lg">
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            Generate Plan
+          </Button>
+        </div>
+      )}
+
+      {/* PROACTIVE ADVISOR — only when there's enough context (plan exists). */}
+      {lifecycleMeta.showAdvisor && (
+        <CampaignAdvisorBanner questions={advisorQuestions} onChange={reloadAdvisorQuestions} />
+      )}
 
       {/* TIME-AWARE PACING STRIP — Expected vs Actual by today */}
-      {(postPlans.length > 0 || startedRef) && <CampaignPacingStrip pacing={pacing} />}
+      {lifecycleMeta.showPacing && (postPlans.length > 0 || startedRef) && <CampaignPacingStrip pacing={pacing} />}
 
-      {/* NEXT BEST ACTION — single prioritized recommendation, evidence-driven */}
+      {/* NEXT BEST ACTION — only after plan exists. Edge function gates content by lifecycle too. */}
+      {lifecycleMeta.showNBA && (
       <NextBestActionCard
         campaignId={id!}
         onAction={(a: NextBestAction) => {
@@ -462,6 +524,7 @@ const CampaignPlanPage = () => {
           }, 350);
         }}
       />
+      )}
 
       {/* TABS — Plan first (default), then Outcome (live performance), then deep analysis */}
       <section className="space-y-3">
