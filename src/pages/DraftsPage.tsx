@@ -145,7 +145,7 @@ const DraftsPage = () => {
     if (!ctx) return;
 
     const nextPlanStatus = planStatusFromDraftStatus(nextDraftStatus);
-    const payload: Record<string, any> = {};
+    const payload: { status?: "drafted" | "scheduled" | "posted"; planned_date?: string | null } = {};
     if (nextPlanStatus) payload.status = nextPlanStatus;
     if (nextPlanStatus === "scheduled") payload.planned_date = scheduledAt;
     if (nextPlanStatus === "drafted") payload.planned_date = scheduledAt ?? null;
