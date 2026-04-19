@@ -31,8 +31,11 @@ import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
 import TopPerformerCard from "@/components/campaign/TopPerformerCard";
 import TopContributorsStrip from "@/components/campaign/TopContributorsStrip";
 import CampaignAdvisorBanner from "@/components/campaign/CampaignAdvisorBanner";
+import NextBestActionCard from "@/components/campaign/NextBestActionCard";
+import StrategyVersionsCard from "@/components/campaign/StrategyVersionsCard";
 import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
+import type { NextBestAction } from "@/lib/campaign-intelligence";
 
 type Campaign = any;
 type WeekPlan = any;
@@ -409,6 +412,24 @@ const CampaignPlanPage = () => {
 
       {/* PROACTIVE ADVISOR — surfaces blocking missing info as questions */}
       <CampaignAdvisorBanner questions={advisorQuestions} onChange={reloadAdvisorQuestions} />
+
+      {/* NEXT BEST ACTION — single prioritized recommendation, evidence-driven */}
+      <NextBestActionCard
+        campaignId={id!}
+        onAction={(a: NextBestAction) => {
+          if (a.cta_action === "generate_plan") {
+            generatePlan();
+          } else if (a.cta_action === "revise_strategy") {
+            setTab("plan");
+            setTimeout(() => {
+              document.getElementById("strategy-versions")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 100);
+          } else if (a.target_post_id) {
+            const el = document.getElementById(`post-plan-${a.target_post_id}`);
+            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }}
+      />
 
       {/* TABS — Plan first (default), then Outcome (live performance), then deep analysis */}
       <section className="space-y-3">
