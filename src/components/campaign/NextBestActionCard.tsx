@@ -168,15 +168,42 @@ export default function NextBestActionCard({
   );
 }
 
-function Row({ label, value, muted, highlight }: { label: string; value: string; muted?: boolean; highlight?: boolean }) {
+function Row({ label, value, muted, highlight, alternative }: { label: string; value: string; muted?: boolean; highlight?: boolean; alternative?: boolean }) {
   return (
     <div className="flex gap-3">
-      <span className={cn("shrink-0 w-[78px] text-[10px] uppercase tracking-wider pt-0.5", muted ? "text-muted-foreground/70" : "text-muted-foreground")}>
+      <span className={cn(
+        "shrink-0 w-[78px] text-[10px] uppercase tracking-wider pt-0.5",
+        alternative ? "text-muted-foreground/60" : muted ? "text-muted-foreground/70" : "text-muted-foreground",
+      )}>
         {label}
       </span>
-      <p className={cn("flex-1 leading-relaxed", highlight ? "text-foreground font-medium" : muted ? "text-muted-foreground" : "text-foreground")}>
+      <p className={cn(
+        "flex-1 leading-relaxed",
+        alternative ? "text-muted-foreground italic text-[11px] sm:text-xs" :
+        highlight ? "text-foreground font-medium" :
+        muted ? "text-muted-foreground" : "text-foreground",
+      )}>
         {value}
       </p>
     </div>
+  );
+}
+
+const SIGNAL_TONE: Record<Confidence, { dot: string; ring: string; label: string; tip: string }> = {
+  high:   { dot: "bg-emerald-500", ring: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400", label: "Signal: high",   tip: "Clear winning pattern detected." },
+  medium: { dot: "bg-amber-500",   ring: "border-amber-500/40 text-amber-700 dark:text-amber-400",     label: "Signal: medium", tip: "Emerging pattern — needs confirmation." },
+  low:    { dot: "bg-muted-foreground", ring: "border-border text-muted-foreground",                      label: "Signal: low",    tip: "Not enough data to detect what works." },
+};
+
+function SignalStrengthPill({ level, reason }: { level: Confidence; reason?: string }) {
+  const t = SIGNAL_TONE[level];
+  return (
+    <span
+      className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium", t.ring)}
+      title={reason || t.tip}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", t.dot)} />
+      {t.label}
+    </span>
   );
 }
