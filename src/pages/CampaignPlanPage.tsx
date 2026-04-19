@@ -26,6 +26,8 @@ import {
 import ScoreBreakdownCard from "@/components/campaign/ScoreBreakdownCard";
 import CampaignProjectionCard from "@/components/campaign/CampaignProjectionCard";
 import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
+import TopPerformerCard from "@/components/campaign/TopPerformerCard";
+import { computeProjection } from "@/lib/campaign-projection";
 
 type Campaign = any;
 type WeekPlan = any;
@@ -219,6 +221,26 @@ const CampaignPlanPage = () => {
     ? computeVelocity(draftedPosts, totalPosts, weekPlans.length)
     : null;
 
+  // Pre-compute projection so we can show urgency micro-line in the hero.
+  const startedRef = campaign.started_at || campaign.target_start_date;
+  const endsRef = startedRef && weekPlans.length > 0
+    ? new Date(new Date(startedRef).getTime() + weekPlans.length * 7 * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+  const proj = (campaign.target_quantity && campaign.target_metric)
+    ? computeProjection(
+        startedRef,
+        endsRef,
+        goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0,
+        campaign.target_quantity,
+        goalAgg?.contribution_rows || [],
+      )
+    : null;
+  const showUrgency = proj && proj.stable && (proj.trajectory === "behind" || proj.trajectory === "critical");
+  const velocityShort = velocity && !velocity.onPace ? (velocity.required - velocity.actual).toFixed(1) : null;
+  const shortfallPct = proj && proj.stable && proj.gap > 0 && campaign.target_quantity
+    ? Math.round((proj.gap / campaign.target_quantity) * 100)
+    : null;
+
   return (
     <div className="content-fade-in space-y-6 px-4 sm:px-6 py-4">
       {/* HERO — calm, editorial, single accent */}
@@ -296,57 +318,30 @@ const CampaignPlanPage = () => {
             </button>
           )}
 
-          {/* L3 — Goal · Execution · Velocity */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border border-y border-border">
-            <div className="px-4 py-3 first:pl-0">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Goal</p>
-              <p className="mt-1 text-sm font-medium text-foreground">
-                {campaign.target_quantity && campaign.target_metric
-                  ? `${campaign.target_quantity} ${campaign.target_metric.replace(/_/g, " ")}`
-                  : <span className="text-muted-foreground font-normal">Not set</span>}
-              </p>
-              {outcomePct !== null && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{outcomePct}% complete</p>
+          {/* Urgency micro-line — only when behind, anchors hero to outcome */}
+          {showUrgency && (
+            <div className="rounded-md bg-muted/40 px-3 py-2 text-xs flex items-center gap-2 flex-wrap">
+              <AlertTriangle className={cn("h-3.5 w-3.5 shrink-0", meta.textClass)} />
+              {velocityShort && (
+                <span className={cn("font-medium", meta.textClass)}>
+                  {velocityShort} posts/wk behind schedule
+                </span>
               )}
-            </div>
-            <div className="px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Execution</p>
-              <p className="mt-1 text-sm font-medium text-foreground">
-                {totalPosts > 0 ? `${draftedPosts}/${totalPosts} posts` : <span className="text-muted-foreground font-normal">No plan</span>}
-              </p>
-              {totalPosts > 0 && (
-                <p className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">{postingPct ?? 0}% drafted</p>
-              )}
-            </div>
-            <div className="px-4 py-3 last:pr-0">
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground">Velocity</p>
-              {velocity ? (
+              {shortfallPct !== null && shortfallPct > 0 && (
                 <>
-                  <p className="mt-1 text-sm font-medium text-foreground tabular-nums">
-                    {velocity.actual} <span className="text-muted-foreground font-normal">/ {velocity.required} per wk</span>
-                  </p>
-                  <p className={cn("mt-0.5 text-[11px]", velocity.onPace ? "text-muted-foreground" : meta.textClass)}>
-                    {velocity.onPace ? "On pace" : `${(velocity.required - velocity.actual).toFixed(1)} short / week`}
-                  </p>
+                  {velocityShort && <span className="text-border">·</span>}
+                  <span className="text-muted-foreground">
+                    projected <span className={cn("font-semibold", meta.textClass)}>{shortfallPct}%</span> shortfall
+                  </span>
                 </>
-              ) : (
-                <p className="mt-1 text-sm text-muted-foreground font-normal">—</p>
               )}
             </div>
-          </div>
-
-          {/* L4 — Score breakdown is now its own dedicated card below; keep hero clean */}
+          )}
         </div>
       </div>
 
-      {/* ───────────────── ZONE 1 · OUTCOME ─────────────────
-          What's actually happening — goal progress, projection, and why the score is what it is. */}
+      {/* L1 · ALWAYS VISIBLE — outcome proof + projection + top performer */}
       <section className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
-          Outcome
-        </p>
-
-        {/* Goal Progress Bar — primary proof the campaign is working */}
         {campaign.target_quantity && campaign.target_metric && (
           <CampaignGoalProgressBar
             currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
@@ -356,15 +351,10 @@ const CampaignPlanPage = () => {
           />
         )}
 
-        {/* Predictive layer — pace, time vs goal, expected outcome, next best action */}
         {campaign.target_quantity && campaign.target_metric && (
           <CampaignProjectionCard
-            startedAt={campaign.started_at || campaign.target_start_date}
-            targetEndAt={(() => {
-              const start = campaign.started_at || campaign.target_start_date;
-              if (!start || weekPlans.length === 0) return null;
-              return new Date(new Date(start).getTime() + weekPlans.length * 7 * 24 * 60 * 60 * 1000).toISOString();
-            })()}
+            startedAt={startedRef}
+            targetEndAt={endsRef}
             currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
             target={campaign.target_quantity}
             goalMetric={campaign.target_metric}
@@ -372,41 +362,29 @@ const CampaignPlanPage = () => {
           />
         )}
 
-        {/* Causal score breakdown — why this score, not "feels like punishment" */}
-        <ScoreBreakdownCard
-          score={score}
-          pillars={(() => {
-            const hints = buildPillarHints(score, scoreInputs);
-            return [
-              { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
-              { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
-              { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
-            ];
-          })()}
-        />
+        {goalAgg?.contribution_rows?.length > 0 && (
+          <TopPerformerCard
+            rows={goalAgg.contribution_rows}
+            goalMetric={goalAgg.goal_metric || campaign.target_metric}
+            campaignId={id!}
+          />
+        )}
       </section>
 
-      {/* ───────────────── ZONE 2 · EXECUTION ─────────────────
-          What you're shipping — closed-loop execution, velocity, missed posts, adaptations. */}
-      <section className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
-          Execution
-        </p>
+      {/* L2 · EXECUTION — single card */}
+      <section>
         <ExecutionDashboard
           campaignId={id!}
           campaign={campaign}
           postPlans={postPlans as any}
           weekCount={weekPlans.length}
+          contributionRows={goalAgg?.contribution_rows || []}
           onChange={fetchAll}
         />
       </section>
 
-      {/* ───────────────── ZONE 3 · INTELLIGENCE ─────────────────
-          Plan, analytics, report — where the deeper detail lives behind tabs. */}
+      {/* L4 · DEEP ANALYSIS — tabs */}
       <section className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
-          Intelligence
-        </p>
 
       {/* Tabs */}
       <div className="flex gap-1.5 border-b border-border">
@@ -457,6 +435,11 @@ const CampaignPlanPage = () => {
                   const phase = weekPhaseLabel(week.week_number, weekPlans.length);
                   const drafted = weekPosts.filter((p: any) => p.status !== "planned").length;
                   const isLast = idx === weekPlans.length - 1;
+                  // Performance funnel — bookings contributed by this week's posts
+                  const weekBookings = (goalAgg?.contribution_rows || [])
+                    .filter((r: any) => weekPosts.some((wp: any) => wp.post_number === r.post_number))
+                    .reduce((s: number, r: any) => s + (r.contribution || 0), 0);
+                  const weekGoalLabel = (goalAgg?.goal_metric || campaign.target_metric || "").replace(/_/g, " ");
 
                   return (
                     <div key={week.id}>
@@ -480,10 +463,17 @@ const CampaignPlanPage = () => {
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
-                              {drafted}<span className="text-border">/</span>{weekPosts.length}
-                            </span>
+                          <div className="flex items-center gap-3 shrink-0">
+                            <div className="text-right">
+                              <span className="block text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                                Posts {drafted}<span className="text-border">/</span>{weekPosts.length}
+                              </span>
+                              {weekBookings > 0 && weekGoalLabel && (
+                                <span className="block text-[11px] text-foreground tabular-nums whitespace-nowrap">
+                                  {weekBookings} {weekGoalLabel}
+                                </span>
+                              )}
+                            </div>
                             {isExpanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
                           </div>
                         </button>

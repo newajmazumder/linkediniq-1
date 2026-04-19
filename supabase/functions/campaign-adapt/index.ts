@@ -1,5 +1,6 @@
 // Weekly adaptive engine. Reads post_signals + plan, generates pattern insights
-// and concrete adjustments (hook, CTA, cadence) for upcoming weeks.
+// and concrete IMPACT-DRIVEN COMMANDS (where / what / why / expected_impact)
+// for upcoming posts — no abstract tips.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -61,25 +62,46 @@ serve(async (req) => {
     const ctaPatterns = summarize(byCta);
 
     const upcomingPlans = (plans || []).filter((p: any) => p.status === "planned" || p.status === "drafted");
+    const upcomingSummary = upcomingPlans.slice(0, 8).map((p: any) => ({
+      post: `Post ${p.post_number}`,
+      week: p.week_number,
+      hook: p.suggested_hook_type,
+      cta: p.suggested_cta_type,
+      format: p.recommended_format,
+      objective: p.post_objective,
+    }));
 
     let adjustments: any[] = [];
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (LOVABLE_API_KEY) {
-      const prompt = `You are a LinkedIn campaign strategist. Based on real performance signals from this campaign, recommend 2-4 SPECIFIC adjustments for upcoming posts.
+      const prompt = `You are a LinkedIn campaign strategist. Convert the performance evidence below into 2-4 IMPACT-DRIVEN COMMANDS for specific upcoming posts.
 
-CAMPAIGN GOAL: ${campaign.target_quantity || "?"} ${campaign.target_metric || campaign.primary_objective}
-HOOK PERFORMANCE (sorted by conversion): ${JSON.stringify(hookPatterns.slice(0, 5))}
-CTA PERFORMANCE (sorted by conversion): ${JSON.stringify(ctaPatterns.slice(0, 5))}
-UPCOMING POSTS: ${upcomingPlans.length}
-SIGNALS COLLECTED: ${(signals || []).length}
+EVIDENCE
+- Goal: ${campaign.target_quantity || "?"} ${campaign.target_metric || campaign.primary_objective}
+- Hook performance (sorted by conversion): ${JSON.stringify(hookPatterns.slice(0, 5))}
+- CTA performance (sorted by conversion): ${JSON.stringify(ctaPatterns.slice(0, 5))}
+- Signals collected: ${(signals || []).length}
+- Upcoming posts: ${JSON.stringify(upcomingSummary)}
 
-Return strict JSON:
+RULES
+- Each command MUST target a specific upcoming post (use "Post N" from the upcoming list).
+- Each command MUST cite the evidence (e.g., "Hook X has 71% higher conversion than Y").
+- Each command MUST give an expected impact range tied to the goal metric.
+- No vague advice ("test more", "improve hook"). Be surgical.
+
+Return STRICT JSON in this shape (no prose, no markdown):
 {
   "patterns_observed": "one-line insight",
-  "predicted_impact": "what changes if these are applied",
+  "predicted_impact": "what changes if all commands are applied",
   "adjustments": [
-    {"type": "hook_shift|cta_change|cadence|format", "target": "which posts/weeks", "change": "specific action", "rationale": "why"}
+    {
+      "type": "hook_shift" | "cta_change" | "cadence" | "format",
+      "where": "Post 3",
+      "what": "Rewrite headline using Financial-loss hook",
+      "why": "Posts 1 & 4 with this hook drove 71% of bookings",
+      "expected_impact": "+2-4 bookings"
+    }
   ]
 }`;
       try {
@@ -87,7 +109,7 @@ Return strict JSON:
           method: "POST",
           headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
           body: JSON.stringify({
-            model: "google/gemini-3-flash-preview",
+            model: "google/gemini-2.5-flash",
             messages: [{ role: "user", content: prompt }],
           }),
         });
@@ -96,7 +118,17 @@ Return strict JSON:
           let raw = j.choices?.[0]?.message?.content?.trim() || "";
           if (raw.startsWith("```")) raw = raw.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
           const parsed = JSON.parse(raw);
-          adjustments = parsed.adjustments || [];
+          adjustments = (parsed.adjustments || []).map((a: any) => ({
+            type: a.type || "hook_shift",
+            where: a.where || a.target || "upcoming posts",
+            what: a.what || a.change || "",
+            why: a.why || a.rationale || "",
+            expected_impact: a.expected_impact || a.impact || "",
+            // keep legacy fields too for older renderers
+            target: a.where || a.target || "",
+            change: a.what || a.change || "",
+            rationale: a.why || a.rationale || "",
+          }));
 
           await supabase.from("campaign_adaptations").insert({
             user_id: user.id,
