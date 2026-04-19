@@ -41,6 +41,10 @@ const CampaignPlanPage = () => {
   const [tab, setTab] = useState<"plan" | "analytics" | "report">("plan");
   const [analytics, setAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [goalAgg, setGoalAgg] = useState<any>(null);
+  const [loadingGoalAgg, setLoadingGoalAgg] = useState(false);
+  const [interpretation, setInterpretation] = useState<any>(null);
+  const [generatingInsights, setGeneratingInsights] = useState(false);
   const [report, setReport] = useState<any>(null);
   const [loadingReport, setLoadingReport] = useState(false);
 
@@ -93,6 +97,41 @@ const CampaignPlanPage = () => {
       toast.error(err.message || "Failed to load analytics");
     } finally {
       setLoadingAnalytics(false);
+    }
+  };
+
+  const fetchGoalAggregate = async () => {
+    setLoadingGoalAgg(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("aggregate-campaign-goals", {
+        body: { campaign_id: id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setGoalAgg(data);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to load goal data");
+    } finally {
+      setLoadingGoalAgg(false);
+    }
+  };
+
+  const generateGoalInsights = async () => {
+    setGeneratingInsights(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("interpret-campaign-performance", {
+        body: { campaign_id: id },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setInterpretation(data?.insight || null);
+      // Refresh aggregate so any newly-saved score is reflected
+      fetchGoalAggregate();
+      toast.success("Goal-aware insights generated");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to generate insights");
+    } finally {
+      setGeneratingInsights(false);
     }
   };
 
@@ -302,7 +341,10 @@ const CampaignPlanPage = () => {
             key={t}
             onClick={() => {
               setTab(t);
-              if (t === "analytics" && !analytics) fetchAnalytics();
+              if (t === "analytics") {
+                if (!analytics) fetchAnalytics();
+                if (!goalAgg) fetchGoalAggregate();
+              }
             }}
             className={cn(
               "relative -mb-px px-3 py-2 text-xs font-medium transition-colors capitalize border-b-2",
@@ -410,82 +452,158 @@ const CampaignPlanPage = () => {
         </div>
       )}
 
-      {/* ANALYTICS TAB — Problem → Impact → Action */}
+      {/* ANALYTICS TAB — Goal-Aware Performance System */}
       {tab === "analytics" && (
-        <div className="space-y-4">
-          {loadingAnalytics ? (
+        <div className="space-y-5">
+          {(loadingAnalytics || loadingGoalAgg) && !goalAgg ? (
             <div className="flex items-center justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-          ) : !analytics ? (
-            <div className="rounded-lg border border-dashed border-border py-12 text-center">
-              <BarChart3 className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <p className="mt-2 text-sm text-muted-foreground">Loading analytics...</p>
-              <Button size="sm" variant="outline" className="mt-2" onClick={fetchAnalytics}>Refresh</Button>
-            </div>
           ) : (
             <>
-              {/* Headline */}
-              <div className={cn("rounded-lg border border-border bg-card border-l-4 p-4", meta.borderClass)}>
-                <div className="flex items-center gap-2">
-                  <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold", meta.bgClass, meta.textClass)}>
-                    <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
-                    {meta.label}
-                  </span>
-                  <span className="text-xs text-muted-foreground">Live campaign health</span>
-                </div>
-                {analytics.outcome_progress && (
-                  <div className="mt-3 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Outcome</span>
-                      <span className="text-foreground font-medium">{analytics.outcome_progress.current_value}/{analytics.outcome_progress.target_quantity || "?"}</span>
-                    </div>
-                    <Progress value={analytics.outcome_progress.progress_pct || 0} className="h-2" />
+              {/* SECTION 1 — Raw Performance (platform-native, locked) */}
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                    <p className="text-xs font-semibold text-foreground">Raw Performance</p>
                   </div>
-                )}
-                {analytics.posting_progress && (
-                  <div className="mt-3 space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Posting cadence</span>
-                      <span className="text-foreground font-medium">{analytics.posting_progress.drafted}/{analytics.posting_progress.total_planned}</span>
-                    </div>
-                    <Progress value={analytics.posting_progress.cadence_adherence || 0} className="h-2" />
+                  <span className="text-[10px] text-muted-foreground">Platform-native · LinkedIn signals</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border border border-border rounded-md overflow-hidden">
+                  <RawTotal icon={Eye} label="Impressions" value={goalAgg?.raw_totals?.impressions ?? 0} />
+                  <RawTotal icon={ThumbsUp} label="Reactions" value={goalAgg?.raw_totals?.reactions ?? 0} />
+                  <RawTotal icon={MessageSquare} label="Comments" value={goalAgg?.raw_totals?.comments ?? 0} />
+                  <RawTotal icon={MousePointer} label="Clicks" value={goalAgg?.raw_totals?.clicks ?? 0} />
+                </div>
+              </div>
+
+              {/* SECTION 2 — Post Goal Contribution (ROI ranking) */}
+              {goalAgg && (
+                <PostContributionTable
+                  rows={goalAgg.contribution_rows || []}
+                  goalMetric={goalAgg.goal_metric}
+                />
+              )}
+
+              {/* SECTION 3 — Campaign Progress (manual goal entry + attributed/unattributed split) */}
+              {goalAgg && (
+                <CampaignGoalProgressCard
+                  campaignId={id!}
+                  goalMetric={goalAgg.goal_metric}
+                  target={goalAgg.target}
+                  currentGoalValue={goalAgg.current_goal_value || 0}
+                  totalPostContribution={goalAgg.total_post_contribution || 0}
+                  goalProgressPct={goalAgg.goal_progress_pct || 0}
+                  unattributed={goalAgg.unattributed || 0}
+                  onSaved={() => { fetchGoalAggregate(); fetchAll(); }}
+                />
+              )}
+
+              {/* SECTION 4 — AI Insight (goal-aware recommendations) */}
+              <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-primary" />
+                    <p className="text-xs font-semibold text-foreground">AI Insight · Goal-Aware</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={generateGoalInsights} disabled={generatingInsights}>
+                    {generatingInsights ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
+                    {interpretation ? "Regenerate" : "Generate insights"}
+                  </Button>
+                </div>
+
+                {!interpretation ? (
+                  <p className="text-xs text-muted-foreground italic">
+                    Click <span className="font-medium text-foreground">Generate insights</span> to surface what's actually driving your goal — beyond likes and impressions.
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {interpretation.headline && (
+                      <p className="text-sm font-medium text-foreground border-l-2 border-primary pl-3">
+                        {interpretation.headline}
+                      </p>
+                    )}
+
+                    {interpretation.key_patterns?.length > 0 && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Key patterns</p>
+                        <ul className="mt-1 space-y-1">
+                          {interpretation.key_patterns.map((p: string, i: number) => (
+                            <li key={i} className="flex items-start gap-2 text-xs text-foreground">
+                              <ArrowRight className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
+                              <span>{p}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {interpretation.high_intent_signals?.length > 0 && (
+                      <div className="rounded-md bg-muted/30 p-3">
+                        <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> High-intent signals
+                        </p>
+                        <ul className="mt-1 space-y-0.5">
+                          {interpretation.high_intent_signals.map((s: string, i: number) => (
+                            <li key={i} className="text-xs text-foreground">· {s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {interpretation.vanity_traps?.length > 0 && (
+                      <div className="rounded-md bg-muted/30 p-3">
+                        <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> Vanity traps
+                        </p>
+                        <ul className="mt-1 space-y-0.5">
+                          {interpretation.vanity_traps.map((s: string, i: number) => (
+                            <li key={i} className="text-xs text-foreground">· {s}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {interpretation.recommendations?.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Recommendations</p>
+                        {interpretation.recommendations.map((rec: any, i: number) => (
+                          <div key={i} className="rounded-md border border-border p-3">
+                            <p className="text-sm font-medium text-foreground">{rec.title}</p>
+                            {rec.why && <p className="mt-0.5 text-xs text-muted-foreground">{rec.why}</p>}
+                            {rec.action && (
+                              <p className="mt-1 text-xs text-foreground">
+                                <span className="font-semibold">Do:</span> {rec.action}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Decision blocks */}
-              {analytics.recommendations && analytics.recommendations.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-xs font-semibold text-foreground uppercase tracking-wide">What to do next</h3>
+              {/* Legacy progress recommendations (engagement / cadence) — kept compact under goal layer */}
+              {analytics?.recommendations && analytics.recommendations.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">Cadence & execution alerts</p>
                   {analytics.recommendations.map((rec: any, i: number) => {
                     const isUrgent = rec.type === "urgent" || rec.type === "critical";
                     const accent = isUrgent
-                      ? { border: "border-l-destructive", bg: "bg-destructive/5", text: "text-destructive", icon: AlertCircle }
-                      : { border: "border-l-yellow-500", bg: "bg-yellow-500/5", text: "text-yellow-600", icon: AlertTriangle };
+                      ? { border: "border-l-destructive", text: "text-destructive", icon: AlertCircle }
+                      : { border: "border-l-yellow-500", text: "text-yellow-600", icon: AlertTriangle };
                     const Icon = accent.icon;
                     return (
-                      <div key={i} className={cn("rounded-lg border border-border bg-card border-l-4 overflow-hidden", accent.border)}>
-                        <div className="p-4 space-y-3">
-                          <div className="flex items-start gap-2">
-                            <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", accent.text)} />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">🚨 Problem</p>
-                              <p className="text-sm font-medium text-foreground mt-0.5">{rec.title}</p>
-                            </div>
-                          </div>
-                          <div className="pl-6 space-y-2">
-                            <div>
-                              <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">📉 Impact</p>
-                              <p className="text-xs text-foreground mt-0.5">{rec.description}</p>
-                            </div>
+                      <div key={i} className={cn("rounded-md border border-border bg-card border-l-4 p-3", accent.border)}>
+                        <div className="flex items-start gap-2">
+                          <Icon className={cn("h-3.5 w-3.5 mt-0.5 shrink-0", accent.text)} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-foreground">{rec.title}</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">{rec.description}</p>
                             {rec.action && (
-                              <div>
-                                <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">✅ Action</p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <Button size="sm" onClick={() => navigate(`/create?campaign_id=${id}`)} className="gap-1">
-                                    {rec.action} <ArrowRight className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
+                              <Button size="sm" variant="outline" className="mt-2 h-7 text-[11px]" onClick={() => navigate(`/create?campaign_id=${id}`)}>
+                                {rec.action} <ArrowRight className="h-3 w-3 ml-1" />
+                              </Button>
                             )}
                           </div>
                         </div>
@@ -495,9 +613,11 @@ const CampaignPlanPage = () => {
                 </div>
               )}
 
-              <Button size="sm" variant="outline" onClick={fetchAnalytics}>
-                <TrendingUp className="mr-1 h-3.5 w-3.5" /> Refresh Analytics
-              </Button>
+              <div className="flex justify-end">
+                <Button size="sm" variant="ghost" onClick={() => { fetchAnalytics(); fetchGoalAggregate(); }}>
+                  <TrendingUp className="mr-1 h-3.5 w-3.5" /> Refresh
+                </Button>
+              </div>
             </>
           )}
         </div>
@@ -615,5 +735,17 @@ const CampaignPlanPage = () => {
     </div>
   );
 };
+
+const RawTotal = ({ icon: Icon, label, value }: { icon: any; label: string; value: number }) => (
+  <div className="px-3 py-2.5">
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Icon className="h-3 w-3" />
+      <p className="text-[10px] uppercase tracking-[0.1em]">{label}</p>
+    </div>
+    <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">
+      {value.toLocaleString()}
+    </p>
+  </div>
+);
 
 export default CampaignPlanPage;
