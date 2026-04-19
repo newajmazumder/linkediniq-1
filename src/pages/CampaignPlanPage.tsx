@@ -9,8 +9,9 @@ import { toast } from "sonner";
 import {
   Loader2, Target, ChevronDown, ChevronUp, Sparkles,
   BarChart3, FileText, AlertTriangle, TrendingUp,
-  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench, Eye, ThumbsUp, MessageSquare, MousePointer, ShieldCheck,
+  CheckCircle2, XCircle, ArrowRight, Zap, Flame, AlertCircle, Wrench, Eye, ThumbsUp, MessageSquare, MousePointer, ShieldCheck, Info,
 } from "lucide-react";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
 import ExecutionDashboard from "@/components/strategy/ExecutionDashboard";
