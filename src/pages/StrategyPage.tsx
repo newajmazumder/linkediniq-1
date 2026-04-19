@@ -644,8 +644,13 @@ const StrategyPage = () => {
                 const visibleTags: string[] = primaryPersonaName && primaryPersonaName !== "—" ? [primaryPersonaName] : [];
                 const overflowCount = 0;
 
+                const metricLabelLower = c.target_metric
+                  ? (metricLabels[c.target_metric] || c.target_metric).toLowerCase()
+                  : "";
                 const goalLabel = c.target_quantity && c.target_metric
-                  ? `${c.target_quantity} ${(metricLabels[c.target_metric] || c.target_metric).toLowerCase()}`
+                  ? (campaignCurrent != null
+                      ? `${Math.round(campaignCurrent)} / ${c.target_quantity} ${metricLabelLower}`
+                      : `${c.target_quantity} ${metricLabelLower}`)
                   : (c.goal || "—");
                 const goalPct = outcomePct ?? 0;
 
