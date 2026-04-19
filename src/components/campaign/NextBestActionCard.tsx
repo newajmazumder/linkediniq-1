@@ -1,7 +1,7 @@
 // The single most important action for this campaign right now.
 // Follows Observation → Interpretation → Impact → Recommendation → Confidence schema.
 import { useEffect, useState } from "react";
-import { ArrowRight, Loader2, RefreshCw, Sparkles, Clock } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw, Sparkles, Clock, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getNextBestAction, PRIORITY_TONE, ACTION_TYPE_META, type NextBestAction } from "@/lib/campaign-intelligence";
@@ -19,16 +19,41 @@ export default function NextBestActionCard({
   const [action, setAction] = useState<NextBestAction | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  const storageKey = `nba-dismissed-${campaignId}`;
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(storageKey);
+      if (v) {
+        const { hash, until } = JSON.parse(v);
+        if (until && Date.now() < until) setDismissed(true);
+        // store hash to compare after load
+        (window as any).__nbaDismissedHash = hash;
+      }
+    } catch {}
+  }, [campaignId]);
 
   const load = async () => {
     setLoading(true);
     const a = await getNextBestAction(campaignId);
     setAction(a);
     setLoading(false);
+    // If a new action arrives that differs from dismissed one, re-show
+    if (a) {
+      const hash = `${a.action_type}|${a.title}`;
+      if ((window as any).__nbaDismissedHash && (window as any).__nbaDismissedHash !== hash) {
+        setDismissed(false);
+        localStorage.removeItem(storageKey);
+      }
+    }
   };
 
   useEffect(() => { load(); }, [campaignId, refreshKey]);
 
+  if (dismissed) return null;
   if (loading) {
     return (
       <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-2 text-sm text-muted-foreground">
@@ -37,6 +62,15 @@ export default function NextBestActionCard({
     );
   }
   if (!action) return null;
+
+  const handleDismiss = () => {
+    const hash = `${action.action_type}|${action.title}`;
+    // Hide for 24 hours or until the action signature changes
+    const until = Date.now() + 24 * 60 * 60 * 1000;
+    try { localStorage.setItem(storageKey, JSON.stringify({ hash, until })); } catch {}
+    (window as any).__nbaDismissedHash = hash;
+    setDismissed(true);
+  };
 
   const tone = PRIORITY_TONE[action.priority];
   const typeMeta = ACTION_TYPE_META[action.action_type] || ACTION_TYPE_META.steady;
@@ -60,46 +94,71 @@ export default function NextBestActionCard({
               {action.title}
             </h3>
 
-            {/* Why now — timing relevance, makes the system feel aware */}
-            {action.why_now && (
-              <div className="flex items-start gap-2 rounded-md bg-muted/40 border border-border/60 px-3 py-2">
-                <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Why now</p>
-                  <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-0.5">{action.why_now}</p>
+            {!collapsed && (
+              <>
+                {action.why_now && (
+                  <div className="flex items-start gap-2 rounded-md bg-muted/40 border border-border/60 px-3 py-2">
+                    <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Why now</p>
+                      <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-0.5">{action.why_now}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2 text-xs sm:text-sm">
+                  <Row label="Observation" value={action.observation} />
+                  <Row label="Why" value={action.interpretation} />
+                  <Row label="Impact" value={action.impact} muted />
+                  <Row label="Do this" value={action.recommendation} highlight />
                 </div>
-              </div>
-            )}
 
-            {/* Structured reasoning — Observation → Why → Impact → Do this */}
-            <div className="space-y-2 text-xs sm:text-sm">
-              <Row label="Observation" value={action.observation} />
-              <Row label="Why" value={action.interpretation} />
-              <Row label="Impact" value={action.impact} muted />
-              <Row label="Do this" value={action.recommendation} highlight />
-            </div>
-
-            {action.cta_label && (
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  size="sm"
-                  onClick={() => onAction?.(action)}
-                  className="h-8"
-                >
-                  {action.cta_action === "generate_plan" ? <Sparkles className="h-3.5 w-3.5 mr-1" /> : <ArrowRight className="h-3.5 w-3.5 mr-1" />}
-                  {action.cta_label}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => { setRefreshing(true); await load(); setRefreshing(false); }}
-                  disabled={refreshing}
-                  className="h-8 px-2 text-xs text-muted-foreground"
-                >
-                  {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                </Button>
-              </div>
+                {action.cta_label && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={() => onAction?.(action)}
+                      className="h-8"
+                    >
+                      {action.cta_action === "generate_plan" ? <Sparkles className="h-3.5 w-3.5 mr-1" /> : <ArrowRight className="h-3.5 w-3.5 mr-1" />}
+                      {action.cta_label}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => { setRefreshing(true); await load(); setRefreshing(false); }}
+                      disabled={refreshing}
+                      className="h-8 px-2 text-xs text-muted-foreground"
+                    >
+                      {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setCollapsed(c => !c)}
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              aria-label={collapsed ? "Expand" : "Collapse"}
+              title={collapsed ? "Expand" : "Collapse"}
+            >
+              <ChevronDown className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")} />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleDismiss}
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              aria-label="Dismiss"
+              title="Dismiss for 24h (auto-returns when the action changes)"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
