@@ -356,89 +356,93 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
           >
             <Copy className="h-3.5 w-3.5" />
           </button>
-          <button
-            onClick={saveDraft}
-            disabled={savingDraft}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
-            title="Save to drafts"
-          >
-            <BookmarkPlus className="h-3.5 w-3.5" />
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                disabled={isRewriting}
-                className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
-                title="Rewrite options"
-              >
-                {isRewriting ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
+          {!readOnly && (
+            <button
+              onClick={saveDraft}
+              disabled={savingDraft}
+              className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
+              title={draftId ? "Update draft" : "Save to drafts"}
+            >
+              <BookmarkPlus className="h-3.5 w-3.5" />
+            </button>
+          )}
+          {!readOnly && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={isRewriting}
+                  className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary hover:text-foreground transition-colors disabled:opacity-50"
+                  title="Rewrite options"
+                >
+                  {isRewriting ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 max-h-[420px] overflow-y-auto">
+                {prediction && (
+                  <>
+                    <p className="px-2 py-1.5 text-[10px] font-semibold text-primary uppercase tracking-wider">AI-Powered</p>
+                    <DropdownMenuItem onClick={regenerateFromSuggestions}>
+                      <Lightbulb className="mr-2 h-3.5 w-3.5 text-yellow-500" /> Regenerate from Suggestions
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={regenerateFromPrediction}>
+                      <ArrowUp className="mr-2 h-3.5 w-3.5 text-green-500" /> Regenerate from Prediction
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                  </>
                 )}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 max-h-[420px] overflow-y-auto">
-              {prediction && (
-                <>
-                  <p className="px-2 py-1.5 text-[10px] font-semibold text-primary uppercase tracking-wider">AI-Powered</p>
-                  <DropdownMenuItem onClick={regenerateFromSuggestions}>
-                    <Lightbulb className="mr-2 h-3.5 w-3.5 text-yellow-500" /> Regenerate from Suggestions
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={regenerateFromPrediction}>
-                    <ArrowUp className="mr-2 h-3.5 w-3.5 text-green-500" /> Regenerate from Prediction
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Refine</p>
-              <DropdownMenuItem onClick={() => rewritePost("regenerate_hook")}>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Regenerate Hook
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("regenerate_cta")}>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Regenerate CTA
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Tone</p>
-              <DropdownMenuItem onClick={() => rewritePost("rewrite_shorter")}>
-                <Minus className="mr-2 h-3.5 w-3.5" /> Shorter
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("rewrite_human")}>
-                <User className="mr-2 h-3.5 w-3.5" /> More Human
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("rewrite_bold")}>
-                <Zap className="mr-2 h-3.5 w-3.5" /> More Bold
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("rewrite_product")}>
-                <Package className="mr-2 h-3.5 w-3.5" /> Product-Focused
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Content Style</p>
-              <DropdownMenuItem onClick={() => rewritePost("rewrite_story")}>
-                <BookOpen className="mr-2 h-3.5 w-3.5" /> Story Format
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("rewrite_educational")}>
-                <MessageSquare className="mr-2 h-3.5 w-3.5" /> Educational Framework
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("rewrite_hybrid")}>
-                <Shuffle className="mr-2 h-3.5 w-3.5" /> Hybrid (Story + Insight)
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Hook Style</p>
-              <DropdownMenuItem onClick={() => rewritePost("hook_curiosity")}>
-                <Eye className="mr-2 h-3.5 w-3.5" /> Curiosity Hook
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("hook_contrarian")}>
-                <Bold className="mr-2 h-3.5 w-3.5" /> Contrarian Hook
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("hook_pain")}>
-                <AlertTriangle className="mr-2 h-3.5 w-3.5" /> Pain-Driven Hook
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => rewritePost("hook_data")}>
-                <BarChart3 className="mr-2 h-3.5 w-3.5" /> Data/Bold Hook
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Refine</p>
+                <DropdownMenuItem onClick={() => rewritePost("regenerate_hook")}>
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" /> Regenerate Hook
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("regenerate_cta")}>
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" /> Regenerate CTA
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Tone</p>
+                <DropdownMenuItem onClick={() => rewritePost("rewrite_shorter")}>
+                  <Minus className="mr-2 h-3.5 w-3.5" /> Shorter
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("rewrite_human")}>
+                  <User className="mr-2 h-3.5 w-3.5" /> More Human
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("rewrite_bold")}>
+                  <Zap className="mr-2 h-3.5 w-3.5" /> More Bold
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("rewrite_product")}>
+                  <Package className="mr-2 h-3.5 w-3.5" /> Product-Focused
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Content Style</p>
+                <DropdownMenuItem onClick={() => rewritePost("rewrite_story")}>
+                  <BookOpen className="mr-2 h-3.5 w-3.5" /> Story Format
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("rewrite_educational")}>
+                  <MessageSquare className="mr-2 h-3.5 w-3.5" /> Educational Framework
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("rewrite_hybrid")}>
+                  <Shuffle className="mr-2 h-3.5 w-3.5" /> Hybrid (Story + Insight)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <p className="px-2 py-1.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Hook Style</p>
+                <DropdownMenuItem onClick={() => rewritePost("hook_curiosity")}>
+                  <Eye className="mr-2 h-3.5 w-3.5" /> Curiosity Hook
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("hook_contrarian")}>
+                  <Bold className="mr-2 h-3.5 w-3.5" /> Contrarian Hook
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("hook_pain")}>
+                  <AlertTriangle className="mr-2 h-3.5 w-3.5" /> Pain-Driven Hook
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => rewritePost("hook_data")}>
+                  <BarChart3 className="mr-2 h-3.5 w-3.5" /> Data/Bold Hook
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
 
