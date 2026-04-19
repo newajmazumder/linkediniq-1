@@ -433,10 +433,12 @@ serve(async (req) => {
     action.signal_strength = signalStrength;
     action.signal_reason = signalReason;
     action.pacing_state = pacingState;
+    action.lifecycle = lifecycle;
 
     return new Response(JSON.stringify({
       ok: true,
       action,
+      lifecycle,
       pace: {
         state: pacingState,
         expected_by_now: expectedByNow,
