@@ -21,8 +21,11 @@ import { goalUpdatedEvent } from "@/lib/goal-metrics";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
-  scoreInterpretation, computeVelocity,
+  scoreInterpretation, computeVelocity, buildPillarHints, SCORE_WEIGHTS,
 } from "@/lib/strategy";
+import ScoreBreakdownCard from "@/components/campaign/ScoreBreakdownCard";
+import CampaignProjectionCard from "@/components/campaign/CampaignProjectionCard";
+import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
 
 type Campaign = any;
 type WeekPlan = any;
