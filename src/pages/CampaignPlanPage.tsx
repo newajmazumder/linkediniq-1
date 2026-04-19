@@ -409,8 +409,9 @@ const CampaignPlanPage = () => {
             )}
           </div>
 
-          {/* Minimal goal progress strip — anchors the hero to the actual outcome */}
-          {campaign.target_quantity && campaign.target_metric && (
+          {/* Minimal goal progress strip — anchors the hero to the actual outcome.
+              Hidden in setup: there's no goal context to anchor without a plan. */}
+          {lifecycleMeta.showGoalProgress && campaign.target_quantity && campaign.target_metric && (
             <CampaignGoalProgressBar
               currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
               target={campaign.target_quantity}
@@ -419,8 +420,8 @@ const CampaignPlanPage = () => {
             />
           )}
 
-          {/* Urgency micro-line — concrete shortfall in goal units, not just % */}
-          {showUrgency && (
+          {/* Urgency micro-line — only meaningful once we have a plan + posts to project from. */}
+          {lifecycle === "learning" && showUrgency && (
             <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-2 text-xs flex items-center gap-2 flex-wrap">
               <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />
               <span className="text-foreground">
@@ -445,13 +446,46 @@ const CampaignPlanPage = () => {
         </div>
       </div>
 
-      {/* PROACTIVE ADVISOR — surfaces blocking missing info as questions */}
-      <CampaignAdvisorBanner questions={advisorQuestions} onChange={reloadAdvisorQuestions} />
+      {/* SETUP empty state — onboarding guidance, no fake intelligence. */}
+      {lifecycle === "setup" && (
+        <div className="rounded-xl border border-border bg-card p-6 sm:p-8 text-center space-y-4">
+          <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+            <Sparkles className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h3 className="text-lg font-semibold text-foreground">This campaign hasn't started yet</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              No plan or posts exist. We can't evaluate performance, score strategy, or recommend optimizations until your campaign begins.
+            </p>
+          </div>
+          <div className="text-left max-w-md mx-auto bg-muted/30 border border-border rounded-md px-4 py-3 space-y-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Next step</p>
+            <ol className="text-sm text-foreground space-y-1.5 leading-relaxed">
+              <li><span className="text-muted-foreground tabular-nums mr-2">1.</span>Generate your weekly plan</li>
+              <li><span className="text-muted-foreground tabular-nums mr-2">2.</span>Review and approve post structure</li>
+              <li><span className="text-muted-foreground tabular-nums mr-2">3.</span>Publish your first post</li>
+            </ol>
+            <p className="text-[11px] text-muted-foreground pt-1">
+              Once you publish 2–3 posts, we'll start analyzing patterns and recommending improvements.
+            </p>
+          </div>
+          <Button onClick={generatePlan} disabled={generating} size="lg">
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            Generate Plan
+          </Button>
+        </div>
+      )}
+
+      {/* PROACTIVE ADVISOR — only when there's enough context (plan exists). */}
+      {lifecycleMeta.showAdvisor && (
+        <CampaignAdvisorBanner questions={advisorQuestions} onChange={reloadAdvisorQuestions} />
+      )}
 
       {/* TIME-AWARE PACING STRIP — Expected vs Actual by today */}
-      {(postPlans.length > 0 || startedRef) && <CampaignPacingStrip pacing={pacing} />}
+      {lifecycleMeta.showPacing && (postPlans.length > 0 || startedRef) && <CampaignPacingStrip pacing={pacing} />}
 
-      {/* NEXT BEST ACTION — single prioritized recommendation, evidence-driven */}
+      {/* NEXT BEST ACTION — only after plan exists. Edge function gates content by lifecycle too. */}
+      {lifecycleMeta.showNBA && (
       <NextBestActionCard
         campaignId={id!}
         onAction={(a: NextBestAction) => {
