@@ -302,20 +302,14 @@ const CampaignPlanPage = () => {
             )}
           </div>
 
-          {/* L2 — Single quiet action row, only when there's a real problem */}
-          {isUrgent && (
-            <button
-              onClick={() => navigate(action.href)}
-              className="group/act w-full flex items-center justify-between gap-3 rounded-md bg-muted/40 px-4 py-3 text-left hover:bg-muted/60 transition-colors"
-            >
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">
-                  Why · {diag.why[0] || "Strategy gap"}
-                </p>
-                <p className="mt-0.5 text-sm font-medium text-foreground">{action.label}</p>
-              </div>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover/act:text-foreground group-hover/act:translate-x-0.5 transition-all" />
-            </button>
+          {/* Minimal goal progress strip — anchors the hero to the actual outcome */}
+          {campaign.target_quantity && campaign.target_metric && (
+            <CampaignGoalProgressBar
+              currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
+              target={campaign.target_quantity}
+              goalMetric={campaign.target_metric}
+              variant="compact"
+            />
           )}
 
           {/* Urgency micro-line — only when behind, anchors hero to outcome */}
