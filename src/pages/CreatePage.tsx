@@ -271,19 +271,106 @@ const CreatePage = () => {
 
   const hasOutput = idea || posts.length > 0;
 
+  // Recoverable error path: draft id was given but the row no longer exists.
+  // We never want to 404 — the user must be able to recreate or escape.
+  if (draftMissing) {
+    const planId = searchParams.get("post_plan_id");
+    const campaignIdQ = searchParams.get("campaign_id");
+    return (
+      <div className="content-fade-in flex items-center justify-center px-6 py-12 h-full">
+        <div className="max-w-md w-full rounded-lg border border-border bg-card p-6 text-center space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Draft not found</h2>
+          <p className="text-sm text-muted-foreground">
+            This draft could not be found. It may have been deleted. You can recreate it from the original campaign plan.
+          </p>
+          <div className="flex items-center justify-center gap-2 pt-2">
+            {planId && (
+              <Link
+                to={`/create?post_plan_id=${planId}${campaignIdQ ? `&campaign_id=${campaignIdQ}` : ""}`}
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+              >
+                <Pencil className="h-3.5 w-3.5" /> Recreate draft
+              </Link>
+            )}
+            {campaignIdQ && (
+              <Link
+                to={`/campaign/${campaignIdQ}`}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Back to campaign
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="content-fade-in flex flex-col md:flex-row h-full">
       {/* Left column — Input */}
       <div className={`space-y-5 overflow-y-auto transition-all duration-300 ${hasOutput ? "md:w-[380px] md:min-w-[340px] md:shrink-0 md:border-r border-b md:border-b-0 border-border px-4 md:px-6 py-6 md:py-8" : "mx-auto w-full max-w-2xl px-4 md:px-6 py-6 md:py-8"}`}>
         <div>
-          <h1 className="text-2xl font-semibold text-foreground">Create</h1>
+          <h1 className="text-2xl font-semibold text-foreground">
+            {isViewMode ? "View draft" : isEditMode ? "Edit draft" : "Create"}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Select a persona, campaign, and post type, then describe what you want to promote.
+            {isViewMode
+              ? "Read-only preview of your saved draft. Switch to edit mode to make changes."
+              : isEditMode
+              ? "Update the saved content. Saving will overwrite the existing draft."
+              : "Select a persona, campaign, and post type, then describe what you want to promote."}
           </p>
         </div>
 
+        {/* Draft context banner — shown whenever we hydrated from an existing draft. */}
+        {isDraftMode && draftRow && (
+          <div className="rounded-lg border border-border bg-secondary/30 p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <span className="text-[11px] font-medium text-foreground capitalize">
+                {isViewMode ? "Viewing" : "Editing"} · {draftRow.status}
+              </span>
+              <span className="text-[10px] text-muted-foreground">
+                Updated {new Date(draftRow.updated_at).toLocaleString()}
+              </span>
+            </div>
+            {postPlan && (
+              <p className="text-[11px] text-muted-foreground">
+                Campaign Post Plan · Week {postPlan.week_number} · Post {postPlan.post_number}
+                {postPlan.phase ? ` · ${String(postPlan.phase).replace(/_/g, " ")}` : ""}
+              </p>
+            )}
+            <div className="flex items-center gap-2 pt-1">
+              {isViewMode && (
+                <Link
+                  to={`/create?draft_id=${draftIdParam}&mode=edit${searchParams.get("campaign_id") ? `&campaign_id=${searchParams.get("campaign_id")}` : ""}${searchParams.get("post_plan_id") ? `&post_plan_id=${searchParams.get("post_plan_id")}` : ""}`}
+                  className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+                >
+                  <Pencil className="h-3 w-3" /> Edit draft
+                </Link>
+              )}
+              {isEditMode && (
+                <Link
+                  to={`/create?draft_id=${draftIdParam}&mode=view${searchParams.get("campaign_id") ? `&campaign_id=${searchParams.get("campaign_id")}` : ""}${searchParams.get("post_plan_id") ? `&post_plan_id=${searchParams.get("post_plan_id")}` : ""}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <Eye className="h-3 w-3" /> View mode
+                </Link>
+              )}
+              {searchParams.get("campaign_id") && (
+                <Link
+                  to={`/campaign/${searchParams.get("campaign_id")}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <ArrowLeft className="h-3 w-3" /> Back to campaign
+                </Link>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Post Plan Banner */}
-        {postPlan && (
+        {postPlan && !isDraftMode && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-1">
             <p className="text-xs font-medium text-primary">📋 Campaign Post Plan — Post {postPlan.post_number}, Week {postPlan.week_number}</p>
             <p className="text-xs text-foreground">{postPlan.post_objective}</p>
