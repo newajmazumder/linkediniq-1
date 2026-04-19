@@ -45,7 +45,7 @@ const CampaignPlanPage = () => {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [expandedWeek, setExpandedWeek] = useState<number | null>(null);
-  const [tab, setTab] = useState<"plan" | "outcome" | "analytics" | "report">("plan");
+  const [tab, setTab] = useState<"plan" | "performance" | "analytics" | "report">("plan");
   const [analytics, setAnalytics] = useState<any>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [goalAgg, setGoalAgg] = useState<any>(null);
@@ -339,7 +339,7 @@ const CampaignPlanPage = () => {
 
       {/* Tabs */}
       <div className="flex gap-1.5 border-b border-border">
-        {(["plan", "outcome", "analytics", "report"] as const).map((t) => (
+        {(["plan", "performance", "analytics", "report"] as const).map((t) => (
           <button
             key={t}
             onClick={() => {
@@ -354,15 +354,71 @@ const CampaignPlanPage = () => {
               tab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            {t === "plan" && "📅 "}{t === "outcome" && "🎯 "}{t === "analytics" && "📈 "}{t === "report" && "📄 "}
+            {t === "plan" && "📅 "}{t === "performance" && "🎯 "}{t === "analytics" && "📈 "}{t === "report" && "📄 "}
             {t}
           </button>
         ))}
       </div>
 
-      {/* OUTCOME TAB — live performance: progress + projection + top performer + execution + why-score */}
-      {tab === "outcome" && (
+      {/* PERFORMANCE TAB — live results: directive + progress + projection + top performer + execution */}
+      {tab === "performance" && (
         <div className="space-y-3">
+          {/* DO THIS NEXT — single dominant directive (the brain of the page) */}
+          {(() => {
+            const topRow = (goalAgg?.contribution_rows || [])
+              .filter((r: any) => (r.contribution || 0) > 0)
+              .sort((a: any, b: any) => b.contribution - a.contribution)[0];
+            const goalLabel = (campaign.target_metric || "results").replace(/_/g, " ");
+            const shortBy = velocity && !velocity.onPace
+              ? Math.max(1, Math.ceil(velocity.required - velocity.actual))
+              : null;
+            const avgPerPost = topRow ? topRow.contribution : null;
+            const expectedLow = shortBy && avgPerPost ? Math.round(shortBy * avgPerPost * 0.8) : null;
+            const expectedHigh = shortBy && avgPerPost ? Math.round(shortBy * avgPerPost * 1.5) : null;
+
+            // Pull pattern from top performer (best-effort, async resolved inside TopPerformerCard too)
+            const directive = shortBy
+              ? `Publish ${shortBy} ${shortBy === 1 ? "post" : "posts"} this week`
+              : (topRow ? `Replicate Post ${topRow.post_number}'s pattern` : "Mark posts as posted to start measuring");
+
+            return (
+              <div className="rounded-xl border border-foreground/15 bg-card p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Flame className="h-3.5 w-3.5 text-foreground" />
+                  <p className="text-[10px] uppercase tracking-[0.14em] font-semibold text-foreground">
+                    Do this next
+                  </p>
+                </div>
+                <p className="text-xl sm:text-2xl font-semibold text-foreground leading-tight">
+                  {directive}
+                </p>
+                {topRow && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium text-foreground/80">Focus on what's working:</p>
+                    <ul className="space-y-0.5 pl-1">
+                      <li>• Replicate Post {topRow.post_number}'s structure ({topRow.contribution} {goalLabel})</li>
+                      <li>• Lead with the same hook angle</li>
+                      <li>• Use the same CTA style</li>
+                    </ul>
+                  </div>
+                )}
+                {expectedLow !== null && expectedHigh !== null && expectedHigh > 0 && (
+                  <p className="text-xs text-foreground pt-1 border-t border-border">
+                    Expected impact: <span className="font-semibold tabular-nums">+{expectedLow}–{expectedHigh} {goalLabel}</span>
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  className="w-full justify-between"
+                  onClick={() => navigate(`/create?campaign_id=${id}${topRow ? `&clone_post=${topRow.post_number}` : ""}`)}
+                >
+                  Create the next post
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            );
+          })()}
+
           {campaign.target_quantity && campaign.target_metric && (
             <CampaignGoalProgressBar
               currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
