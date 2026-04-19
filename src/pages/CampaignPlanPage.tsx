@@ -1303,6 +1303,18 @@ const CampaignPlanPage = () => {
         </div>
       )}
       </section>
+
+      {/* Date capture dialog — required before plan generation. */}
+      <StartCampaignDialog
+        open={startDialogOpen}
+        onOpenChange={setStartDialogOpen}
+        campaignId={id!}
+        campaign={campaign}
+        onStarted={() => {
+          // Refresh the campaign row so date guards pass, then auto-generate plan.
+          fetchAll().then(() => generatePlan());
+        }}
+      />
     </div>
   );
 };
