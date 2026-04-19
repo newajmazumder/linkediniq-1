@@ -613,9 +613,11 @@ export type Database = {
           core_message: string | null
           created_at: string
           cta_type: string | null
+          current_goal_value: number | null
           execution_score: number | null
           execution_status: string
           goal: string | null
+          goal_value_updated_at: string | null
           id: string
           is_active: boolean | null
           language: string | null
@@ -648,9 +650,11 @@ export type Database = {
           core_message?: string | null
           created_at?: string
           cta_type?: string | null
+          current_goal_value?: number | null
           execution_score?: number | null
           execution_status?: string
           goal?: string | null
+          goal_value_updated_at?: string | null
           id?: string
           is_active?: boolean | null
           language?: string | null
@@ -683,9 +687,11 @@ export type Database = {
           core_message?: string | null
           created_at?: string
           cta_type?: string | null
+          current_goal_value?: number | null
           execution_score?: number | null
           execution_status?: string
           goal?: string | null
+          goal_value_updated_at?: string | null
           id?: string
           is_active?: boolean | null
           language?: string | null
@@ -1620,10 +1626,13 @@ export type Database = {
       }
       post_metrics: {
         Row: {
+          attribution_note: string | null
           clicks: number | null
           comments: number | null
           created_at: string
           follower_gain: number | null
+          goal_contribution: number | null
+          goal_metric: string | null
           id: string
           impressions: number | null
           last_updated_at: string
@@ -1637,10 +1646,13 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attribution_note?: string | null
           clicks?: number | null
           comments?: number | null
           created_at?: string
           follower_gain?: number | null
+          goal_contribution?: number | null
+          goal_metric?: string | null
           id?: string
           impressions?: number | null
           last_updated_at?: string
@@ -1654,10 +1666,13 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attribution_note?: string | null
           clicks?: number | null
           comments?: number | null
           created_at?: string
           follower_gain?: number | null
+          goal_contribution?: number | null
+          goal_metric?: string | null
           id?: string
           impressions?: number | null
           last_updated_at?: string

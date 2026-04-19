@@ -6,8 +6,9 @@ import { toast } from "sonner";
 import {
   ArrowLeft, ExternalLink, Calendar, Target, Save, Loader2,
   ThumbsUp, MessageSquare, Share2, Eye, MousePointer, UserPlus, Users2,
-  Sparkles, CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronRight,
+  Sparkles, CheckCircle, AlertTriangle, XCircle, ChevronDown, ChevronRight, Trophy,
 } from "lucide-react";
+import { goalContributionFieldLabel, goalContributionPrompt } from "@/lib/goal-metrics";
 
 type PostData = {
   id: string;
@@ -39,6 +40,17 @@ type MetricsData = {
   profile_visits: number;
   follower_gain: number;
   manual_notes: string;
+  // Goal-aware bridge layer — connects raw signals to campaign outcomes.
+  goal_contribution: number;
+  goal_metric: string | null;
+  attribution_note: string;
+};
+
+// Linked campaign metadata used to drive the Goal Contribution UI.
+type CampaignGoalCtx = {
+  campaign_id: string;
+  target_metric: string | null;
+  target_quantity: number | null;
 };
 
 type EvaluationData = {
@@ -69,7 +81,10 @@ type RecommendationData = {
 };
 
 const emptyContext: ContextData = { goal: "", persona_id: "", campaign_id: "", strategy_type: "", tone: "", hook_type: "", cta_type: "" };
-const emptyMetrics: MetricsData = { reactions: 0, comments: 0, reposts: 0, impressions: 0, clicks: 0, profile_visits: 0, follower_gain: 0, manual_notes: "" };
+const emptyMetrics: MetricsData = {
+  reactions: 0, comments: 0, reposts: 0, impressions: 0, clicks: 0, profile_visits: 0, follower_gain: 0, manual_notes: "",
+  goal_contribution: 0, goal_metric: null, attribution_note: "",
+};
 
 const goals = ["brand_awareness", "education", "storytelling", "lead_generation"];
 const strategies = ["storytelling", "educational", "authority", "product_led", "soft_promotion"];
@@ -88,6 +103,8 @@ const PostDetailPage = () => {
   const [recommendations, setRecommendations] = useState<RecommendationData | null>(null);
   const [personas, setPersonas] = useState<{ id: string; name: string }[]>([]);
   const [campaigns, setCampaigns] = useState<{ id: string; name: string }[]>([]);
+  // Linked campaign's goal metric — drives the dynamic Goal Contribution label.
+  const [campaignGoalCtx, setCampaignGoalCtx] = useState<CampaignGoalCtx | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingContext, setSavingContext] = useState(false);
   const [savingMetrics, setSavingMetrics] = useState(false);
@@ -122,12 +139,17 @@ const PostDetailPage = () => {
     }
 
     setPost(postRes.data);
+    let derivedCampaignId: string | null = null;
     if (ctxRes.data) {
       setContext({ ...emptyContext, ...ctxRes.data });
+      derivedCampaignId = ctxRes.data.campaign_id || null;
     } else if (postRes.data.linked_draft_id) {
       // Auto-fill context from the campaign this post originated from
       const auto = await deriveContextFromDraft(postRes.data.linked_draft_id);
-      if (auto) setContext(c => ({ ...c, ...auto }));
+      if (auto) {
+        setContext(c => ({ ...c, ...auto }));
+        derivedCampaignId = auto.campaign_id || null;
+      }
     }
     if (metricsRes.data) setMetrics({ ...emptyMetrics, ...metricsRes.data });
     setEvaluation(evalRes.data || null);
@@ -135,6 +157,29 @@ const PostDetailPage = () => {
     setRecommendations(recRes.data || null);
     setPersonas(personaRes.data || []);
     setCampaigns(campRes.data || []);
+
+    // Pull the linked campaign's goal so we can render the dynamic
+    // "demo bookings from this post" / "leads from this post" field.
+    if (derivedCampaignId) {
+      const { data: camp } = await supabase
+        .from("campaigns")
+        .select("id, target_metric, target_quantity")
+        .eq("id", derivedCampaignId)
+        .maybeSingle();
+      if (camp) {
+        setCampaignGoalCtx({
+          campaign_id: camp.id,
+          target_metric: camp.target_metric,
+          target_quantity: camp.target_quantity,
+        });
+        // If metrics row has no goal_metric snapshot yet, hydrate it from the campaign
+        if (metricsRes.data && !metricsRes.data.goal_metric && camp.target_metric) {
+          setMetrics(m => ({ ...m, goal_metric: camp.target_metric }));
+        } else if (!metricsRes.data && camp.target_metric) {
+          setMetrics(m => ({ ...m, goal_metric: camp.target_metric }));
+        }
+      }
+    }
     setLoading(false);
   };
 
@@ -215,6 +260,10 @@ const PostDetailPage = () => {
         profile_visits: metrics.profile_visits,
         follower_gain: metrics.follower_gain,
         manual_notes: metrics.manual_notes || null,
+        // Goal-aware bridge — what outcome did this post drive?
+        goal_contribution: metrics.goal_contribution || 0,
+        goal_metric: metrics.goal_metric || campaignGoalCtx?.target_metric || null,
+        attribution_note: metrics.attribution_note || null,
         source: "manual",
       };
       const { error } = metrics.id
@@ -224,6 +273,13 @@ const PostDetailPage = () => {
       toast.success("Metrics saved");
       const { data } = await supabase.from("post_metrics").select("*").eq("linkedin_post_id", postId!).single();
       if (data) setMetrics(data);
+
+      // Recompute campaign-level goal aggregation when we have a campaign link.
+      if (campaignGoalCtx?.campaign_id) {
+        supabase.functions.invoke("aggregate-campaign-goals", {
+          body: { campaign_id: campaignGoalCtx.campaign_id },
+        }).catch(() => {});
+      }
 
       // Auto-trigger learning if enough data exists
       triggerAutoLearn();
@@ -437,6 +493,42 @@ const PostDetailPage = () => {
                   className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs min-h-[60px] resize-none focus:outline-none focus:ring-1 focus:ring-ring"
                 />
               </div>
+
+              {/* Goal Contribution — the bridge between raw signals and campaign outcome.
+                  Only shown when the post is linked to a campaign with a defined goal metric. */}
+              {campaignGoalCtx?.target_metric && (
+                <div className="rounded-md border border-primary/30 bg-primary/5 p-3 space-y-2">
+                  <div className="flex items-center gap-1.5">
+                    <Trophy className="h-3.5 w-3.5 text-primary" />
+                    <p className="text-xs font-semibold text-foreground">Goal Contribution</p>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {goalContributionPrompt(campaignGoalCtx.target_metric)}
+                  </p>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1 capitalize">
+                      {goalContributionFieldLabel(campaignGoalCtx.target_metric)}
+                    </label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={metrics.goal_contribution}
+                      onChange={e => setMetrics(m => ({ ...m, goal_contribution: parseInt(e.target.value) || 0 }))}
+                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-muted-foreground mb-1">Attribution note (optional)</label>
+                    <input
+                      type="text"
+                      value={metrics.attribution_note}
+                      onChange={e => setMetrics(m => ({ ...m, attribution_note: e.target.value }))}
+                      placeholder="e.g. from DM reply, comment thread, profile visit..."
+                      className="w-full rounded-md border border-input bg-background px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+              )}
               <button
                 onClick={saveMetrics}
                 disabled={savingMetrics}
