@@ -386,6 +386,31 @@ const CampaignPlanPage = () => {
       {/* L4 · DEEP ANALYSIS — tabs */}
       <section className="space-y-3">
 
+      {/* Why this score — disclosure (collapsed by default) */}
+      <details className="group rounded-lg border border-border bg-card">
+        <summary className="flex cursor-pointer items-center justify-between px-4 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors list-none [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.12em] font-semibold">Why this score</span>
+            <span className="tabular-nums text-foreground">{score.total.toFixed(1)} / 10</span>
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+        </summary>
+        <div className="border-t border-border p-4">
+          <ScoreBreakdownCard
+            score={score}
+            pillars={(() => {
+              const hints = buildPillarHints(score, scoreInputs);
+              return [
+                { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
+                { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
+                { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
+              ];
+            })()}
+            className="border-0 p-0"
+          />
+        </div>
+      </details>
+
       {/* Tabs */}
       <div className="flex gap-1.5 border-b border-border">
         {(["plan", "analytics", "report"] as const).map((t) => (
