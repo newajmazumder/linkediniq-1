@@ -331,21 +331,25 @@ const CampaignPlanPage = () => {
             />
           )}
 
-          {/* Urgency micro-line — only when behind, anchors hero to outcome */}
+          {/* Urgency micro-line — concrete shortfall in goal units, not just % */}
           {showUrgency && (
-            <div className="rounded-md bg-muted/40 px-3 py-2 text-xs flex items-center gap-2 flex-wrap">
-              <AlertTriangle className={cn("h-3.5 w-3.5 shrink-0", meta.textClass)} />
+            <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-2 text-xs flex items-center gap-2 flex-wrap">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />
+              <span className="text-foreground">
+                At current pace you will <span className="font-semibold text-destructive">miss goal by {proj!.gap} {(campaign.target_metric || "").replace(/_/g, " ")}</span>
+              </span>
               {velocityShort && (
-                <span className={cn("font-medium", meta.textClass)}>
-                  {velocityShort} posts/wk behind schedule
-                </span>
+                <>
+                  <span className="text-border">·</span>
+                  <span className="text-muted-foreground">
+                    <span className="text-destructive font-medium">{velocityShort}</span> posts/wk behind
+                  </span>
+                </>
               )}
               {shortfallPct !== null && shortfallPct > 0 && (
                 <>
-                  {velocityShort && <span className="text-border">·</span>}
-                  <span className="text-muted-foreground">
-                    projected <span className={cn("font-semibold", meta.textClass)}>{shortfallPct}%</span> shortfall
-                  </span>
+                  <span className="text-border">·</span>
+                  <span className="text-muted-foreground tabular-nums">{shortfallPct}% short</span>
                 </>
               )}
             </div>
@@ -730,6 +734,11 @@ const CampaignPlanPage = () => {
                   clicks={goalAgg?.raw_totals?.clicks ?? 0}
                   impressions={goalAgg?.raw_totals?.impressions ?? 0}
                   postsContribution={goalAgg?.posts_contribution ?? 0}
+                  goalMetric={goalAgg?.goal_metric}
+                />
+                {/* Per-post breakdown — connects metrics to actions */}
+                <TopContributorsStrip
+                  rows={goalAgg?.contribution_rows || []}
                   goalMetric={goalAgg?.goal_metric}
                 />
               </div>
