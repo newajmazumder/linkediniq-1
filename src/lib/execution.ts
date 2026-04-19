@@ -207,6 +207,122 @@ export const phaseFromWeek = (week: number, totalWeeks: number): string => {
   return "conversion";
 };
 
+// ============================================================
+// Time-Aware Pacing Engine (v1)
+// Exposes a single function that says — in plain English —
+// whether the campaign is NOT_STARTED / BEHIND / ON_TRACK / AHEAD
+// based on calendar time vs posts shipped.
+// ============================================================
+
+export type PacingState = "NOT_STARTED" | "BEHIND" | "ON_TRACK" | "AHEAD";
+
+export type Pacing = {
+  state: PacingState;
+  expectedByNow: number;       // posts that should be live by today
+  actual: number;              // posts actually live
+  delta: number;               // actual - expectedByNow (negative = behind)
+  daysElapsed: number;
+  daysRemaining: number;
+  daysTotal: number;
+  postsRemaining: number;
+  requiredVelocity: number;    // posts/week required to finish on time
+  reasonShort: string;         // one-line human reason (drives UI strip)
+};
+
+const ON_TRACK_TOLERANCE = 0.5; // posts — within ±0.5 of expected counts as on track
+
+export const computePacing = (
+  postPlans: PostPlanLite[],
+  startedAt: string | Date | null | undefined,
+  endsAt: string | Date | null | undefined,
+  now: Date = new Date(),
+): Pacing => {
+  const totalPlanned = postPlans.length;
+  const posted = postPlans.filter(p => p.status === "posted").length;
+
+  const start = startedAt ? new Date(startedAt) : null;
+  const end = endsAt ? new Date(endsAt) : null;
+
+  const daysTotal = start && end
+    ? Math.max(1, Math.round((end.getTime() - start.getTime()) / dayMs))
+    : 7;
+  const daysElapsedRaw = start ? (now.getTime() - start.getTime()) / dayMs : 0;
+  const daysElapsed = clamp(Math.round(daysElapsedRaw), 0, daysTotal);
+  const daysRemaining = Math.max(0, daysTotal - daysElapsed);
+  const postsRemaining = Math.max(0, totalPlanned - posted);
+
+  // Expected by today = linear pace through the campaign window
+  const elapsedRatio = daysTotal > 0 ? clamp(daysElapsedRaw / daysTotal, 0, 1) : 0;
+  const expectedByNow = totalPlanned > 0 ? Math.round(elapsedRatio * totalPlanned) : 0;
+  const delta = posted - expectedByNow;
+
+  let state: PacingState;
+  let reasonShort: string;
+
+  if (totalPlanned === 0 || posted === 0 && (daysElapsedRaw <= 0 || elapsedRatio < 0.05)) {
+    // Truly not started: no posts AND barely any time has elapsed (< 5% of window)
+    state = "NOT_STARTED";
+    reasonShort = totalPlanned === 0
+      ? "No plan yet — generate the campaign plan to begin."
+      : "Campaign hasn't started yet — publish your first post to activate.";
+  } else if (posted === 0 && expectedByNow > 0) {
+    // Time has elapsed but nothing posted = behind
+    state = "BEHIND";
+    reasonShort = `Expected ${expectedByNow} post${expectedByNow === 1 ? "" : "s"} by today, 0 published.`;
+  } else if (delta < -ON_TRACK_TOLERANCE) {
+    state = "BEHIND";
+    reasonShort = `${posted} of ${expectedByNow} expected by today (behind by ${Math.abs(delta)}).`;
+  } else if (delta > ON_TRACK_TOLERANCE) {
+    state = "AHEAD";
+    reasonShort = `${posted} of ${expectedByNow} expected by today (ahead by ${delta}).`;
+  } else {
+    state = "ON_TRACK";
+    reasonShort = `${posted} of ${expectedByNow} expected by today — on pace.`;
+  }
+
+  // Required velocity: posts/week needed to finish remaining work in remaining days
+  const requiredVelocity = daysRemaining > 0
+    ? Math.round((postsRemaining / daysRemaining) * 7 * 10) / 10
+    : postsRemaining > 0 ? postsRemaining * 7 : 0; // 0 days remaining → must ship today
+
+  return {
+    state, expectedByNow, actual: posted, delta,
+    daysElapsed, daysRemaining, daysTotal, postsRemaining,
+    requiredVelocity, reasonShort,
+  };
+};
+
+export const PACING_STATE_META: Record<PacingState, { label: string; dot: string; text: string; ring: string; bg: string }> = {
+  NOT_STARTED: {
+    label: "Not started",
+    dot: "bg-muted-foreground",
+    text: "text-muted-foreground",
+    ring: "border-border",
+    bg: "bg-muted/30",
+  },
+  BEHIND: {
+    label: "Behind",
+    dot: "bg-destructive",
+    text: "text-destructive",
+    ring: "border-destructive/40",
+    bg: "bg-destructive/5",
+  },
+  ON_TRACK: {
+    label: "On track",
+    dot: "bg-emerald-500",
+    text: "text-emerald-700 dark:text-emerald-400",
+    ring: "border-emerald-500/40",
+    bg: "bg-emerald-500/5",
+  },
+  AHEAD: {
+    label: "Ahead",
+    dot: "bg-blue-500",
+    text: "text-blue-700 dark:text-blue-400",
+    ring: "border-blue-500/40",
+    bg: "bg-blue-500/5",
+  },
+};
+
 export const EXECUTION_STATUS_META: Record<ExecutionStatus, { label: string; tone: string }> = {
   planned:   { label: "Planned",   tone: "text-muted-foreground" },
   active:    { label: "Active",    tone: "text-foreground" },
