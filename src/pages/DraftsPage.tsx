@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import LinkedInPostPreview from "@/components/create/LinkedInPostPreview";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -8,7 +9,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle, Loader2, BarChart3, AlertTriangle, CheckCircle, Lightbulb, ShieldAlert, ShieldCheck, Zap, ArrowUp, ArrowDown, Send } from "lucide-react";
+import { Trash2, Save, Copy, X, CalendarIcon, Check, XCircle, Loader2, BarChart3, AlertTriangle, CheckCircle, Lightbulb, ShieldAlert, ShieldCheck, Zap, ArrowUp, ArrowDown, Send, Target } from "lucide-react";
 import MarkPostedDialog from "@/components/strategy/MarkPostedDialog";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,19 @@ const publishColors: Record<string, { bg: string; text: string; label: string }>
   not_recommended: { bg: "bg-destructive/10", text: "text-destructive", label: "Not recommended" },
 };
 
+type CampaignContext = {
+  draft_id: string;
+  plan_id: string;
+  campaign_id: string;
+  campaign_name: string;
+  week_number: number;
+  post_number: number;
+  phase: string | null;
+  hook_type: string | null;
+  cta_type: string | null;
+  format: string | null;
+};
+
 const DraftsPage = () => {
   const { user } = useAuth();
   const [drafts, setDrafts] = useState<Draft[]>([]);
@@ -81,6 +95,9 @@ const DraftsPage = () => {
   const [predictions, setPredictions] = useState<Record<string, PredictionResult>>({});
   const [expandedPrediction, setExpandedPrediction] = useState<string | null>(null);
   const [markPostedDraft, setMarkPostedDraft] = useState<Draft | null>(null);
+  // Campaign context per draft — keys the badge that says
+  // "Revenue Recovery Blitz · Week 1 · Post 2 · Awareness".
+  const [contextByDraftId, setContextByDraftId] = useState<Record<string, CampaignContext>>({});
 
   const fetchDrafts = async () => {
     if (!user) return;
@@ -88,7 +105,34 @@ const DraftsPage = () => {
       .from("drafts")
       .select("*, ideas(idea_title, instruction)")
       .order("created_at", { ascending: false });
-    if (!error && data) setDrafts(data as any);
+    if (!error && data) {
+      setDrafts(data as any);
+      // Look up which campaign post plan (if any) this draft is fulfilling.
+      const ids = (data as any[]).map((d) => d.id);
+      if (ids.length > 0) {
+        const { data: plans } = await supabase
+          .from("campaign_post_plans")
+          .select("id, campaign_id, week_number, post_number, phase, suggested_hook_type, suggested_cta_type, recommended_format, linked_draft_id, campaigns:campaign_id(name)")
+          .in("linked_draft_id", ids);
+        const map: Record<string, CampaignContext> = {};
+        (plans || []).forEach((p: any) => {
+          if (!p.linked_draft_id) return;
+          map[p.linked_draft_id] = {
+            draft_id: p.linked_draft_id,
+            plan_id: p.id,
+            campaign_id: p.campaign_id,
+            campaign_name: p.campaigns?.name || "Campaign",
+            week_number: p.week_number,
+            post_number: p.post_number,
+            phase: p.phase,
+            hook_type: p.suggested_hook_type,
+            cta_type: p.suggested_cta_type,
+            format: p.recommended_format,
+          };
+        });
+        setContextByDraftId(map);
+      }
+    }
     setLoading(false);
   };
 
@@ -164,9 +208,33 @@ const DraftsPage = () => {
             const prediction = predictions[draft.id];
             const isExpanded = expandedPrediction === draft.id;
             const pubRec = prediction ? publishColors[prediction.publish_recommendation] || publishColors.revise : null;
+            const ctx = contextByDraftId[draft.id];
 
             return (
               <div key={draft.id} className="rounded-lg border border-border bg-card p-4 space-y-3">
+                {/* Campaign context badge — turns isolated drafts into
+                    campaign-aware execution units. Only shown when the draft
+                    is linked to a campaign post plan. */}
+                {ctx && (
+                  <Link
+                    to={`/campaign/${ctx.campaign_id}`}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-primary/5 border border-primary/20 px-2 py-1 text-[11px] text-primary hover:bg-primary/10 transition-colors"
+                  >
+                    <Target className="h-3 w-3" />
+                    <span className="font-medium truncate max-w-[200px]">{ctx.campaign_name}</span>
+                    <span className="text-primary/60">·</span>
+                    <span>Week {ctx.week_number}</span>
+                    <span className="text-primary/60">·</span>
+                    <span>Post {ctx.post_number}</span>
+                    {ctx.phase && (
+                      <>
+                        <span className="text-primary/60">·</span>
+                        <span className="capitalize">{ctx.phase.replace(/_/g, " ")}</span>
+                      </>
+                    )}
+                  </Link>
+                )}
+
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-xs text-muted-foreground truncate">{(draft.ideas as any)?.idea_title || (draft.ideas as any)?.instruction || "Untitled"}</p>
@@ -342,13 +410,24 @@ const DraftsPage = () => {
         </div>
       )}
 
-      <MarkPostedDialog
-        open={!!markPostedDraft}
-        onOpenChange={(o) => !o && setMarkPostedDraft(null)}
-        draftId={markPostedDraft?.id}
-        content={markPostedDraft?.custom_content || ""}
-        onMarked={fetchDrafts}
-      />
+      {(() => {
+        const ctx = markPostedDraft ? contextByDraftId[markPostedDraft.id] : null;
+        return (
+          <MarkPostedDialog
+            open={!!markPostedDraft}
+            onOpenChange={(o) => !o && setMarkPostedDraft(null)}
+            draftId={markPostedDraft?.id}
+            postPlanId={ctx?.plan_id}
+            campaignId={ctx?.campaign_id}
+            content={markPostedDraft?.custom_content || ""}
+            hookType={ctx?.hook_type}
+            ctaType={ctx?.cta_type}
+            format={ctx?.format}
+            phase={ctx?.phase}
+            onMarked={fetchDrafts}
+          />
+        );
+      })()}
     </div>
   );
 };

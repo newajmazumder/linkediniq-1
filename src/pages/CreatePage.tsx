@@ -388,11 +388,28 @@ const CreatePage = () => {
               </div>
 
               {viewMode === "compare" && idea ? (
-                <ComparisonView posts={posts} ideaId={idea.id} userId={user!.id} selectedId={selectedPostId} onSelect={setSelectedPostId} onPostUpdate={handlePostUpdate} />
+                <ComparisonView
+                  posts={posts}
+                  ideaId={idea.id}
+                  userId={user!.id}
+                  selectedId={selectedPostId}
+                  onSelect={setSelectedPostId}
+                  onPostUpdate={handlePostUpdate}
+                  postPlanId={postPlan?.id || null}
+                  campaignId={selectedCampaignId || null}
+                />
               ) : (
                 <div className="space-y-4">
                   {posts.sort((a, b) => a.variation_number - b.variation_number).map((post) => (
-                    <PostCard key={post.id} post={post} ideaId={idea!.id} userId={user!.id} onPostUpdate={handlePostUpdate} />
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      ideaId={idea!.id}
+                      userId={user!.id}
+                      onPostUpdate={handlePostUpdate}
+                      postPlanId={postPlan?.id || null}
+                      campaignId={selectedCampaignId || null}
+                    />
                   ))}
                 </div>
               )}

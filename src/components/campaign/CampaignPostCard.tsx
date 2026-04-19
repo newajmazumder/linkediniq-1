@@ -1,13 +1,23 @@
+// Campaign post card — the source-of-truth view for a single planned post
+// inside the campaign Plan tab.
+//
+// Renders the full execution lifecycle:
+//   planned → drafted → scheduled → posted   (or → missed)
+//
+// Each state shows the right action so the campaign view always reflects
+// real execution instead of being stuck on "Create now".
+
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
-  Clock, PenLine, Check, Eye, BarChart3, Loader2,
-  ArrowRight, AlertTriangle, ShieldCheck, ShieldAlert,
+  Clock, PenLine, Check, Eye, BarChart3, Loader2, ExternalLink,
+  AlertTriangle, ShieldCheck, ShieldAlert, Send, CalendarClock, XCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import MarkPostedDialog from "@/components/strategy/MarkPostedDialog";
 
 type PostPlan = {
   id: string;
@@ -15,6 +25,7 @@ type PostPlan = {
   post_number: number;
   week_number: number;
   status: string | null;
+  phase?: string | null;
   post_objective: string | null;
   content_angle: string | null;
   suggested_hook_type: string | null;
@@ -24,12 +35,17 @@ type PostPlan = {
   strategic_rationale: string | null;
   linked_draft_id: string | null;
   linked_post_id: string | null;
+  posted_at?: string | null;
+  posted_url?: string | null;
+  planned_date?: string | null;
 };
 
-const statusColors: Record<string, string> = {
-  planned: "bg-muted text-muted-foreground",
-  drafted: "bg-yellow-500/10 text-yellow-600",
-  published: "bg-green-500/10 text-green-600",
+const statusMeta: Record<string, { label: string; cls: string; Icon: any }> = {
+  planned:   { label: "planned",   cls: "bg-muted text-muted-foreground",        Icon: Clock },
+  drafted:   { label: "drafted",   cls: "bg-yellow-500/10 text-yellow-600",      Icon: PenLine },
+  scheduled: { label: "scheduled", cls: "bg-blue-500/10 text-blue-600",          Icon: CalendarClock },
+  posted:    { label: "posted",    cls: "bg-green-500/10 text-green-600",        Icon: Check },
+  missed:    { label: "missed",    cls: "bg-destructive/10 text-destructive",    Icon: XCircle },
 };
 
 const getScoreLabel = (score: number) => {
@@ -41,39 +57,56 @@ const getScoreLabel = (score: number) => {
 const CampaignPostCard = ({
   post,
   campaignId,
+  onChange,
 }: {
   post: PostPlan;
   campaignId: string;
+  /** Called after status-changing actions so the parent Plan view can refetch. */
+  onChange?: () => void;
 }) => {
   const [predicting, setPredicting] = useState(false);
   const [prediction, setPrediction] = useState<any>(null);
   const [actualPerformance, setActualPerformance] = useState<any>(null);
+  const [draftStatus, setDraftStatus] = useState<string | null>(null);
+  const [draftScheduledAt, setDraftScheduledAt] = useState<string | null>(null);
+  const [draftContent, setDraftContent] = useState<string | null>(null);
+  const [markOpen, setMarkOpen] = useState(false);
 
+  // Load downstream signals when a draft has been linked.
   useEffect(() => {
-    const loadPerformanceSignals = async () => {
+    const load = async () => {
       if (!post.linked_draft_id) return;
-
-      const [{ data: predictionData }, { data: actualData }] = await Promise.all([
-        supabase
-          .from("prediction_scores")
-          .select("*")
-          .eq("draft_id", post.linked_draft_id)
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        supabase
-          .from("post_performance")
-          .select("*")
-          .eq("draft_id", post.linked_draft_id)
-          .maybeSingle(),
+      const [{ data: draftRow }, { data: predictionData }, { data: actualData }] = await Promise.all([
+        supabase.from("drafts").select("status, scheduled_at, custom_content").eq("id", post.linked_draft_id).maybeSingle(),
+        supabase.from("prediction_scores").select("*").eq("draft_id", post.linked_draft_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        supabase.from("post_performance").select("*").eq("draft_id", post.linked_draft_id).maybeSingle(),
       ]);
-
+      if (draftRow) {
+        setDraftStatus(draftRow.status);
+        setDraftScheduledAt(draftRow.scheduled_at);
+        setDraftContent(draftRow.custom_content);
+      }
       if (predictionData) setPrediction(predictionData);
       if (actualData) setActualPerformance(actualData);
     };
+    load();
+  }, [post.linked_draft_id, post.status]);
 
-    loadPerformanceSignals();
-  }, [post.linked_draft_id]);
+  // Reconcile plan status with linked draft status:
+  //   draft.scheduled → plan.scheduled
+  //   draft.posted    → plan.posted (handled via MarkPostedDialog already)
+  // This keeps the Plan view honest if the user changed status from /drafts.
+  useEffect(() => {
+    if (!post.linked_draft_id || !draftStatus) return;
+    const planStatus = post.status || "planned";
+    const promote =
+      draftStatus === "scheduled" && planStatus === "drafted"
+        ? { status: "scheduled" as const }
+        : null;
+    if (promote) {
+      supabase.from("campaign_post_plans").update(promote).eq("id", post.id).then(() => onChange?.());
+    }
+  }, [draftStatus, post.id, post.linked_draft_id, post.status]);
 
   const fetchPrediction = async () => {
     if (!post.linked_draft_id) return;
@@ -84,14 +117,17 @@ const CampaignPostCard = ({
       });
       if (error) throw error;
       setPrediction(data);
-    } catch (err: any) {
+    } catch {
       toast.error("Failed to get prediction");
     } finally {
       setPredicting(false);
     }
   };
 
-  const status = post.status || "planned";
+  const status = (post.status || "planned") as keyof typeof statusMeta;
+  const meta = statusMeta[status] || statusMeta.planned;
+  const StatusIcon = meta.Icon;
+
   const actualEngagementRate = actualPerformance?.impressions
     ? (((actualPerformance.likes || 0) + (actualPerformance.comments || 0) + (actualPerformance.saves || 0)) / actualPerformance.impressions) * 100
     : null;
@@ -101,41 +137,38 @@ const CampaignPostCard = ({
     : null;
 
   return (
-    <div className="rounded-md border border-border bg-background p-3 space-y-1.5">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 flex-wrap">
+    <div className={cn(
+      "rounded-md border bg-background p-3 space-y-1.5",
+      status === "missed" ? "border-destructive/30" :
+      status === "posted" ? "border-green-500/30" :
+      "border-border",
+    )}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
           <span className="text-xs font-medium text-foreground">Post {post.post_number}</span>
-          <Badge variant="outline" className={cn("text-[10px]", statusColors[status] || "")}> 
-            {status === "planned" && <Clock className="mr-0.5 h-2.5 w-2.5" />}
-            {status === "drafted" && <PenLine className="mr-0.5 h-2.5 w-2.5" />}
-            {status === "published" && <Check className="mr-0.5 h-2.5 w-2.5" />}
-            {status}
+          <Badge variant="outline" className={cn("text-[10px] gap-0.5", meta.cls)}>
+            <StatusIcon className="h-2.5 w-2.5" />
+            {meta.label}
           </Badge>
-          {prediction && (
-            (() => {
-              const info = getScoreLabel(prediction.predicted_score);
-              const Icon = info.icon;
-              return (
-                <Badge variant="outline" className={cn("text-[10px] gap-0.5", info.color)}>
-                  <Icon className="h-2.5 w-2.5" />
-                  {prediction.predicted_score}/100
-                </Badge>
-              );
-            })()
+          {prediction && (() => {
+            const info = getScoreLabel(prediction.predicted_score);
+            const Icon = info.icon;
+            return (
+              <Badge variant="outline" className={cn("text-[10px] gap-0.5", info.color)}>
+                <Icon className="h-2.5 w-2.5" />
+                {prediction.predicted_score}/100
+              </Badge>
+            );
+          })()}
+          {post.posted_at && (
+            <span className="text-[10px] text-muted-foreground">
+              · posted {new Date(post.posted_at).toLocaleDateString()}
+            </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
-          {status === "drafted" && post.linked_draft_id && !prediction && (
-            <button
-              onClick={fetchPrediction}
-              disabled={predicting}
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
-            >
-              {predicting ? <Loader2 className="h-3 w-3 animate-spin" /> : <BarChart3 className="h-3 w-3" />}
-              Predict
-            </button>
-          )}
 
+        {/* Right-side action — the most important affordance per state */}
+        <div className="flex items-center gap-2 shrink-0">
           {status === "planned" && (
             <Link
               to={`/create?campaign_id=${campaignId}&post_plan_id=${post.id}`}
@@ -145,30 +178,63 @@ const CampaignPostCard = ({
             </Link>
           )}
 
-          {status === "drafted" && post.linked_draft_id && (
-            <div className="flex items-center gap-2">
+          {(status === "drafted" || status === "scheduled") && post.linked_draft_id && (
+            <>
               <Link
                 to="/drafts"
-                className="flex items-center gap-1 text-xs text-primary hover:underline"
-              >
-                <Clock className="h-3 w-3" /> Schedule this post
-              </Link>
-              <Link
-                to={`/create?campaign_id=${campaignId}&post_plan_id=${post.id}&edit_draft=${post.linked_draft_id}`}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
-                <PenLine className="h-3 w-3" /> Edit
+                <PenLine className="h-3 w-3" /> Open draft
               </Link>
-            </div>
+              <button
+                onClick={() => setMarkOpen(true)}
+                className="flex items-center gap-1 text-xs text-primary hover:underline"
+                title="Mark as posted to start measuring outcome"
+              >
+                <Send className="h-3 w-3" /> Mark posted
+              </button>
+            </>
           )}
 
-          {status === "published" && (
+          {status === "posted" && (
+            <>
+              {post.posted_url && (
+                <a
+                  href={post.posted_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" /> View post
+                </a>
+              )}
+              <Link
+                to="/performance"
+                className="flex items-center gap-1 text-xs text-primary hover:underline"
+              >
+                <Eye className="h-3 w-3" /> Performance
+              </Link>
+            </>
+          )}
+
+          {status === "missed" && (
             <Link
-              to="/performance"
+              to={`/create?campaign_id=${campaignId}&post_plan_id=${post.id}`}
               className="flex items-center gap-1 text-xs text-primary hover:underline"
             >
-              <Eye className="h-3 w-3" /> Track performance
+              <PenLine className="h-3 w-3" /> Recover
             </Link>
+          )}
+
+          {status === "drafted" && post.linked_draft_id && !prediction && (
+            <button
+              onClick={fetchPrediction}
+              disabled={predicting}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+              title="Predict performance"
+            >
+              {predicting ? <Loader2 className="h-3 w-3 animate-spin" /> : <BarChart3 className="h-3 w-3" />}
+            </button>
           )}
         </div>
       </div>
@@ -193,7 +259,7 @@ const CampaignPostCard = ({
         <p className="text-[10px] text-muted-foreground italic">📝 {post.strategic_rationale}</p>
       )}
 
-      {status === "published" && prediction && actualEngagementRate !== null && (
+      {status === "posted" && prediction && actualEngagementRate !== null && (
         <div className="mt-2 rounded-md border border-border bg-muted/30 p-3 space-y-1.5">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-[10px] font-semibold text-foreground">Prediction vs actual performance</span>
@@ -218,15 +284,10 @@ const CampaignPostCard = ({
               <p className="font-semibold text-foreground">{actualPerformance.impressions || 0} views</p>
             </div>
           </div>
-          <p className="text-[10px] text-muted-foreground">
-            {performanceDelta !== null && performanceDelta >= 0
-              ? "This angle outperformed the model. Double down on it in the next post."
-              : "This post likely underperformed the expectation. Tighten the hook, CTA, or positioning before repeating it."}
-          </p>
         </div>
       )}
 
-      {prediction && status !== "published" && (
+      {prediction && status !== "posted" && (
         <div className="mt-2 rounded-md border border-border bg-muted/30 p-2 space-y-1">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-medium text-foreground">Prediction Details</span>
@@ -257,6 +318,20 @@ const CampaignPostCard = ({
           )}
         </div>
       )}
+
+      <MarkPostedDialog
+        open={markOpen}
+        onOpenChange={setMarkOpen}
+        draftId={post.linked_draft_id}
+        postPlanId={post.id}
+        campaignId={campaignId}
+        content={draftContent || undefined}
+        hookType={post.suggested_hook_type}
+        ctaType={post.suggested_cta_type}
+        format={post.recommended_format}
+        phase={post.phase}
+        onMarked={onChange}
+      />
     </div>
   );
 };

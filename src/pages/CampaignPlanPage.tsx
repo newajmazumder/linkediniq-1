@@ -376,7 +376,7 @@ const CampaignPlanPage = () => {
                               <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">CTA:</span> {week.cta_strategy}</p>
                             )}
                             {weekPosts.map((post: any) => (
-                              <CampaignPostCard key={post.id} post={post} campaignId={id!} />
+                              <CampaignPostCard key={post.id} post={post} campaignId={id!} onChange={fetchAll} />
                             ))}
                             {weekPosts.length - drafted > 0 && (
                               <button
