@@ -105,17 +105,47 @@ const ExecutionDashboard = ({ campaignId, campaign, postPlans, weekCount, contri
 
   const runAdapt = async () => {
     setAdapting(true);
+    setInsufficientEvidence(null);
     try {
       const { data, error } = await supabase.functions.invoke("campaign-adapt", { body: { campaign_id: campaignId } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const { data: adapts } = await supabase.from("campaign_adaptations").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: false }).limit(3);
-      setAdaptations(adapts || []);
-      toast.success(`${data.adjustments?.length || 0} recommendations from ${data.signals_count || 0} signals`);
+      if (data?.insufficient_evidence) {
+        setInsufficientEvidence(data.evidence_message || "Not enough signals yet.");
+        toast.message("Insufficient evidence — keep posting.");
+      } else {
+        await reloadAdaptations();
+        toast.success(`${data.adjustments?.length || 0} recommendations from ${data.signals_count || 0} signals`);
+      }
     } catch (e: any) {
       toast.error(e.message || "Adapt failed");
     } finally {
       setAdapting(false);
+    }
+  };
+
+  const applyAdjustment = async (idx: number) => {
+    const adaptation = adaptations[0];
+    if (!adaptation) return;
+    setApplyingIdx(idx);
+    try {
+      const { data, error } = await supabase.functions.invoke("campaign-adapt", {
+        body: { campaign_id: campaignId, action: "apply", adaptation_id: adaptation.id, adjustment_index: idx },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const applied = data?.applied?.[0];
+      if (applied) {
+        toast.success(`Plan updated — Post #${applied.post_number} adjusted`);
+        await reloadAdaptations();
+        onChange?.();
+      } else {
+        toast.message("Recommendation noted, but no matching post to mutate.");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Apply failed");
+    } finally {
+      setApplyingIdx(null);
     }
   };
 
