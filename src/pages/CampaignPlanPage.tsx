@@ -576,7 +576,9 @@ const CampaignPlanPage = () => {
         );
       })()}
 
-      {/* TABS — Plan first (default), then Outcome (live performance), then deep analysis */}
+      {/* TABS — Plan first (default), then Outcome (live performance), then deep analysis.
+          Hidden entirely in setup: no plan, no posts → nothing to show in any tab. */}
+      {lifecycle !== "setup" && (
       <section className="space-y-3">
 
       {/* Tabs */}
