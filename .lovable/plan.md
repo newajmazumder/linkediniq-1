@@ -1,124 +1,208 @@
 
 
-# Plan: From Competitor Analysis → Exploitation Engine
+The user wants Phase 1 foundation fixes. This is a high-risk, structural migration. Let me think carefully.
 
-## Current state (what we already have)
-- Per-post AI tagging: `hook_type`, `content_type`, `tone`, `cta_type`, format
-- `competitor_insights` with `win_strategy`, `content_gap_matrix`, `content_angles`, `opportunity_scores`, `predicted_outcomes`, `winning_position`, `execution_plan`, `confidence_layer`
-- A `BestMoveCard` that picks the top angle and lets users start a 7-day campaign or generate a post
+## What's actually broken (from audit)
 
-## What's missing (the user's real ask)
-1. Posts aren't classified into the **3 strategic moves**: Mirror / Outperform / Oppose
-2. No **gap detection across competitors** as a portfolio (only per-competitor)
-3. No **"Next Best Post" engine** that fuses (competitor signals + active campaign goal + user's own performance) into one decisive recommendation
-4. No **confidence-aware routing** ("if your data is strong → use yours; if weak → use theirs; if both weak → explore")
-5. UI is still a **dashboard** (passive). User wants **forced strategic moves** (active)
+1. **Post entity sprawl**: `ideas`, `drafts`, `linkedin_posts`, `campaign_post_plans` — 4 tables representing one logical thing
+2. **No FK relationships** — every table has "No foreign keys"
+3. **Duplicated goal progress**: `campaign_progress` table + `campaigns.current_goal_value`/`goal_progress_percent`/`goal_status` columns + `aggregate-campaign-goals` function
+4. **Score sprawl**: `execution_score`, `velocity_score`, `strategy_strength_score`, `goal_progress_percent`, `predict-score`, `goal_fulfillment_score`, content `confidence_level`
 
----
+## Approach decision
 
-## The build — 4 surgical additions
+Full table merger of drafts→linkedin_posts→post_plans into one `posts` table = catastrophic blast radius (~30+ files, every edge function, every page). Will break the running app.
 
-### 1. Classify every analyzed post with a "strategic move type"
-Add to per-post AI prompt in `analyze-competitor/index.ts`:
-```
-"strategic_move": {
-  "recommended_move": "mirror | outperform | oppose",
-  "reasoning": "<why this move beats this post>",
-  "your_version_hook": "<rewritten hook with the chosen move>",
-  "your_version_cta": "<stronger/different CTA>",
-  "exploit_target": "<what specific weakness you're exploiting>"
-}
-```
-Surface this as a **colored badge** on each `PostCard` in `CompetitorsPage` (Mirror = blue, Outperform = amber, Oppose = red).
+**Safer, mature approach**: Introduce a **canonical `posts` table** as the new source of truth, but implement it as a **unifying layer** rather than nuking existing tables. Keep `drafts`/`linkedin_posts`/`campaign_post_plans` as **support/historical tables** that write-through to `posts`. Migrate reads incrementally.
 
-### 2. New edge function: `competitor-exploit-engine`
-The brain that answers *"What should I write next?"*
+This matches the user's exact wording: *"Decide whether drafts and linkedin_posts become states of posts or remain support tables only"* → **support tables**.
 
-**Inputs** (auto-loaded server-side):
-- Active campaign (goal, target metric, current progress %)
-- All competitors' posts + per-post analyses for this user
-- User's own `content_patterns` (winning hooks/CTAs from their posts)
+## Plan
 
-**Logic (confidence-aware routing):**
-```
-internalSignalStrength = f(content_patterns sample size + clarity)
-competitorSignalStrength = f(posts analyzed + pattern consistency)
+<lov-plan>
 
-IF internalSignalStrength = high  → route = "USE_OWN_PATTERNS"
-ELSE IF competitorSignalStrength ≥ medium → route = "EXPLOIT_COMPETITORS"
-ELSE → route = "EXPLORE_NEW_ANGLES"
-```
+# Phase 1 — Foundation Fix
 
-**Output (one decisive JSON):**
-```json
-{
-  "next_best_post": {
-    "move_type": "outperform",
-    "source_post_id": "<competitor post id>",
-    "source_competitor": "<name>",
-    "why_now": "<ties to campaign goal + competitor weakness>",
-    "hook": "<ready-to-use hook>",
-    "angle": "<positioning>",
-    "cta": "<specific CTA tied to campaign target_metric>",
-    "expected_lift": "+X% on <campaign metric>",
-    "confidence": "high|medium|low",
-    "route_used": "EXPLOIT_COMPETITORS"
-  },
-  "avoid_this_week": ["<overused themes detected across all competitors>"],
-  "portfolio_gaps": ["<angles NO competitor is using — open territory>"]
-}
-```
-
-### 3. New UI: "Exploitation Command" card (replaces passive top of CompetitorsPage)
-Sticky at top, shows the **single forced move** with:
-- Move type badge (Mirror / Outperform / Oppose)
-- Source: "Based on @CompetitorX's post #8 (high engagement, weak CTA)"
-- Ready-to-use hook + CTA
-- One primary CTA: **"Generate this post →"** (passes hook/angle/cta to `CreatePage`)
-- Secondary: "Show me 2 alternatives"
-- Tiny pill: "Confidence: high · Route: exploiting competitor signal"
-
-This replaces the current `BestMoveCard` for users with active campaigns + analyzed competitors.
-
-### 4. Cross-competitor gap detector (passive but valuable)
-Below the command card: a thin strip showing:
-- 🚫 **Avoid this week**: themes ≥3 competitors are saturating
-- 🎯 **Open territory**: angles NO competitor is using that fit the campaign goal
-
-Pulls from the same `competitor-exploit-engine` output. No new AI calls per render — cached on `competitor_insights` per user.
+Goal: stop the data-model sprawl without nuking the running app. Introduce a **canonical `posts` table**, formalize **FK relationships**, collapse **goal progress** to one source of truth, and reduce **scores** to one primary per object.
 
 ---
 
-## Files touched
+## 1. Canonical `posts` table (new source of truth)
 
-**New:**
-- `supabase/functions/competitor-exploit-engine/index.ts` — the brain
-- `src/components/competitor/ExploitationCommandCard.tsx` — the forced move UI
-- `src/components/competitor/StrategicMoveBadge.tsx` — Mirror/Outperform/Oppose pill
+Create `public.posts` — every "post-like" thing in the system gets one row here, regardless of which tab it lives on.
 
-**Modified:**
-- `supabase/functions/analyze-competitor/index.ts` — add `strategic_move` block to per-post prompt
-- `src/pages/CompetitorsPage.tsx` — render command card at top, add move badges to each post, wire "Generate this post" to `/create` with prefilled brief
-- `src/components/competitor/BestMoveCard.tsx` — keep as fallback when no active campaign exists
+```
+posts
+├── id (uuid, pk)
+├── user_id (uuid)
+├── campaign_id (uuid, fk → campaigns)
+├── week_plan_id (uuid, fk → campaign_week_plans, nullable)
+├── post_plan_id (uuid, fk → campaign_post_plans, nullable)  -- back-pointer
+├── lifecycle_state (enum: idea | drafted | scheduled | posted | missed | archived)
+├── content (text)               -- final body
+├── hook, cta, format, hook_type, cta_type, tone, post_style
+├── planned_date, scheduled_at, posted_at
+├── linkedin_post_url, linkedin_post_id (string)
+├── source (manual | generated | imported)
+├── primary_score (numeric)      -- ONE score per post (see §4)
+├── primary_score_kind (text)    -- 'predicted' before posting, 'actual' after
+├── created_at, updated_at
+```
 
-**No DB migration needed** — `strategic_move` lives inside the existing `post_analysis` JSONB column; `next_best_post` lives inside `competitor_insights.predicted_outcomes` (or a new JSONB column if we want it queryable — see open question).
+**Decision (per the user's checklist):**
+- `drafts` → **support table** (kept for backwards-compat + historical idea→draft trail). Every new draft also writes a row to `posts` with `lifecycle_state = 'drafted'`.
+- `linkedin_posts` → **support table** (kept for raw imports + LinkedIn metadata). Every published post also lives in `posts` with `lifecycle_state = 'posted'`.
+- `campaign_post_plans` → stays as the **plan/slot** entity (the "calendar" object). Gets a `post_id` FK pointing to its realized `posts` row.
+
+This gives one queryable surface (`posts`) without breaking 30 files on day one.
 
 ---
 
-## How this matches your spec
-| Your spec | Implementation |
+## 2. FK relationships (currently zero)
+
+Add real foreign keys so the data graph is enforced:
+
+```
+campaigns.id
+  ← campaign_week_plans.campaign_id
+      ← campaign_post_plans.week_plan_id, .campaign_id
+          ← posts.post_plan_id, .campaign_id, .week_plan_id
+
+campaigns.id
+  ← campaign_progress.campaign_id  (will be removed in §3)
+  ← campaign_strategy_versions.campaign_id
+  ← campaign_blueprints.campaign_id
+
+posts.id
+  ← post_metrics.post_id           (NEW — replaces .linkedin_post_id)
+  ← post_context.post_id           (NEW — replaces .linkedin_post_id)
+  ← goal_evaluations.post_id       (NEW)
+  ← content_tags.post_id           (NEW)
+
+drafts.id          ← posts.draft_id (back-link, nullable)
+linkedin_posts.id  ← posts.linkedin_post_ref_id (back-link, nullable)
+```
+
+All FKs `ON DELETE` set to `SET NULL` for back-links, `CASCADE` for owned children (metrics, context).
+
+---
+
+## 3. One source of truth for campaign progress
+
+**Today (duplicated):**
+- `campaign_progress` table (per-metric rows)
+- `campaigns.current_goal_value` + `goal_progress_percent` + `goal_status` + `unattributed_goal_value`
+- `aggregate-campaign-goals` function recomputes both
+
+**After:**
+- **Source of truth = `campaigns` columns** (`current_goal_value`, `goal_progress_percent`, `goal_status`, `unattributed_goal_value`).
+- `campaign_progress` → **deprecate**: keep table for now (in case any read still hits it), stop writing to it from `aggregate-campaign-goals`. Mark for removal in Phase 2.
+- All goal math flows through one path: `post_metrics.goal_contribution` → SUM → `+ unattributed_goal_value` → `campaigns.current_goal_value`. No client-side recomputation.
+
+A single helper `lib/campaign-progress.ts` exports `getCampaignProgress(campaignId)` that **only reads from `campaigns`**. Deletes any client code that re-derives it.
+
+---
+
+## 4. One primary score per object
+
+**Today (7 scores):**
+| Object | Scores currently stored |
 |---|---|
-| Classify hook/CTA/content type | ✅ already done — adding `strategic_move` |
-| Detect patterns + gaps | ✅ already done per-competitor — adding **cross-competitor portfolio view** |
-| Win Mapping ("they do X → you do Y") | ✅ `strategic_move` per post + `next_best_post` overall |
-| 3 move types (Mirror/Outperform/Oppose) | ✅ classified per post + chosen for next post |
-| Confidence-aware routing | ✅ `internalSignalStrength` vs `competitorSignalStrength` switch in engine |
-| "Don't build dashboard, build recommendations" | ✅ ExploitationCommandCard is a forced move, not a chart |
-| Fuse competitor + campaign goal + own performance | ✅ exactly what `competitor-exploit-engine` does |
+| Campaign | `execution_score`, `velocity_score`, `strategy_strength_score`, `goal_progress_percent` |
+| Post | `predict-score` output, `goal_fulfillment_score`, `goal_evaluations.goal_fulfillment_score` |
+| Pattern | `confidence_level` |
+
+**After (one primary + breakdown JSON):**
+
+```
+campaigns.primary_score         numeric   -- 0–100, the headline number
+campaigns.primary_score_kind    text      -- 'execution' | 'goal' | 'velocity' depending on lifecycle
+campaigns.score_breakdown       jsonb     -- { goal:50, execution:30, velocity:20, ... } (explainable)
+
+posts.primary_score             numeric   -- 0–100
+posts.primary_score_kind        text      -- 'predicted' | 'actual'
+posts.score_breakdown           jsonb
+```
+
+The 4 legacy campaign score columns + post evaluation scores stay for now (write-through), but **only `primary_score` is read by UI**. A single `lib/scoring.ts` module exposes `getCampaignScore()` and `getPostScore()` and is the only place that knows the formula.
 
 ---
 
-## One clarifying question before implementing
+## 5. Migration & rollout strategy (zero-downtime)
 
-Should the "Next Best Post" auto-refresh after each new competitor post is added/analyzed, or only when the user clicks a **"Recompute"** button? Auto-refresh feels alive but burns AI credits on every screenshot upload. My recommendation: **manual recompute** with a subtle "stale" indicator (e.g., "based on data from 2 days ago — refresh"), unless you want it real-time.
+**Step A — Schema migration** (one SQL migration):
+1. Create `posts` table + enums.
+2. Add FK columns + constraints.
+3. Add `primary_score` / `primary_score_kind` / `score_breakdown` to `campaigns` and `posts`.
+4. Backfill `posts` from existing `drafts` ∪ `linkedin_posts` ∪ `campaign_post_plans` so the canonical table is populated for existing data.
+5. Backfill `primary_score` from existing scores (use `execution_score` for campaigns, `predict-score` cached value or `goal_fulfillment_score` for posts).
+
+**Step B — Write-through layer** (edge functions):
+- Update `generate-content`, `optimize-post`, `rewrite-post`, `evaluate-post-signal`, `aggregate-campaign-goals`, `execution-tick`, `MarkPostedDialog` to **also write to `posts`** whenever they touch `drafts` / `linkedin_posts` / `campaign_post_plans`.
+- New helper `supabase/functions/_shared/posts-sync.ts` centralizes the write-through.
+
+**Step C — Read migration** (incremental, this PR scope):
+- Migrate 4 high-traffic reads to `posts`:
+  1. `CampaignPlanPage` — post list per week → reads `posts` joined to `campaign_post_plans`.
+  2. `DraftsPage` — list → reads `posts` where `lifecycle_state in ('drafted','scheduled')`.
+  3. `PerformancePage` — list → reads `posts` where `lifecycle_state = 'posted'`.
+  4. `aggregate-campaign-goals` — sums from `posts` joined to `post_metrics`.
+- All other reads keep working against legacy tables (write-through keeps them in sync). Migrated incrementally in Phase 2.
+
+**Step D — Score consolidation** (this PR scope):
+- New `src/lib/scoring.ts` — single formula owner.
+- `CampaignPlanPage` hero, `StrategyPage` campaign cards, `ScoreBreakdownCard`, `PostCard` prediction badge → all switch to `primary_score`.
+- Old score columns remain populated for one release (rollback safety), then dropped in Phase 2.
+
+---
+
+## 6. Files touched
+
+**Migrations (new):**
+- `phase1_canonical_posts.sql` — table + enum + FKs + backfill
+- `phase1_score_consolidation.sql` — primary_score columns + backfill
+- `phase1_progress_consolidation.sql` — drop writes to `campaign_progress` (keep table)
+
+**New code:**
+- `src/lib/posts.ts` — typed accessor for the canonical table
+- `src/lib/scoring.ts` — single scoring source
+- `src/lib/campaign-progress.ts` — single progress source
+- `supabase/functions/_shared/posts-sync.ts` — write-through helper
+
+**Modified (read paths in this PR):**
+- `src/pages/CampaignPlanPage.tsx`
+- `src/pages/DraftsPage.tsx`
+- `src/pages/PerformancePage.tsx`
+- `src/pages/StrategyPage.tsx` (score field swap)
+- `src/components/campaign/ScoreBreakdownCard.tsx`
+- `src/components/campaign/CampaignPostCard.tsx`
+- `src/components/campaign/CampaignGoalProgressCard.tsx`
+
+**Modified (write paths — write-through):**
+- `supabase/functions/generate-content/index.ts`
+- `supabase/functions/optimize-post/index.ts`
+- `supabase/functions/aggregate-campaign-goals/index.ts`
+- `supabase/functions/execution-tick/index.ts`
+- `supabase/functions/evaluate-post-signal/index.ts`
+- `src/components/strategy/MarkPostedDialog.tsx`
+- `src/components/create/PostCard.tsx` (saveDraft)
+
+**Untouched in Phase 1** (intentionally — to keep blast radius safe):
+- Competitor system, advisor questions, market context, business profile, audience personas — already isolated, fine as-is.
+
+---
+
+## 7. What the user gets after Phase 1
+
+| Before | After |
+|---|---|
+| 4 tables for "post" | 1 canonical `posts` + 3 support tables |
+| 0 foreign keys | Enforced graph: campaign → week → plan → post → metrics |
+| Goal progress in 3 places | One source: `campaigns.*` columns, one helper |
+| 7 competing scores per surface | 1 `primary_score` per object + explainable `score_breakdown` |
+| Client recomputes scores/progress | Single server-side source, client just reads |
+
+**Risk profile:** Low. Write-through keeps every existing read working. Reads migrated incrementally. Old columns kept for rollback.
+
+**Out of scope (Phase 2):** dropping legacy score columns, removing `campaign_progress` table, full read migration of remaining pages, event log (`campaign_events`), automated LinkedIn metric ingestion.
 
