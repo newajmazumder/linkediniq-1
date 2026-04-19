@@ -21,8 +21,11 @@ import { goalUpdatedEvent } from "@/lib/goal-metrics";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
-  scoreInterpretation, computeVelocity,
+  scoreInterpretation, computeVelocity, buildPillarHints, SCORE_WEIGHTS,
 } from "@/lib/strategy";
+import ScoreBreakdownCard from "@/components/campaign/ScoreBreakdownCard";
+import CampaignProjectionCard from "@/components/campaign/CampaignProjectionCard";
+import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
 
 type Campaign = any;
 type WeekPlan = any;
@@ -332,35 +335,78 @@ const CampaignPlanPage = () => {
             </div>
           </div>
 
-          {/* L4 — Score breakdown (quiet inline, no tint) */}
-          <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[11px] text-muted-foreground">
-            <span>Positioning <span className="text-foreground font-medium tabular-nums">{score.positioning}/10</span></span>
-            <span className="text-border">·</span>
-            <span>Execution <span className="text-foreground font-medium tabular-nums">{score.execution}/10</span></span>
-            <span className="text-border">·</span>
-            <span>Conversion <span className="text-foreground font-medium tabular-nums">{score.conversion}/10</span></span>
-          </div>
+          {/* L4 — Score breakdown is now its own dedicated card below; keep hero clean */}
         </div>
       </div>
 
-      {/* Goal Progress Bar — primary proof the campaign is working */}
-      {campaign.target_quantity && campaign.target_metric && (
-        <CampaignGoalProgressBar
-          currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
-          target={campaign.target_quantity}
-          goalMetric={campaign.target_metric}
-          variant="full"
-        />
-      )}
+      {/* ───────────────── ZONE 1 · OUTCOME ─────────────────
+          What's actually happening — goal progress, projection, and why the score is what it is. */}
+      <section className="space-y-3">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
+          Outcome
+        </p>
 
-      {/* Closed-loop execution dashboard */}
-      <ExecutionDashboard
-        campaignId={id!}
-        campaign={campaign}
-        postPlans={postPlans as any}
-        weekCount={weekPlans.length}
-        onChange={fetchAll}
-      />
+        {/* Goal Progress Bar — primary proof the campaign is working */}
+        {campaign.target_quantity && campaign.target_metric && (
+          <CampaignGoalProgressBar
+            currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
+            target={campaign.target_quantity}
+            goalMetric={campaign.target_metric}
+            variant="full"
+          />
+        )}
+
+        {/* Predictive layer — pace, time vs goal, expected outcome, next best action */}
+        {campaign.target_quantity && campaign.target_metric && (
+          <CampaignProjectionCard
+            startedAt={campaign.started_at || campaign.target_start_date}
+            targetEndAt={(() => {
+              const start = campaign.started_at || campaign.target_start_date;
+              if (!start || weekPlans.length === 0) return null;
+              return new Date(new Date(start).getTime() + weekPlans.length * 7 * 24 * 60 * 60 * 1000).toISOString();
+            })()}
+            currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
+            target={campaign.target_quantity}
+            goalMetric={campaign.target_metric}
+            contributionRows={goalAgg?.contribution_rows || []}
+          />
+        )}
+
+        {/* Causal score breakdown — why this score, not "feels like punishment" */}
+        <ScoreBreakdownCard
+          score={score}
+          pillars={(() => {
+            const hints = buildPillarHints(score, scoreInputs);
+            return [
+              { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
+              { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
+              { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
+            ];
+          })()}
+        />
+      </section>
+
+      {/* ───────────────── ZONE 2 · EXECUTION ─────────────────
+          What you're shipping — closed-loop execution, velocity, missed posts, adaptations. */}
+      <section className="space-y-3">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
+          Execution
+        </p>
+        <ExecutionDashboard
+          campaignId={id!}
+          campaign={campaign}
+          postPlans={postPlans as any}
+          weekCount={weekPlans.length}
+          onChange={fetchAll}
+        />
+      </section>
+
+      {/* ───────────────── ZONE 3 · INTELLIGENCE ─────────────────
+          Plan, analytics, report — where the deeper detail lives behind tabs. */}
+      <section className="space-y-3">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
+          Intelligence
+        </p>
 
       {/* Tabs */}
       <div className="flex gap-1.5 border-b border-border">
@@ -502,6 +548,13 @@ const CampaignPlanPage = () => {
                   <RawTotal icon={MessageSquare} label="Comments" value={goalAgg?.raw_totals?.comments ?? 0} />
                   <RawTotal icon={MousePointer} label="Clicks" value={goalAgg?.raw_totals?.clicks ?? 0} />
                 </div>
+                {/* Causal bridge — clicks → goal contribution interpretation */}
+                <RawToGoalInsight
+                  clicks={goalAgg?.raw_totals?.clicks ?? 0}
+                  impressions={goalAgg?.raw_totals?.impressions ?? 0}
+                  postsContribution={goalAgg?.posts_contribution ?? 0}
+                  goalMetric={goalAgg?.goal_metric}
+                />
               </div>
 
               {/* SECTION 2 — Post Goal Contribution (ROI ranking) */}
@@ -760,6 +813,7 @@ const CampaignPlanPage = () => {
           )}
         </div>
       )}
+      </section>
     </div>
   );
 };

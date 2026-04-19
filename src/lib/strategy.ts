@@ -76,6 +76,46 @@ export const computeStrategyScore = (i: ScoreInputs): StrategyScoreBreakdown => 
   return { positioning, execution, conversion, total };
 };
 
+// Weights used for the strategy score blend — kept here so the breakdown UI
+// can show "+X pts" contribution from each pillar without re-deriving them.
+export const SCORE_WEIGHTS = {
+  positioning: 0.35,
+  execution: 0.35,
+  conversion: 0.30,
+};
+
+// Causal hint per pillar — explains *why* the value is what it is so the score
+// feels earned, not assigned.
+export const buildPillarHints = (
+  s: StrategyScoreBreakdown,
+  i: ScoreInputs,
+): { positioning: string; execution: string; conversion: string } => {
+  const pos: string[] = [];
+  if (!i.hasCoreMessage) pos.push("missing core message");
+  if (!i.hasPersona) pos.push("no primary persona");
+  if (!i.hasOffer) pos.push("no offer defined");
+  if (!i.hasMeasurableTarget) pos.push("no measurable target");
+  const positioning = pos.length === 0
+    ? "Core message, persona, offer and target all set"
+    : `Gap: ${pos.join(", ")}`;
+
+  let execution = "No posts created yet — execution score depends on posting velocity";
+  if (i.postingPct != null) {
+    if (i.postingPct >= 70) execution = `${i.postingPct}% of planned posts shipped — strong cadence`;
+    else if (i.postingPct >= 30) execution = `${i.postingPct}% of planned posts shipped — behind plan`;
+    else execution = `Only ${i.postingPct}% of planned posts shipped — execution is the bottleneck`;
+  }
+
+  let conversion = "No outcome signal yet — log goal contributions to score this pillar";
+  if (i.outcomePct != null) {
+    if (i.outcomePct >= 60) conversion = `${i.outcomePct}% of goal achieved — converting well`;
+    else if (i.outcomePct >= 20) conversion = `${i.outcomePct}% of goal achieved — inconsistent conversion`;
+    else conversion = `Only ${i.outcomePct}% of goal achieved — low impact so far`;
+  }
+
+  return { positioning, execution, conversion };
+};
+
 export const scoreColor = (n: number) => {
   if (n >= 7.5) return "text-green-600";
   if (n >= 5) return "text-yellow-600";

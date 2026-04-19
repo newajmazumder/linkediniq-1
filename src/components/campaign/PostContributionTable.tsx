@@ -43,13 +43,44 @@ const PostContributionTable = ({ rows, goalMetric, target }: Props) => {
 
   const maxContribution = Math.max(1, ...posted.map((r) => r.contribution));
 
+  const top3 = posted.slice().sort((a, b) => b.contribution - a.contribution).slice(0, 3).filter((r) => r.contribution > 0);
+
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <div className="border-b border-border px-4 py-3">
-        <p className="text-xs font-semibold text-foreground">Post → {label}</p>
-        <p className="text-[11px] text-muted-foreground">
-          Ranked by attributed {label}. Efficiency = {label} per 1k impressions.
-        </p>
+      <div className="border-b border-border px-4 py-3 space-y-2">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs font-semibold text-foreground">Post → {label}</p>
+          <span className="text-[10px] text-muted-foreground">Ranked by attributed {label}</span>
+        </div>
+        {/* Top contributors at-a-glance — answers "which post gave what impact" without scrolling */}
+        {top3.length > 0 && (
+          <div className="rounded-md bg-muted/30 px-3 py-2 space-y-1.5">
+            <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">Top contributors</p>
+            <div className="space-y-1">
+              {top3.map((r, i) => {
+                const widthPct = (r.contribution / Math.max(1, top3[0].contribution)) * 100;
+                return (
+                  <div key={r.post_plan_id} className="flex items-center gap-2 text-xs">
+                    <span className={cn(
+                      "inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-semibold",
+                      i === 0 ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                    )}>{i + 1}</span>
+                    <span className="text-foreground shrink-0 w-14">Post {r.post_number}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className={cn("h-full", i === 0 ? "bg-primary" : "bg-primary/50")} style={{ width: `${widthPct}%` }} />
+                    </div>
+                    <span className="text-foreground font-semibold tabular-nums shrink-0 w-10 text-right">
+                      {r.contribution}
+                    </span>
+                    <span className="text-muted-foreground tabular-nums shrink-0 w-16 text-right text-[10px]">
+                      {r.clicks > 0 ? `${r.conversion_rate.toFixed(0)}% conv` : "—"}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-xs">
