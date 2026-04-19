@@ -564,9 +564,19 @@ const StrategyPage = () => {
               {campaigns.map((c) => {
                 const prog = progress[c.id];
                 const posting = postingStats[c.id];
-                const outcomePct = prog && prog.target_value > 0
-                  ? Math.min(100, Math.round((prog.current_value / prog.target_value) * 100))
-                  : null;
+                // Prefer the campaign's own rolled-up goal value (source of truth,
+                // kept in sync by aggregate-campaign-goals). Fall back to the legacy
+                // campaign_progress table only if the campaign row hasn't been rolled up yet.
+                const campaignCurrent = c.current_goal_value ?? null;
+                const campaignTarget = c.target_quantity ?? null;
+                const outcomePct =
+                  campaignCurrent != null && campaignTarget && campaignTarget > 0
+                    ? Math.min(100, Math.round((campaignCurrent / campaignTarget) * 100))
+                    : c.goal_progress_percent != null
+                    ? Math.min(100, Math.round(c.goal_progress_percent))
+                    : prog && prog.target_value > 0
+                    ? Math.min(100, Math.round((prog.current_value / prog.target_value) * 100))
+                    : null;
                 const postingPct = posting && posting.total > 0
                   ? Math.round((posting.drafted / posting.total) * 100)
                   : null;
