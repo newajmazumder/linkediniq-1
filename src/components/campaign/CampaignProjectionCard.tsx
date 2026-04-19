@@ -85,7 +85,12 @@ const CampaignProjectionCard = ({
   }
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card border-l-2", borderTone[proj.trajectory], className)}>
+    <div className={cn(
+      embedded
+        ? ""
+        : cn("rounded-lg border border-border bg-card border-l-2", borderTone[proj.trajectory]),
+      className,
+    )}>
       {/* Header: verdict (tone color on text only, no fill tint) */}
       <div className="border-b border-border px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
