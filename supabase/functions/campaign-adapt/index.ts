@@ -112,15 +112,36 @@ serve(async (req) => {
       }
     }
 
+    const confidenceFromSamples = (n: number): "low" | "medium" | "high" =>
+      n >= 6 ? "high" : n >= 3 ? "medium" : "low";
+
     const summarize = (m: Record<string, { count: number; engage: number; convert: number }>) =>
       Object.entries(m).map(([k, v]) => ({
         key: k, count: v.count,
         avg_engagement: Math.round(v.engage / Math.max(1, v.count)),
         avg_conversion: Math.round(v.convert / Math.max(1, v.count)),
+        confidence: confidenceFromSamples(v.count),
       })).sort((a, b) => b.avg_conversion - a.avg_conversion);
 
     const hookPatterns = summarize(byHook);
     const ctaPatterns = summarize(byCta);
+
+    const totalSignals = (signals || []).length;
+    const overallConfidence = confidenceFromSamples(totalSignals);
+
+    // ---- CONFIDENCE GATE: refuse to invent recommendations from <3 signals ----
+    // The system must be brutally honest: "insufficient evidence" beats fake insight.
+    if (totalSignals < 3) {
+      return new Response(JSON.stringify({
+        ok: true,
+        adjustments: [],
+        patterns: { hooks: hookPatterns, ctas: ctaPatterns },
+        signals_count: totalSignals,
+        confidence: overallConfidence,
+        insufficient_evidence: true,
+        evidence_message: `Only ${totalSignals} measured post${totalSignals === 1 ? "" : "s"}. Need at least 3 to detect a real pattern. Keep posting before adapting — early adjustments based on noise hurt more than they help.`,
+      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
 
     const upcomingPlans = (plans || []).filter((p: any) => p.status === "planned" || p.status === "drafted");
     const upcomingSummary = upcomingPlans.slice(0, 8).map((p: any) => ({
@@ -142,12 +163,14 @@ EVIDENCE
 - Goal: ${campaign.target_quantity || "?"} ${campaign.target_metric || campaign.primary_objective}
 - Hook performance (sorted by conversion): ${JSON.stringify(hookPatterns.slice(0, 5))}
 - CTA performance (sorted by conversion): ${JSON.stringify(ctaPatterns.slice(0, 5))}
-- Signals collected: ${(signals || []).length}
+- Signals collected: ${totalSignals} (overall confidence: ${overallConfidence})
 - Upcoming posts: ${JSON.stringify(upcomingSummary)}
 
-RULES
+CRITICAL RULES
+- Only recommend hook/CTA shifts if the source pattern has confidence "medium" or "high" (count >= 3).
+- If ALL patterns are "low" confidence, return adjustments that say "GATHER MORE EVIDENCE" instead of inventing a winner.
 - Each command MUST target a specific upcoming post (use "Post N" from the upcoming list).
-- Each command MUST cite the evidence (e.g., "Hook X has 71% higher conversion than Y").
+- Each command MUST cite the evidence numerically (e.g., "Hook X averaged 42 conv vs 18 for Hook Y across 4 posts").
 - Each command MUST give an expected impact range tied to the goal metric.
 - No vague advice ("test more", "improve hook"). Be surgical.
 
@@ -161,7 +184,9 @@ Return STRICT JSON in this shape (no prose, no markdown):
       "where": "Post 3",
       "what": "Rewrite headline using Financial-loss hook",
       "why": "Posts 1 & 4 with this hook drove 71% of bookings",
-      "expected_impact": "+2-4 bookings"
+      "expected_impact": "+2-4 bookings",
+      "evidence_count": 4,
+      "confidence": "medium"
     }
   ]
 }`;
@@ -185,6 +210,8 @@ Return STRICT JSON in this shape (no prose, no markdown):
             what: a.what || a.change || "",
             why: a.why || a.rationale || "",
             expected_impact: a.expected_impact || a.impact || "",
+            evidence_count: typeof a.evidence_count === "number" ? a.evidence_count : totalSignals,
+            confidence: a.confidence || overallConfidence,
             // keep legacy fields too for older renderers
             target: a.where || a.target || "",
             change: a.what || a.change || "",
@@ -196,7 +223,7 @@ Return STRICT JSON in this shape (no prose, no markdown):
             campaign_id,
             trigger_reason: "weekly_review",
             adjustments,
-            patterns_observed: { hooks: hookPatterns, ctas: ctaPatterns, summary: parsed.patterns_observed },
+            patterns_observed: { hooks: hookPatterns, ctas: ctaPatterns, summary: parsed.patterns_observed, confidence: overallConfidence },
             predicted_impact: parsed.predicted_impact || null,
             status: "pending",
           });
@@ -210,7 +237,8 @@ Return STRICT JSON in this shape (no prose, no markdown):
       ok: true,
       adjustments,
       patterns: { hooks: hookPatterns, ctas: ctaPatterns },
-      signals_count: (signals || []).length,
+      signals_count: totalSignals,
+      confidence: overallConfidence,
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (e) {
     console.error("campaign-adapt error:", e);

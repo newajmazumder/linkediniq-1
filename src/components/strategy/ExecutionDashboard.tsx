@@ -36,6 +36,18 @@ const ExecutionDashboard = ({ campaignId, campaign, postPlans, weekCount, contri
   const [adapting, setAdapting] = useState(false);
   const [starting, setStarting] = useState(false);
   const [adaptations, setAdaptations] = useState<any[]>([]);
+  const [insufficientEvidence, setInsufficientEvidence] = useState<string | null>(null);
+  const [applyingIdx, setApplyingIdx] = useState<number | null>(null);
+
+  const reloadAdaptations = async () => {
+    const { data: adapts } = await supabase
+      .from("campaign_adaptations")
+      .select("*")
+      .eq("campaign_id", campaignId)
+      .order("created_at", { ascending: false })
+      .limit(3);
+    setAdaptations(adapts || []);
+  };
 
   useEffect(() => {
     let alive = true;
@@ -93,17 +105,47 @@ const ExecutionDashboard = ({ campaignId, campaign, postPlans, weekCount, contri
 
   const runAdapt = async () => {
     setAdapting(true);
+    setInsufficientEvidence(null);
     try {
       const { data, error } = await supabase.functions.invoke("campaign-adapt", { body: { campaign_id: campaignId } });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
-      const { data: adapts } = await supabase.from("campaign_adaptations").select("*").eq("campaign_id", campaignId).order("created_at", { ascending: false }).limit(3);
-      setAdaptations(adapts || []);
-      toast.success(`${data.adjustments?.length || 0} recommendations from ${data.signals_count || 0} signals`);
+      if (data?.insufficient_evidence) {
+        setInsufficientEvidence(data.evidence_message || "Not enough signals yet.");
+        toast.message("Insufficient evidence — keep posting.");
+      } else {
+        await reloadAdaptations();
+        toast.success(`${data.adjustments?.length || 0} recommendations from ${data.signals_count || 0} signals`);
+      }
     } catch (e: any) {
       toast.error(e.message || "Adapt failed");
     } finally {
       setAdapting(false);
+    }
+  };
+
+  const applyAdjustment = async (idx: number) => {
+    const adaptation = adaptations[0];
+    if (!adaptation) return;
+    setApplyingIdx(idx);
+    try {
+      const { data, error } = await supabase.functions.invoke("campaign-adapt", {
+        body: { campaign_id: campaignId, action: "apply", adaptation_id: adaptation.id, adjustment_index: idx },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      const applied = data?.applied?.[0];
+      if (applied) {
+        toast.success(`Plan updated — Post #${applied.post_number} adjusted`);
+        await reloadAdaptations();
+        onChange?.();
+      } else {
+        toast.message("Recommendation noted, but no matching post to mutate.");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Apply failed");
+    } finally {
+      setApplyingIdx(null);
     }
   };
 
@@ -192,7 +234,12 @@ const ExecutionDashboard = ({ campaignId, campaign, postPlans, weekCount, contri
             {adaptations.length > 0 ? "Refresh" : "Generate"}
           </Button>
         </div>
-        {adaptations.length === 0 ? (
+        {insufficientEvidence ? (
+          <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2.5">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Insufficient evidence</p>
+            <p className="text-xs text-foreground mt-1 leading-relaxed">{insufficientEvidence}</p>
+          </div>
+        ) : adaptations.length === 0 ? (
           <p className="text-xs text-muted-foreground italic">
             {signals.length === 0 ? "Mark posts as posted to start collecting performance signals." : "No recommendations yet — click Generate."}
           </p>
@@ -203,18 +250,49 @@ const ExecutionDashboard = ({ campaignId, campaign, postPlans, weekCount, contri
               const what = a.what || a.change;
               const why = a.why || a.rationale;
               const impact = a.expected_impact;
+              const conf = (a.confidence || "low") as "low" | "medium" | "high";
+              const evidenceCount = a.evidence_count;
+              const alreadyApplied = (adaptations[0].applied_changes || []).some(
+                (ac: any) => ac.adjustment?.where === where && ac.adjustment?.what === what,
+              );
+              const confTone =
+                conf === "high" ? "text-emerald-700 dark:text-emerald-400 border-emerald-500/40 bg-emerald-500/10" :
+                conf === "medium" ? "text-amber-700 dark:text-amber-400 border-amber-500/40 bg-amber-500/10" :
+                "text-muted-foreground border-border bg-muted/40";
               return (
-                <div key={i} className="rounded-md border border-border p-3 space-y-1">
-                  <p className="text-sm leading-snug">
-                    {where && (
-                      <span className="font-semibold text-foreground">{where} → </span>
-                    )}
-                    <span className="font-medium text-foreground">{what}</span>
-                  </p>
+                <div key={i} className="rounded-md border border-border p-3 space-y-1.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm leading-snug flex-1">
+                      {where && (
+                        <span className="font-semibold text-foreground">{where} → </span>
+                      )}
+                      <span className="font-medium text-foreground">{what}</span>
+                    </p>
+                    <span className={cn("shrink-0 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border font-medium", confTone)}>
+                      {conf}{typeof evidenceCount === "number" ? ` · n=${evidenceCount}` : ""}
+                    </span>
+                  </div>
                   {why && <p className="text-xs text-muted-foreground leading-snug">{why}</p>}
                   {impact && (
                     <p className="text-[11px] font-semibold text-primary tabular-nums">{impact}</p>
                   )}
+                  <div className="pt-1 flex items-center gap-2">
+                    {alreadyApplied ? (
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-medium">✓ Applied to plan</span>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs"
+                        onClick={() => applyAdjustment(i)}
+                        disabled={applyingIdx === i || conf === "low"}
+                        title={conf === "low" ? "Low confidence — gather more signals before applying" : "Mutate the plan with this change"}
+                      >
+                        {applyingIdx === i ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <ArrowRight className="mr-1 h-3 w-3" />}
+                        Apply to plan
+                      </Button>
+                    )}
+                  </div>
                 </div>
               );
             })}
