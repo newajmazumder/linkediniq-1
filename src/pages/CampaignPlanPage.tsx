@@ -340,14 +340,8 @@ const CampaignPlanPage = () => {
         </div>
       </div>
 
-      {/* ───────────────── ZONE 1 · OUTCOME ─────────────────
-          What's actually happening — goal progress, projection, and why the score is what it is. */}
+      {/* L1 · ALWAYS VISIBLE — outcome proof + projection + top performer */}
       <section className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
-          Outcome
-        </p>
-
-        {/* Goal Progress Bar — primary proof the campaign is working */}
         {campaign.target_quantity && campaign.target_metric && (
           <CampaignGoalProgressBar
             currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
@@ -357,15 +351,10 @@ const CampaignPlanPage = () => {
           />
         )}
 
-        {/* Predictive layer — pace, time vs goal, expected outcome, next best action */}
         {campaign.target_quantity && campaign.target_metric && (
           <CampaignProjectionCard
-            startedAt={campaign.started_at || campaign.target_start_date}
-            targetEndAt={(() => {
-              const start = campaign.started_at || campaign.target_start_date;
-              if (!start || weekPlans.length === 0) return null;
-              return new Date(new Date(start).getTime() + weekPlans.length * 7 * 24 * 60 * 60 * 1000).toISOString();
-            })()}
+            startedAt={startedRef}
+            targetEndAt={endsRef}
             currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
             target={campaign.target_quantity}
             goalMetric={campaign.target_metric}
@@ -373,41 +362,29 @@ const CampaignPlanPage = () => {
           />
         )}
 
-        {/* Causal score breakdown — why this score, not "feels like punishment" */}
-        <ScoreBreakdownCard
-          score={score}
-          pillars={(() => {
-            const hints = buildPillarHints(score, scoreInputs);
-            return [
-              { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
-              { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
-              { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
-            ];
-          })()}
-        />
+        {goalAgg?.contribution_rows?.length > 0 && (
+          <TopPerformerCard
+            rows={goalAgg.contribution_rows}
+            goalMetric={goalAgg.goal_metric || campaign.target_metric}
+            campaignId={id!}
+          />
+        )}
       </section>
 
-      {/* ───────────────── ZONE 2 · EXECUTION ─────────────────
-          What you're shipping — closed-loop execution, velocity, missed posts, adaptations. */}
-      <section className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
-          Execution
-        </p>
+      {/* L2 · EXECUTION — single card */}
+      <section>
         <ExecutionDashboard
           campaignId={id!}
           campaign={campaign}
           postPlans={postPlans as any}
           weekCount={weekPlans.length}
+          contributionRows={goalAgg?.contribution_rows || []}
           onChange={fetchAll}
         />
       </section>
 
-      {/* ───────────────── ZONE 3 · INTELLIGENCE ─────────────────
-          Plan, analytics, report — where the deeper detail lives behind tabs. */}
+      {/* L4 · DEEP ANALYSIS — tabs */}
       <section className="space-y-3">
-        <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground font-semibold pl-1">
-          Intelligence
-        </p>
 
       {/* Tabs */}
       <div className="flex gap-1.5 border-b border-border">
