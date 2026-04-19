@@ -146,8 +146,25 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
   const [showPrediction, setShowPrediction] = useState(false);
   const [showBriefs, setShowBriefs] = useState(false);
 
+  // Inline-edit state — when editing an existing draft we need a true text
+  // editor, not just AI-rewrite controls. The textarea is the source of
+  // truth while editing; saving writes it back to drafts.custom_content.
+  const buildFullContent = (p: Post) => [p.hook, p.body, p.cta].filter(Boolean).join("\n\n");
+  const [editing, setEditing] = useState<boolean>(!!draftId && !readOnly);
+  const [editedContent, setEditedContent] = useState<string>(buildFullContent(post));
+
+  // Re-sync the textarea whenever the underlying post changes (e.g. hydration
+  // from a draft finishes after first render, or a rewrite lands).
+  useEffect(() => {
+    setEditedContent(buildFullContent(post));
+  }, [post.id, post.hook, post.body, post.cta]);
+
+  useEffect(() => {
+    setEditing(!!draftId && !readOnly);
+  }, [draftId, readOnly]);
+
   const copyPost = () => {
-    const text = `${post.hook}\n\n${post.body}\n\n${post.cta}`;
+    const text = editing ? editedContent : `${post.hook}\n\n${post.body}\n\n${post.cta}`;
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
   };
