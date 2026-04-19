@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Loader2, Plus, Trash2, Target, Sparkles, ArrowRight,
   AlertTriangle, ChevronRight, Zap, Flame, Edit2, AlertCircle, Wrench,
@@ -400,159 +401,163 @@ const StrategyPage = () => {
       {/* Campaigns tab */}
       {tab === "campaigns" && (
         <>
-          {showForm && (
-            <div className="rounded-lg border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-medium text-foreground">{editingId ? "Edit" : "Create"} Campaign</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Campaign Name *</label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Q2 Lead Gen" className="text-sm" />
+          <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); setEditingId(null); } }}>
+            <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingId ? "Edit" : "Create"} Campaign</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Campaign Name *</label>
+                    <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Q2 Lead Gen" className="text-sm" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Goal</label>
+                    <Select value={form.goal} onValueChange={(v) => setForm({ ...form, goal: v })}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>{goals.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Target Market</label>
+                    <Select value={form.market_context_id} onValueChange={(v) => setForm({ ...form, market_context_id: v })}>
+                      <SelectTrigger className="text-sm"><SelectValue placeholder="Select market" /></SelectTrigger>
+                      <SelectContent>
+                        {marketContexts.map((mc) => (
+                          <SelectItem key={mc.id} value={mc.id}>
+                            {mc.region_code === "BD" ? "🇧🇩" : mc.region_code === "US" ? "🇺🇸" : "🌍"} {mc.region_name} — {mc.audience_type.replace(/_/g, " ")}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Content Language</label>
+                    <Select value={form.language} onValueChange={(v) => setForm({ ...form, language: v })}>
+                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="english">English</SelectItem>
+                        <SelectItem value="bangla">বাংলা (Bangla)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Goal</label>
-                  <Select value={form.goal} onValueChange={(v) => setForm({ ...form, goal: v })}>
-                    <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>{goals.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Target Market</label>
-                  <Select value={form.market_context_id} onValueChange={(v) => setForm({ ...form, market_context_id: v })}>
-                    <SelectTrigger className="text-sm"><SelectValue placeholder="Select market" /></SelectTrigger>
-                    <SelectContent>
-                      {marketContexts.map((mc) => (
-                        <SelectItem key={mc.id} value={mc.id}>
-                          {mc.region_code === "BD" ? "🇧🇩" : mc.region_code === "US" ? "🇺🇸" : "🌍"} {mc.region_name} — {mc.audience_type.replace(/_/g, " ")}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Content Language</label>
-                  <Select value={form.language} onValueChange={(v) => setForm({ ...form, language: v })}>
-                    <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="english">English</SelectItem>
-                      <SelectItem value="bangla">বাংলা (Bangla)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
 
-              {/* Measurable Target Section */}
-              <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-3">
-                <p className="text-xs font-medium text-primary flex items-center gap-1.5">
-                  <Target className="h-3.5 w-3.5" /> Measurable Target
-                </p>
+                {/* Measurable Target Section */}
+                <div className="rounded-md border border-primary/20 bg-primary/5 p-3 space-y-3">
+                  <p className="text-xs font-medium text-primary flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5" /> Measurable Target
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-foreground">Primary Objective</label>
+                      <Select value={form.primary_objective} onValueChange={(v) => setForm({ ...form, primary_objective: v, target_metric: "" })}>
+                        <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>{objectives.map((o) => <SelectItem key={o} value={o} className="capitalize">{o.replace("_", " ")}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-foreground">Target Metric</label>
+                      <Select value={form.target_metric} onValueChange={(v) => setForm({ ...form, target_metric: v })}>
+                        <SelectTrigger className="text-sm"><SelectValue placeholder="Select metric" /></SelectTrigger>
+                        <SelectContent>{availableMetrics.map((m) => <SelectItem key={m} value={m}>{metricLabels[m] || m}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-foreground">Target Quantity</label>
+                      <Input type="number" value={form.target_quantity} onChange={(e) => setForm({ ...form, target_quantity: e.target.value })} placeholder="e.g. 100" className="text-sm" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-foreground">Timeframe</label>
+                      <Select value={form.target_timeframe} onValueChange={(v) => setForm({ ...form, target_timeframe: v })}>
+                        <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>{timeframes.map((t) => <SelectItem key={t} value={t} className="capitalize">{t.replace("_", " ")}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-medium text-foreground">Priority</label>
+                      <Select value={form.target_priority} onValueChange={(v) => setForm({ ...form, target_priority: v })}>
+                        <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                        <SelectContent>{priorities.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <label className="text-xs font-medium text-foreground">Campaign End Date</label>
+                      <Input
+                        type="date"
+                        value={form.target_end_date}
+                        onChange={(e) => setForm({ ...form, target_end_date: e.target.value })}
+                        className="text-sm"
+                      />
+                      <p className="text-[10px] text-muted-foreground">When should this campaign be complete? Used for pacing & "expected by today" math.</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-foreground">Primary Objective</label>
-                    <Select value={form.primary_objective} onValueChange={(v) => setForm({ ...form, primary_objective: v, target_metric: "" })}>
+                    <label className="text-xs font-medium text-foreground">Primary Persona</label>
+                    <Select value={form.primary_persona_id} onValueChange={(v) => setForm({ ...form, primary_persona_id: v })}>
+                      <SelectTrigger className="text-sm"><SelectValue placeholder="Select persona" /></SelectTrigger>
+                      <SelectContent>{personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">Secondary Persona</label>
+                    <Select value={form.secondary_persona_id} onValueChange={(v) => setForm({ ...form, secondary_persona_id: v })}>
+                      <SelectTrigger className="text-sm"><SelectValue placeholder="Select persona" /></SelectTrigger>
+                      <SelectContent>{personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-medium text-foreground">CTA Type</label>
+                    <Select value={form.cta_type} onValueChange={(v) => setForm({ ...form, cta_type: v })}>
                       <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>{objectives.map((o) => <SelectItem key={o} value={o} className="capitalize">{o.replace("_", " ")}</SelectItem>)}</SelectContent>
+                      <SelectContent>{ctaTypes.map((t) => <SelectItem key={t} value={t}>{ctaLabel[t]}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-foreground">Target Metric</label>
-                    <Select value={form.target_metric} onValueChange={(v) => setForm({ ...form, target_metric: v })}>
-                      <SelectTrigger className="text-sm"><SelectValue placeholder="Select metric" /></SelectTrigger>
-                      <SelectContent>{availableMetrics.map((m) => <SelectItem key={m} value={m}>{metricLabels[m] || m}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-foreground">Target Quantity</label>
-                    <Input type="number" value={form.target_quantity} onChange={(e) => setForm({ ...form, target_quantity: e.target.value })} placeholder="e.g. 100" className="text-sm" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-foreground">Timeframe</label>
-                    <Select value={form.target_timeframe} onValueChange={(v) => setForm({ ...form, target_timeframe: v })}>
+                    <label className="text-xs font-medium text-foreground">Tone</label>
+                    <Select value={form.tone} onValueChange={(v) => setForm({ ...form, tone: v })}>
                       <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>{timeframes.map((t) => <SelectItem key={t} value={t} className="capitalize">{t.replace("_", " ")}</SelectItem>)}</SelectContent>
+                      <SelectContent>{tones.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-xs font-medium text-foreground">Priority</label>
-                    <Select value={form.target_priority} onValueChange={(v) => setForm({ ...form, target_priority: v })}>
-                      <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent>{priorities.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1 sm:col-span-2">
-                    <label className="text-xs font-medium text-foreground">Campaign End Date</label>
-                    <Input
-                      type="date"
-                      value={form.target_end_date}
-                      onChange={(e) => setForm({ ...form, target_end_date: e.target.value })}
-                      className="text-sm"
-                    />
-                    <p className="text-[10px] text-muted-foreground">When should this campaign be complete? Used for pacing & "expected by today" math.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Primary Persona</label>
-                  <Select value={form.primary_persona_id} onValueChange={(v) => setForm({ ...form, primary_persona_id: v })}>
-                    <SelectTrigger className="text-sm"><SelectValue placeholder="Select persona" /></SelectTrigger>
-                    <SelectContent>{personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                  </Select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Secondary Persona</label>
-                  <Select value={form.secondary_persona_id} onValueChange={(v) => setForm({ ...form, secondary_persona_id: v })}>
-                    <SelectTrigger className="text-sm"><SelectValue placeholder="Select persona" /></SelectTrigger>
-                    <SelectContent>{personas.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <label className="text-xs font-medium text-foreground">Core Message</label>
+                  <Textarea value={form.core_message} onChange={(e) => setForm({ ...form, core_message: e.target.value })} rows={2} placeholder="The main message this campaign delivers" className="resize-none text-sm" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">CTA Type</label>
-                  <Select value={form.cta_type} onValueChange={(v) => setForm({ ...form, cta_type: v })}>
-                    <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>{ctaTypes.map((t) => <SelectItem key={t} value={t}>{ctaLabel[t]}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <label className="text-xs font-medium text-foreground">Offer (if any)</label>
+                  <Input value={form.offer} onChange={(e) => setForm({ ...form, offer: e.target.value })} placeholder="e.g. Free trial, 20% off" className="text-sm" />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-foreground">Tone</label>
-                  <Select value={form.tone} onValueChange={(v) => setForm({ ...form, tone: v })}>
-                    <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-                    <SelectContent>{tones.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                  </Select>
+                <div className="space-y-3">
+                  <label className="text-xs font-medium text-foreground">Content Style Mix</label>
+                  {([
+                    { key: "style_storytelling", label: "Storytelling" },
+                    { key: "style_educational", label: "Educational" },
+                    { key: "style_product_led", label: "Product-Led" },
+                    { key: "style_authority", label: "Authority/Opinion" },
+                  ] as const).map(({ key, label }) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <span className="w-28 text-xs text-muted-foreground">{label}</span>
+                      <Slider value={[form[key]]} onValueChange={([v]) => updateStyleMix(key, v)} min={0} max={100} step={5} className="flex-1" />
+                      <span className="w-10 text-right text-xs text-foreground">{form[key]}%</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                  <Button size="sm" variant="ghost" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</Button>
+                  <Button size="sm" onClick={handleSave} disabled={saving || !form.name.trim()}>
+                    {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
+                    {editingId ? "Update" : "Create"} Campaign
+                  </Button>
                 </div>
               </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Core Message</label>
-                <Textarea value={form.core_message} onChange={(e) => setForm({ ...form, core_message: e.target.value })} rows={2} placeholder="The main message this campaign delivers" className="resize-none text-sm" />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-foreground">Offer (if any)</label>
-                <Input value={form.offer} onChange={(e) => setForm({ ...form, offer: e.target.value })} placeholder="e.g. Free trial, 20% off" className="text-sm" />
-              </div>
-              <div className="space-y-3">
-                <label className="text-xs font-medium text-foreground">Content Style Mix</label>
-                {([
-                  { key: "style_storytelling", label: "Storytelling" },
-                  { key: "style_educational", label: "Educational" },
-                  { key: "style_product_led", label: "Product-Led" },
-                  { key: "style_authority", label: "Authority/Opinion" },
-                ] as const).map(({ key, label }) => (
-                  <div key={key} className="flex items-center gap-3">
-                    <span className="w-28 text-xs text-muted-foreground">{label}</span>
-                    <Slider value={[form[key]]} onValueChange={([v]) => updateStyleMix(key, v)} min={0} max={100} step={5} className="flex-1" />
-                    <span className="w-10 text-right text-xs text-foreground">{form[key]}%</span>
-                  </div>
-                ))}
-              </div>
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" onClick={handleSave} disabled={saving || !form.name.trim()}>
-                  {saving ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : null}
-                  {editingId ? "Update" : "Create"} Campaign
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => { setShowForm(false); setEditingId(null); }}>Cancel</Button>
-              </div>
-            </div>
-          )}
+            </DialogContent>
+          </Dialog>
 
           {campaigns.length === 0 && !showForm ? (
             <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
