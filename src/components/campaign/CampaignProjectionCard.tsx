@@ -35,6 +35,7 @@ const CampaignProjectionCard = ({
   goalMetric,
   contributionRows = [],
   className,
+  embedded = false,
 }: Props) => {
   const proj = computeProjection(startedAt, targetEndAt, currentValue, target, contributionRows);
   const meta = trajectoryMeta[proj.trajectory];
