@@ -88,6 +88,7 @@ export default function NextBestActionCard({
               <span className={cn("font-medium", typeMeta.tone)}>{typeMeta.icon} {typeMeta.label}</span>
               <span className="text-border">·</span>
               <span className="text-muted-foreground capitalize">{tone.label}</span>
+              {action.pacing_state && <PacingStateBadge state={action.pacing_state} />}
               <ConfidenceBadge level={action.confidence} className="ml-1" />
               {action.signal_strength && <SignalStrengthPill level={action.signal_strength} reason={action.signal_reason} />}
             </div>
@@ -202,6 +203,26 @@ function SignalStrengthPill({ level, reason }: { level: Confidence; reason?: str
     <span
       className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium", t.ring)}
       title={reason || t.tip}
+    >
+      <span className={cn("h-1.5 w-1.5 rounded-full", t.dot)} />
+      {t.label}
+    </span>
+  );
+}
+
+const PACING_BADGE: Record<NonNullable<NextBestAction["pacing_state"]>, { label: string; ring: string; dot: string; tip: string }> = {
+  NOT_STARTED: { label: "Not started", ring: "border-border text-muted-foreground",                                   dot: "bg-muted-foreground",  tip: "Campaign hasn't started executing yet." },
+  BEHIND:      { label: "Behind",      ring: "border-destructive/40 text-destructive",                                dot: "bg-destructive",        tip: "Fewer posts live than expected by today." },
+  ON_TRACK:    { label: "On track",    ring: "border-emerald-500/40 text-emerald-700 dark:text-emerald-400",          dot: "bg-emerald-500",        tip: "Posting matches expected pace." },
+  AHEAD:       { label: "Ahead",       ring: "border-blue-500/40 text-blue-700 dark:text-blue-400",                   dot: "bg-blue-500",           tip: "More posts live than expected by today." },
+};
+
+function PacingStateBadge({ state }: { state: NonNullable<NextBestAction["pacing_state"]> }) {
+  const t = PACING_BADGE[state];
+  return (
+    <span
+      className={cn("inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium", t.ring)}
+      title={t.tip}
     >
       <span className={cn("h-1.5 w-1.5 rounded-full", t.dot)} />
       {t.label}

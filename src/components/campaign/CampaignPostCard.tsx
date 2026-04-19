@@ -40,6 +40,7 @@ type PostPlan = {
   posted_at?: string | null;
   posted_url?: string | null;
   planned_date?: string | null;
+  planned_time?: string | null;
 };
 
 const statusMeta: Record<string, { label: string; cls: string; Icon: any }> = {
@@ -220,6 +221,12 @@ const CampaignPostCard = ({
           {post.posted_at && (
             <span className="text-[10px] text-muted-foreground">
               · posted {new Date(post.posted_at).toLocaleDateString()}
+            </span>
+          )}
+          {!post.posted_at && post.planned_date && status !== "missed" && (
+            <span className="text-[10px] text-muted-foreground">
+              · planned {new Date(post.planned_date).toLocaleDateString()}
+              {post.planned_time && <span className="text-foreground"> @ {post.planned_time}</span>}
             </span>
           )}
           {!post.posted_at && draftUpdatedAt && (status === "drafted" || status === "scheduled") && (
