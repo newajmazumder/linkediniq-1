@@ -616,16 +616,18 @@ const StrategyPage = () => {
                 const interp = scoreInterpretation(diag.severity);
 
                 // Lifecycle pill — derived from started_at + state.
+                // Open Seeding (active) = green tint; Not Started = green tint; Launch Paused = neutral gray.
                 const lifecycle: { label: string; cls: string } = !c.started_at
                   ? { label: "Not Started", cls: "bg-primary/10 text-primary" }
                   : state === "off_track" || state === "at_risk"
                   ? { label: "Launch Paused", cls: "bg-muted text-muted-foreground" }
                   : { label: "Open Seeding", cls: "bg-primary/10 text-primary" };
 
-                // Score subtitle — persona/context if started, "Not started" hint otherwise.
-                const scoreSubtitle = c.started_at
-                  ? personaName(c.primary_persona_id)
-                  : null;
+                // Score subtitle — persona names if started, risk hint otherwise.
+                const personaSubtitle = [c.primary_persona_id, c.secondary_persona_id]
+                  .map(personaName)
+                  .filter((n) => n && n !== "—")
+                  .join(" — ");
 
                 // Tag chips for footer — persona + tone/cta surfaced as pills.
                 const footerTags: string[] = [];
@@ -645,91 +647,87 @@ const StrategyPage = () => {
                     key={c.id}
                     className="rounded-xl border border-border bg-card overflow-hidden transition-shadow hover:shadow-sm"
                   >
-                    <div className="p-5 sm:p-6 space-y-4">
+                    <div className="p-6 sm:p-7 space-y-5">
                       {/* Top row — pills (left) + score (right) */}
                       <div className="flex items-start justify-between gap-6">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", lifecycle.cls)}>
+                        <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
+                          <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide", lifecycle.cls)}>
                             {lifecycle.label}
                           </span>
                           {c.target_timeframe && (
-                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                               {c.target_timeframe.replace(/_/g, " ")}
                             </span>
                           )}
                           {c.target_priority === "high" && (
-                            <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                            <span className="rounded-full bg-destructive/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-destructive">
                               High Priority
                             </span>
                           )}
                         </div>
 
-                        {c.started_at ? (
+                        {c.started_at && (
                           <div className="shrink-0 text-right">
-                            <div className={cn("font-serif text-3xl sm:text-4xl font-normal leading-none tabular-nums text-foreground")}>
+                            <div className="text-3xl sm:text-4xl font-semibold leading-none tabular-nums text-foreground">
                               {score.total.toFixed(1)}
-                              <span className="text-sm text-muted-foreground">/10</span>
+                              <span className="text-sm font-normal text-muted-foreground">/10</span>
                             </div>
-                            {scoreSubtitle && (
-                              <p className="mt-1 text-[11px] text-muted-foreground">{scoreSubtitle}</p>
+                            {personaSubtitle && (
+                              <p className="mt-1.5 text-[11px] text-muted-foreground truncate max-w-[180px]">{personaSubtitle}</p>
                             )}
                           </div>
-                        ) : null}
+                        )}
                       </div>
 
                       {/* Title */}
-                      <h2 className="text-lg sm:text-xl font-semibold text-foreground tracking-tight leading-snug">
+                      <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
                         {c.name}
                       </h2>
 
                       {/* Strategy label + italic core message */}
-                      <div className="space-y-1.5">
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-semibold">
+                      <div className="space-y-2">
+                        <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-semibold">
                           Strategy
                         </p>
-                        <p className="text-sm sm:text-[15px] italic text-muted-foreground leading-relaxed">
+                        <p className="text-[15px] italic text-foreground/80 leading-relaxed">
                           {c.core_message ? `“${c.core_message}”` : summary}
                         </p>
                       </div>
 
                       {/* Goal row */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between text-sm">
                           <span className="text-muted-foreground">
                             Goal — <span className="text-foreground">{goalLabel}</span>
                           </span>
                           <span className="font-semibold text-primary tabular-nums">{goalPct}%</span>
                         </div>
-                        {c.target_quantity && c.target_metric ? (
-                          <Progress value={goalPct} className="h-1" />
-                        ) : (
-                          <Progress value={0} className="h-1" />
-                        )}
+                        <Progress value={goalPct} className="h-1.5" />
                       </div>
                     </div>
 
-                    {/* Footer — tags + actions */}
-                    <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/30 px-5 sm:px-6 py-3">
-                      <div className="flex flex-wrap items-center gap-1.5">
+                    {/* Footer — tags + actions (no separator, no bg) */}
+                    <div className="flex items-center justify-between gap-3 px-6 sm:px-7 pb-6">
+                      <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
                         {visibleTags.map((t) => (
-                          <span key={t} className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground">
+                          <span key={t} className="rounded-md border border-border bg-background px-2.5 py-1 text-[12px] text-muted-foreground">
                             {t}
                           </span>
                         ))}
                         {overflowCount > 0 && (
-                          <span className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground">
+                          <span className="rounded-md border border-border bg-background px-2.5 py-1 text-[12px] text-muted-foreground">
                             +{overflowCount}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-1.5">
-                        <Button size="sm" onClick={() => navigate(`/campaign/${c.id}`)} className="h-8 px-4 text-xs">
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <Button size="sm" onClick={() => navigate(`/campaign/${c.id}`)} className="h-9 px-5 text-xs font-medium">
                           View plan
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => startEdit(c)} className="h-8 w-8 p-0">
+                        <Button size="sm" variant="outline" onClick={() => startEdit(c)} className="h-9 w-9 p-0">
                           <Edit2 className="h-3.5 w-3.5" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
+                        <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
