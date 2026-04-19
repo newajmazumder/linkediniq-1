@@ -67,8 +67,22 @@ serve(async (req) => {
     // ---- 2. Aggregate execution state ----
     const allPlans = plans || [];
     const totalPlanned = allPlans.length;
-    const posted = allPlans.filter((p: any) => p.status === "posted" || !!p.linked_post_id).length;
-    const drafted = allPlans.filter((p: any) => p.status === "drafted").length;
+
+    // Self-heal: a plan also counts as posted if its draft has a published linkedin_post.
+    const draftIds = allPlans.map((p: any) => p.linked_draft_id).filter(Boolean);
+    let publishedDraftIds = new Set<string>();
+    if (draftIds.length) {
+      const { data: liPosts } = await supabase
+        .from("linkedin_posts")
+        .select("linked_draft_id")
+        .in("linked_draft_id", draftIds as string[]);
+      publishedDraftIds = new Set((liPosts || []).map((r: any) => r.linked_draft_id).filter(Boolean));
+    }
+    const isPosted = (p: any) =>
+      p.status === "posted" || !!p.linked_post_id || (p.linked_draft_id && publishedDraftIds.has(p.linked_draft_id));
+
+    const posted = allPlans.filter(isPosted).length;
+    const drafted = allPlans.filter((p: any) => !isPosted(p) && p.status === "drafted").length;
     const missed = allPlans.filter((p: any) => p.status === "missed").length;
     const postingPct = totalPlanned > 0 ? Math.round((posted / totalPlanned) * 100) : 0;
 

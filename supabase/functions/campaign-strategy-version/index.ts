@@ -60,7 +60,20 @@ serve(async (req) => {
     const allPlans = postPlans || [];
     const allSignals = signals || [];
     const totalPosts = allPlans.length;
-    const posted = allPlans.filter((p: any) => p.status === "posted" || !!p.linked_post_id).length;
+
+    // Self-heal: include drafts that have a matching published linkedin_post.
+    const draftIds = allPlans.map((p: any) => p.linked_draft_id).filter(Boolean);
+    let publishedDraftIds = new Set<string>();
+    if (draftIds.length) {
+      const { data: liPosts } = await supabase
+        .from("linkedin_posts")
+        .select("linked_draft_id")
+        .in("linked_draft_id", draftIds as string[]);
+      publishedDraftIds = new Set((liPosts || []).map((r: any) => r.linked_draft_id).filter(Boolean));
+    }
+    const posted = allPlans.filter((p: any) =>
+      p.status === "posted" || !!p.linked_post_id || (p.linked_draft_id && publishedDraftIds.has(p.linked_draft_id)),
+    ).length;
     const postingPct = totalPosts > 0 ? Math.round((posted / totalPosts) * 100) : 0;
     const goalCurrent = campaign.current_goal_value || 0;
     const goalTarget = campaign.target_quantity || 0;
