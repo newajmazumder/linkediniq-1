@@ -340,80 +340,12 @@ const CampaignPlanPage = () => {
         </div>
       </div>
 
-      {/* L1 · ALWAYS VISIBLE — outcome proof + projection + top performer */}
+      {/* TABS — Plan first (default), then Outcome (live performance), then deep analysis */}
       <section className="space-y-3">
-        {campaign.target_quantity && campaign.target_metric && (
-          <CampaignGoalProgressBar
-            currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
-            target={campaign.target_quantity}
-            goalMetric={campaign.target_metric}
-            variant="full"
-          />
-        )}
-
-        {campaign.target_quantity && campaign.target_metric && (
-          <CampaignProjectionCard
-            startedAt={startedRef}
-            targetEndAt={endsRef}
-            currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
-            target={campaign.target_quantity}
-            goalMetric={campaign.target_metric}
-            contributionRows={goalAgg?.contribution_rows || []}
-          />
-        )}
-
-        {goalAgg?.contribution_rows?.length > 0 && (
-          <TopPerformerCard
-            rows={goalAgg.contribution_rows}
-            goalMetric={goalAgg.goal_metric || campaign.target_metric}
-            campaignId={id!}
-          />
-        )}
-      </section>
-
-      {/* L2 · EXECUTION — single card */}
-      <section>
-        <ExecutionDashboard
-          campaignId={id!}
-          campaign={campaign}
-          postPlans={postPlans as any}
-          weekCount={weekPlans.length}
-          contributionRows={goalAgg?.contribution_rows || []}
-          onChange={fetchAll}
-        />
-      </section>
-
-      {/* L4 · DEEP ANALYSIS — tabs */}
-      <section className="space-y-3">
-
-      {/* Why this score — disclosure (collapsed by default) */}
-      <details className="group rounded-lg border border-border bg-card">
-        <summary className="flex cursor-pointer items-center justify-between px-4 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors list-none [&::-webkit-details-marker]:hidden">
-          <span className="flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-[0.12em] font-semibold">Why this score</span>
-            <span className="tabular-nums text-foreground">{score.total.toFixed(1)} / 10</span>
-          </span>
-          <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
-        </summary>
-        <div className="border-t border-border p-4">
-          <ScoreBreakdownCard
-            score={score}
-            pillars={(() => {
-              const hints = buildPillarHints(score, scoreInputs);
-              return [
-                { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
-                { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
-                { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
-              ];
-            })()}
-            className="border-0 p-0"
-          />
-        </div>
-      </details>
 
       {/* Tabs */}
       <div className="flex gap-1.5 border-b border-border">
-        {(["plan", "analytics", "report"] as const).map((t) => (
+        {(["plan", "outcome", "analytics", "report"] as const).map((t) => (
           <button
             key={t}
             onClick={() => {
@@ -428,11 +360,79 @@ const CampaignPlanPage = () => {
               tab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
-            {t === "plan" && "📅 "}{t === "analytics" && "📈 "}{t === "report" && "📄 "}
+            {t === "plan" && "📅 "}{t === "outcome" && "🎯 "}{t === "analytics" && "📈 "}{t === "report" && "📄 "}
             {t}
           </button>
         ))}
       </div>
+
+      {/* OUTCOME TAB — live performance: progress + projection + top performer + execution + why-score */}
+      {tab === "outcome" && (
+        <div className="space-y-3">
+          {campaign.target_quantity && campaign.target_metric && (
+            <CampaignGoalProgressBar
+              currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
+              target={campaign.target_quantity}
+              goalMetric={campaign.target_metric}
+              variant="full"
+            />
+          )}
+
+          {campaign.target_quantity && campaign.target_metric && (
+            <CampaignProjectionCard
+              startedAt={startedRef}
+              targetEndAt={endsRef}
+              currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
+              target={campaign.target_quantity}
+              goalMetric={campaign.target_metric}
+              contributionRows={goalAgg?.contribution_rows || []}
+            />
+          )}
+
+          {goalAgg?.contribution_rows?.length > 0 && (
+            <TopPerformerCard
+              rows={goalAgg.contribution_rows}
+              goalMetric={goalAgg.goal_metric || campaign.target_metric}
+              campaignId={id!}
+            />
+          )}
+
+          <ExecutionDashboard
+            campaignId={id!}
+            campaign={campaign}
+            postPlans={postPlans as any}
+            weekCount={weekPlans.length}
+            contributionRows={goalAgg?.contribution_rows || []}
+            onChange={fetchAll}
+          />
+
+          {/* Why this score — disclosure (collapsed by default) */}
+          <details className="group rounded-lg border border-border bg-card">
+            <summary className="flex cursor-pointer items-center justify-between px-4 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors list-none [&::-webkit-details-marker]:hidden">
+              <span className="flex items-center gap-2">
+                <span className="text-[10px] uppercase tracking-[0.12em] font-semibold">Why this score</span>
+                <span className="tabular-nums text-foreground">{score.total.toFixed(1)} / 10</span>
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="border-t border-border p-4">
+              <ScoreBreakdownCard
+                score={score}
+                pillars={(() => {
+                  const hints = buildPillarHints(score, scoreInputs);
+                  return [
+                    { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
+                    { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
+                    { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
+                  ];
+                })()}
+                className="border-0 p-0"
+              />
+            </div>
+          </details>
+        </div>
+      )}
+
 
       {/* PLAN TAB — narrative phases */}
       {tab === "plan" && (
