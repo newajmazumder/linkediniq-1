@@ -73,6 +73,9 @@ const CampaignPostCard = ({
   const [draftScheduledAt, setDraftScheduledAt] = useState<string | null>(null);
   const [draftContent, setDraftContent] = useState<string | null>(null);
   const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(null);
+  // Goal-aware bridge — pulled from post_metrics so the card can show
+  // raw reach + outcome contribution side by side.
+  const [postMetrics, setPostMetrics] = useState<{ impressions: number; goal_contribution: number; goal_metric: string | null } | null>(null);
   // Resolved linkedin_posts id — falls back to lookup by draft_id when the plan
   // row hasn't been backfilled with linked_post_id yet.
   const [resolvedLinkedPostId, setResolvedLinkedPostId] = useState<string | null>(null);
@@ -100,7 +103,18 @@ const CampaignPostCard = ({
       }
       if (predictionData) setPrediction(predictionData);
       if (actualData) setActualPerformance(actualData);
-      setResolvedLinkedPostId(post.linked_post_id || linkedinRow?.id || null);
+      const resolvedId = post.linked_post_id || linkedinRow?.id || null;
+      setResolvedLinkedPostId(resolvedId);
+
+      // Fetch the goal-aware metrics row so we can show "Impressions: 1.2k · leads: 3"
+      if (resolvedId) {
+        const { data: pm } = await supabase
+          .from("post_metrics")
+          .select("impressions, goal_contribution, goal_metric")
+          .eq("linkedin_post_id", resolvedId)
+          .maybeSingle();
+        if (pm) setPostMetrics(pm as any);
+      }
     };
     load();
   }, [post.linked_draft_id, post.status, post.linked_post_id]);

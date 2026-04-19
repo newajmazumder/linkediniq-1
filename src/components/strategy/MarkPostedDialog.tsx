@@ -78,6 +78,18 @@ const MarkPostedDialog = (props: Props) => {
           .eq("linkedin_post_id", linkedPostId)
           .maybeSingle();
 
+        // Snapshot the campaign's goal metric so the contribution input is meaningful
+        // even if the campaign goal later changes.
+        let goalMetricSnapshot: string | null = null;
+        if (props.campaignId) {
+          const { data: camp } = await supabase
+            .from("campaigns")
+            .select("target_metric")
+            .eq("id", props.campaignId)
+            .maybeSingle();
+          goalMetricSnapshot = camp?.target_metric || null;
+        }
+
         const metricsPayload = {
           user_id: currentUser.id,
           linkedin_post_id: linkedPostId,
@@ -90,6 +102,8 @@ const MarkPostedDialog = (props: Props) => {
           follower_gain: 0,
           source: "manual",
           manual_notes: null,
+          goal_contribution: 0,
+          goal_metric: goalMetricSnapshot,
           last_updated_at: now,
         };
 
