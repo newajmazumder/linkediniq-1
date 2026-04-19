@@ -544,23 +544,29 @@ const CampaignPlanPage = () => {
           })()}
 
           {campaign.target_quantity && campaign.target_metric && (
-            <CampaignGoalProgressBar
-              currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
-              target={campaign.target_quantity}
-              goalMetric={campaign.target_metric}
-              variant="full"
-            />
-          )}
-
-          {campaign.target_quantity && campaign.target_metric && (
-            <CampaignProjectionCard
-              startedAt={startedRef}
-              targetEndAt={endsRef}
-              currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
-              target={campaign.target_quantity}
-              goalMetric={campaign.target_metric}
-              contributionRows={goalAgg?.contribution_rows || []}
-            />
+            <div className="rounded-lg border border-border bg-card overflow-hidden">
+              {/* Goal progress — primary signal */}
+              <div className="px-4 py-4">
+                <CampaignGoalProgressBar
+                  currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
+                  target={campaign.target_quantity}
+                  goalMetric={campaign.target_metric}
+                  variant="full"
+                />
+              </div>
+              {/* Visual separator */}
+              <div className="border-t border-border" />
+              {/* Projection — at current pace */}
+              <CampaignProjectionCard
+                startedAt={startedRef}
+                targetEndAt={endsRef}
+                currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
+                target={campaign.target_quantity}
+                goalMetric={campaign.target_metric}
+                contributionRows={goalAgg?.contribution_rows || []}
+                className="!rounded-none !border-0 !border-l-0"
+              />
+            </div>
           )}
 
           {goalAgg?.contribution_rows?.length > 0 && (
