@@ -127,6 +127,7 @@ serve(async (req) => {
         confidence: "high",
         cta_label: nextPlannedPost ? `Open post #${nextPlannedPost.post_number}` : "Open plan",
         cta_path: `/campaign/${campaign_id}`,
+        target_post_id: nextPlannedPost?.id || null,
       };
     }
     // 3. CLICKS WITHOUT CONVERSIONS — landing page or offer issue
