@@ -12,7 +12,7 @@ Open any campaign at `/campaign/<id>`. The two new components live above and ins
 | A4 | 5+ posts posted, clicks present, goal value still 0 | "Fix the conversion bottleneck — clicks aren't converting" | high |
 | A5 | 3+ posts with same hook scoring well | "Double down on '<hook>' hooks" + Apply CTA | high, **medium/high confidence** |
 | A6 | 4+ signals, posting ≥50%, goal <25% | "Strategy revision needed" → opens Strategy Versions | high |
-| A7 | Healthy campaign | "On track — keep executing" | low |
+| A7 | Healthy campaign, on pace, no winning pattern yet | "Optimize for signal — run a 3-post hook test" (experiment) | medium, **signal: low** |
 
 **What to verify in each:**
 - The 5-row schema is visible: Observation / Why / Impact / Do this.
