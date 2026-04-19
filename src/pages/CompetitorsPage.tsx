@@ -131,8 +131,37 @@ const CompetitorsPage = () => {
 
   const [activeMarketContextId, setActiveMarketContextId] = useState<string | null>(null);
   const [activeMarketName, setActiveMarketName] = useState<string | null>(null);
+  const [activeCampaignId, setActiveCampaignId] = useState<string | null>(null);
+  const [exploitData, setExploitData] = useState<any>(null);
+  const [exploitLoading, setExploitLoading] = useState(false);
 
-  useEffect(() => { if (user) { fetchCompetitors(); fetchBusinessProfile(); fetchActiveMarketContext(); } }, [user]);
+  useEffect(() => { if (user) { fetchCompetitors(); fetchBusinessProfile(); fetchActiveMarketContext(); fetchCachedExploit(); } }, [user]);
+
+  const fetchCachedExploit = async () => {
+    const { data } = await supabase
+      .from("competitor_insights")
+      .select("predicted_outcomes")
+      .eq("user_id", user!.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const cached = (data?.predicted_outcomes as any)?.exploit_engine;
+    if (cached) setExploitData(cached);
+  };
+
+  const recomputeExploit = async () => {
+    setExploitLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("competitor-exploit-engine", { body: {} });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      setExploitData(data);
+      toast.success("Next best move computed");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to compute strategy");
+    }
+    setExploitLoading(false);
+  };
 
   const fetchBusinessProfile = async () => {
     const { data } = await supabase.from("business_profiles").select("product_summary, target_audience, company_summary").eq("user_id", user!.id).maybeSingle();
