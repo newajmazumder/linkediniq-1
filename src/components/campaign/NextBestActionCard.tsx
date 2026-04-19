@@ -19,16 +19,41 @@ export default function NextBestActionCard({
   const [action, setAction] = useState<NextBestAction | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+
+  const storageKey = `nba-dismissed-${campaignId}`;
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(storageKey);
+      if (v) {
+        const { hash, until } = JSON.parse(v);
+        if (until && Date.now() < until) setDismissed(true);
+        // store hash to compare after load
+        (window as any).__nbaDismissedHash = hash;
+      }
+    } catch {}
+  }, [campaignId]);
 
   const load = async () => {
     setLoading(true);
     const a = await getNextBestAction(campaignId);
     setAction(a);
     setLoading(false);
+    // If a new action arrives that differs from dismissed one, re-show
+    if (a) {
+      const hash = `${a.action_type}|${a.title}`;
+      if ((window as any).__nbaDismissedHash && (window as any).__nbaDismissedHash !== hash) {
+        setDismissed(false);
+        localStorage.removeItem(storageKey);
+      }
+    }
   };
 
   useEffect(() => { load(); }, [campaignId, refreshKey]);
 
+  if (dismissed) return null;
   if (loading) {
     return (
       <div className="rounded-xl border border-border bg-card p-5 flex items-center gap-2 text-sm text-muted-foreground">
@@ -37,6 +62,15 @@ export default function NextBestActionCard({
     );
   }
   if (!action) return null;
+
+  const handleDismiss = () => {
+    const hash = `${action.action_type}|${action.title}`;
+    // Hide for 24 hours or until the action signature changes
+    const until = Date.now() + 24 * 60 * 60 * 1000;
+    try { localStorage.setItem(storageKey, JSON.stringify({ hash, until })); } catch {}
+    (window as any).__nbaDismissedHash = hash;
+    setDismissed(true);
+  };
 
   const tone = PRIORITY_TONE[action.priority];
   const typeMeta = ACTION_TYPE_META[action.action_type] || ACTION_TYPE_META.steady;
