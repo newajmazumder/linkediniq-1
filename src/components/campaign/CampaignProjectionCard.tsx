@@ -15,6 +15,8 @@ type Props = {
   goalMetric?: string | null;
   contributionRows?: { post_number: number; contribution: number; clicks: number; impressions: number }[];
   className?: string;
+  /** When true, render without outer card chrome (border, bg, rounded). Used when embedded inside another container. */
+  embedded?: boolean;
 };
 
 const borderTone: Record<string, string> = {
@@ -33,6 +35,7 @@ const CampaignProjectionCard = ({
   goalMetric,
   contributionRows = [],
   className,
+  embedded = false,
 }: Props) => {
   const proj = computeProjection(startedAt, targetEndAt, currentValue, target, contributionRows);
   const meta = trajectoryMeta[proj.trajectory];
@@ -49,7 +52,13 @@ const CampaignProjectionCard = ({
   // Unstable / unknown — calm, honest empty state
   if (!proj.stable) {
     return (
-      <div className={cn("rounded-lg border border-border bg-card border-l-2 p-4 space-y-2", borderTone.unknown, className)}>
+      <div className={cn(
+        embedded
+          ? "px-4 py-4 space-y-2"
+          : "rounded-lg border border-border bg-card border-l-2 p-4 space-y-2",
+        !embedded && borderTone.unknown,
+        className,
+      )}>
         <div className="flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
           <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">
@@ -76,7 +85,12 @@ const CampaignProjectionCard = ({
   }
 
   return (
-    <div className={cn("rounded-lg border border-border bg-card border-l-2", borderTone[proj.trajectory], className)}>
+    <div className={cn(
+      embedded
+        ? ""
+        : cn("rounded-lg border border-border bg-card border-l-2", borderTone[proj.trajectory]),
+      className,
+    )}>
       {/* Header: verdict (tone color on text only, no fill tint) */}
       <div className="border-b border-border px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 min-w-0">
