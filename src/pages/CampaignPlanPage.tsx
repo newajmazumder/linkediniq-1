@@ -214,10 +214,19 @@ const CampaignPlanPage = () => {
 
   const totalPosts = postPlans.length;
   const draftedPosts = postPlans.filter((p: any) => p.status !== "planned").length;
+  const postedPosts = postPlans.filter((p: any) => p.status === "posted" || !!p.linked_post_id).length;
   const postingPct = totalPosts > 0 ? Math.round((draftedPosts / totalPosts) * 100) : null;
   const week1Remaining = postPlans.filter((p: any) => p.week_number === 1 && (!p.status || p.status === "planned")).length;
 
   const outcomePct = analytics?.outcome_progress?.progress_pct ?? null;
+
+  // Lifecycle gating — don't simulate intelligence we don't have.
+  const lifecycle = deriveLifecycleState({
+    totalPlanned: totalPosts,
+    weekPlansCount: weekPlans.length,
+    postedCount: postedPosts,
+  });
+  const lifecycleMeta = LIFECYCLE_META[lifecycle];
 
   const state = computeCampaignState({
     outcomePct,
