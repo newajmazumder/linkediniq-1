@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LinkedInPostPreview from "./LinkedInPostPreview";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
-  Copy, BookmarkPlus, RefreshCw, ChevronDown,
-  Minus, User, Zap, Package, Loader2,
+  Copy, BookmarkPlus, RefreshCw, ChevronDown, Save,
+  Minus, User, Zap, Package, Loader2, Pencil,
   BookOpen, MessageSquare, Shuffle, Eye, AlertTriangle, BarChart3, Bold,
   Image, Layers, FileText, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, CheckCircle, Lightbulb,
 } from "lucide-react";
@@ -145,8 +146,25 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
   const [showPrediction, setShowPrediction] = useState(false);
   const [showBriefs, setShowBriefs] = useState(false);
 
+  // Inline-edit state — when editing an existing draft we need a true text
+  // editor, not just AI-rewrite controls. The textarea is the source of
+  // truth while editing; saving writes it back to drafts.custom_content.
+  const buildFullContent = (p: Post) => [p.hook, p.body, p.cta].filter(Boolean).join("\n\n");
+  const [editing, setEditing] = useState<boolean>(!!draftId && !readOnly);
+  const [editedContent, setEditedContent] = useState<string>(buildFullContent(post));
+
+  // Re-sync the textarea whenever the underlying post changes (e.g. hydration
+  // from a draft finishes after first render, or a rewrite lands).
+  useEffect(() => {
+    setEditedContent(buildFullContent(post));
+  }, [post.id, post.hook, post.body, post.cta]);
+
+  useEffect(() => {
+    setEditing(!!draftId && !readOnly);
+  }, [draftId, readOnly]);
+
   const copyPost = () => {
-    const text = `${post.hook}\n\n${post.body}\n\n${post.cta}`;
+    const text = editing ? editedContent : `${post.hook}\n\n${post.body}\n\n${post.cta}`;
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
   };
@@ -154,7 +172,9 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
   const saveDraft = async () => {
     setSavingDraft(true);
     try {
-      const fullContent = `${post.hook}\n\n${post.body}\n\n${post.cta}`;
+      // While editing, the textarea is the source of truth — use its current
+      // contents rather than the original post.hook/body/cta.
+      const fullContent = editing ? editedContent : `${post.hook}\n\n${post.body}\n\n${post.cta}`;
 
       // Edit mode: update the existing draft row instead of creating a new one.
       // This is what makes /create?draft_id=…&mode=edit a true editor rather
@@ -446,20 +466,71 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
         </div>
       </div>
 
-      {/* LinkedIn-style content preview */}
-      <LinkedInPostPreview
-        type={(post.post_type as "text" | "image_text" | "carousel") || "text"}
-        content={`${post.hook}\n\n${post.body}\n\n${post.cta}`}
-        slidesCount={post.image_briefs?.length || 5}
-        imageBriefs={post.image_briefs as any}
-        firstComment={compact ? null : post.first_comment}
-        contextRationale={compact ? null : (post.context_rationale || null)}
-        metadata={{
-          postStyle: post.post_style,
-          tone: post.tone || undefined,
-          hookType: post.hook_type || undefined,
-        }}
-      />
+      {/* Inline editor when editing an existing draft, otherwise the
+          LinkedIn-style preview. The toggle lets the user flip between
+          writing and previewing without losing their edits. */}
+      {editing ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-foreground">
+              <Pencil className="h-3 w-3" /> Editing draft
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setEditing(false)}
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                title="Preview as LinkedIn post"
+              >
+                <Eye className="h-3 w-3" /> Preview
+              </button>
+              <button
+                onClick={saveDraft}
+                disabled={savingDraft}
+                className="inline-flex items-center gap-1 rounded-md bg-primary px-2 py-1 text-[11px] font-medium text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-50"
+              >
+                {savingDraft ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                {draftId ? "Update draft" : "Save"}
+              </button>
+            </div>
+          </div>
+          <Textarea
+            value={editedContent}
+            onChange={(e) => setEditedContent(e.target.value)}
+            rows={16}
+            className="text-sm font-normal leading-relaxed resize-y min-h-[280px]"
+            placeholder="Write your post content here..."
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Separate hook, body, and CTA with blank lines. {editedContent.length} characters.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {!!draftId && !readOnly && (
+            <div className="flex items-center justify-end">
+              <button
+                onClick={() => setEditing(true)}
+                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Pencil className="h-3 w-3" /> Edit text
+              </button>
+            </div>
+          )}
+          <LinkedInPostPreview
+            type={(post.post_type as "text" | "image_text" | "carousel") || "text"}
+            content={editing ? editedContent : `${post.hook}\n\n${post.body}\n\n${post.cta}`}
+            slidesCount={post.image_briefs?.length || 5}
+            imageBriefs={post.image_briefs as any}
+            firstComment={compact ? null : post.first_comment}
+            contextRationale={compact ? null : (post.context_rationale || null)}
+            metadata={{
+              postStyle: post.post_style,
+              tone: post.tone || undefined,
+              hookType: post.hook_type || undefined,
+            }}
+          />
+        </div>
+      )}
 
 
 
