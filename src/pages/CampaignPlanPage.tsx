@@ -803,6 +803,15 @@ const CampaignPlanPage = () => {
                   );
                 })}
               </div>
+
+              {/* STRATEGY VERSIONS — v1 → v2 → v3 history with revise CTA */}
+              <div id="strategy-versions" className="pt-2">
+                <StrategyVersionsCard
+                  campaignId={id!}
+                  hasPlan={weekPlans.length > 0}
+                  onRevised={() => { fetchAll(); refreshBrain(); }}
+                />
+              </div>
             </>
           )}
         </div>
