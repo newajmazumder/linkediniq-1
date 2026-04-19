@@ -214,19 +214,40 @@ serve(async (req) => {
         cta_action: "generate_plan",
       };
     }
+    // 1.5 NOT_STARTED — plan exists, but campaign hasn't begun executing
+    else if (pacingState === "NOT_STARTED" && totalPosts > 0) {
+      const firstPost = allPlans[0];
+      action = {
+        action_type: "blocker",
+        priority: "critical",
+        title: "Start campaign — publish your first post today",
+        observation: `Plan ready (${totalPosts} posts) but nothing published yet.`,
+        why_now: "Every day not posting is a day of expected output you can't recover linearly.",
+        interpretation: "The system can't measure, optimize, or learn anything until at least one post is live.",
+        impact: `You have ${campaignDays} days to ship ${totalPosts} posts. Time only runs forward.`,
+        recommendation: firstPost
+          ? `Open Post #${firstPost.post_number} and publish today.`
+          : "Open the first planned post and publish today.",
+        confidence: "high",
+        cta_label: firstPost ? `Open post #${firstPost.post_number}` : "Open plan",
+        target_post_id: firstPost?.id || null,
+      };
+    }
     // 2. EXECUTION — genuinely behind schedule (time-aware, not just count-aware)
-    else if (isBehind && daysRemaining !== null && daysRemaining < 7) {
-      const need = totalPosts - posted;
+    else if (pacingState === "BEHIND") {
+      const need = Math.max(1, expectedByNow - posted);
       action = {
         action_type: "execution",
-        priority: daysRemaining < 3 ? "critical" : "high",
-        title: `You're behind pace — ${need} posts in ${Math.ceil(daysRemaining)} days`,
-        observation: `${posted}/${totalPosts} posts live (${postingPct}%) but ${timeProgressPct}% of the campaign window has elapsed.`,
-        why_now: `Only ${Math.ceil(daysRemaining)} days left. Execution gap is real, not theoretical.`,
+        priority: daysRemaining !== null && daysRemaining < 3 ? "critical" : "high",
+        title: `You're behind pace — catch up ${need} ${need === 1 ? "post" : "posts"} in next 48h`,
+        observation: `Expected ${expectedByNow} posts by today, only ${posted} live (${postingPct}% of plan, ${timeProgressPct}% of time elapsed).`,
+        why_now: daysRemaining !== null
+          ? `${Math.ceil(daysRemaining)} days remaining. Execution gap is real, not theoretical.`
+          : "Execution gap is widening every day.",
         interpretation: "Strategy can't help if posts aren't going live. This is now a velocity problem.",
         impact: `Goal at ${goalPct}%. Without catching up, the math doesn't work.`,
         recommendation: nextPlannedPost
-          ? `Open Post #${nextPlannedPost.post_number} and ship today. Batch the next 2 in the same session.`
+          ? `Open Post #${nextPlannedPost.post_number} and ship today. Batch the next ${Math.min(need, 3)} in the same session.`
           : "Open the next planned post and publish today.",
         confidence: "high",
         cta_label: nextPlannedPost ? `Open post #${nextPlannedPost.post_number}` : "Open plan",
