@@ -31,14 +31,13 @@ import RawToGoalInsight from "@/components/campaign/RawToGoalInsight";
 import TopPerformerCard from "@/components/campaign/TopPerformerCard";
 import TopContributorsStrip from "@/components/campaign/TopContributorsStrip";
 import CampaignAdvisorBanner from "@/components/campaign/CampaignAdvisorBanner";
-import NextBestActionCard from "@/components/campaign/NextBestActionCard";
-import CampaignPacingStrip from "@/components/campaign/CampaignPacingStrip";
 import StrategyVersionsCard from "@/components/campaign/StrategyVersionsCard";
+import CampaignAlertCard from "@/components/campaign/CampaignAlertCard";
 import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
 import { computePacing } from "@/lib/execution";
 import { deriveLifecycleState, LIFECYCLE_META } from "@/lib/campaign-lifecycle";
-import type { NextBestAction } from "@/lib/campaign-intelligence";
+import { evaluateTriggers } from "@/lib/campaign-triggers";
 
 type Campaign = any;
 type WeekPlan = any;
@@ -476,55 +475,44 @@ const CampaignPlanPage = () => {
         </div>
       )}
 
-      {/* PROACTIVE ADVISOR — only when there's enough context (plan exists). */}
-      {lifecycleMeta.showAdvisor && (
-        <CampaignAdvisorBanner questions={advisorQuestions} onChange={reloadAdvisorQuestions} />
-      )}
-
-      {/* TIME-AWARE PACING STRIP — Expected vs Actual by today */}
-      {lifecycleMeta.showPacing && (postPlans.length > 0 || startedRef) && <CampaignPacingStrip pacing={pacing} />}
-
-      {/* NEXT BEST ACTION — only after plan exists. Edge function gates content by lifecycle too. */}
-      {lifecycleMeta.showNBA && (
-      <NextBestActionCard
-        campaignId={id!}
-        onAction={(a: NextBestAction) => {
-          if (a.cta_action === "generate_plan") {
-            generatePlan();
-            return;
-          }
-          if (a.cta_action === "revise_strategy") {
-            setTab("plan");
-            setTimeout(() => {
-              document.getElementById("strategy-versions")?.scrollIntoView({ behavior: "smooth", block: "center" });
-            }, 100);
-            return;
-          }
-          // Default: open the plan tab, expand the week containing the target post, then scroll.
-          setTab("plan");
-          if (a.target_post_id) {
-            const target = postPlans.find((p: any) => p.id === a.target_post_id);
-            if (target?.week_number) {
-              setExpandedWeek(target.week_number);
-            }
-          }
-          // Wait for tab + collapse animation before scrolling.
-          setTimeout(() => {
-            const el = a.target_post_id
-              ? document.getElementById(`post-plan-${a.target_post_id}`)
-              : document.getElementById("plan-tab-anchor");
-            if (el) {
-              el.scrollIntoView({ behavior: "smooth", block: "center" });
-              el.classList.add("ring-2", "ring-primary", "ring-offset-2", "rounded-xl");
-              setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "rounded-xl"), 2500);
-            } else {
-              // Fallback: scroll to top of plan
-              document.getElementById("plan-tab-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
-            }
-          }, 350);
-        }}
-      />
-      )}
+      {/* EVENT-TRIGGERED ADVISOR — silence by default.
+          Renders ONE alert only when a hard rule fires (stagnation, behind pace,
+          forecast risk, performance failure, or pattern detected). Otherwise the
+          page stays clean. No always-on AI panel. */}
+      {lifecycle !== "setup" && (() => {
+        const alert = evaluateTriggers({
+          campaign,
+          postPlans: postPlans as any,
+          signals: [],
+          pacing,
+          contributionRows: (goalAgg?.contribution_rows || []) as any,
+          currentGoalValue: goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0,
+        });
+        if (!alert) return null;
+        return (
+          <CampaignAlertCard
+            campaignId={id!}
+            alert={alert}
+            onAction={(action) => {
+              if (action === "create_post") {
+                navigate(`/create?campaign_id=${id}`);
+              } else if (action === "view_plan") {
+                setTab("plan");
+                setTimeout(() => {
+                  document.getElementById("plan-tab-anchor")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 100);
+              } else if (action === "review_strategy") {
+                setTab("plan");
+                setTimeout(() => {
+                  document.getElementById("strategy-versions")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }, 100);
+              } else if (action === "view_pattern") {
+                setTab("performance");
+              }
+            }}
+          />
+        );
+      })()}
 
       {/* TABS — Plan first (default), then Outcome (live performance), then deep analysis */}
       <section className="space-y-3">
