@@ -644,89 +644,68 @@ const StrategyPage = () => {
                     key={c.id}
                     className="rounded-xl border border-border bg-card overflow-hidden transition-shadow hover:shadow-sm"
                   >
-                    {/* Body — 2 columns split by vertical separator */}
-                    <div className="flex">
-                      {/* LEFT — main content */}
-                      <div className="flex-1 min-w-0 p-6 sm:p-7 space-y-5">
-                        {/* Pills */}
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide", lifecycle.cls)}>
-                            {lifecycle.label}
+                    {/* Body — single column stacked layout */}
+                    <div className="p-6 sm:p-7 space-y-5">
+                      {/* Pills */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide", lifecycle.cls)}>
+                          {lifecycle.label}
+                        </span>
+                        {c.target_timeframe && (
+                          <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            {c.target_timeframe.replace(/_/g, " ")}
                           </span>
-                          {c.target_timeframe && (
-                            <span className="rounded-full bg-muted px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                              {c.target_timeframe.replace(/_/g, " ")}
-                            </span>
-                          )}
-                          {c.target_priority === "high" && (
-                            <span className="rounded-full bg-destructive/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-destructive">
-                              High Priority
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Title */}
-                        <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
-                          {c.name}
-                        </h2>
-
-                        {/* Strategy text */}
-                        <p className="text-[15px] text-foreground/80 leading-relaxed">
-                          {c.core_message ? `“${c.core_message}”` : summary}
-                        </p>
-
-                        {/* Goal row */}
-                        <div className="space-y-2 pt-1">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Goal — <span className="text-foreground">{goalLabel}</span>
-                            </span>
-                            <span className="font-semibold text-primary tabular-nums">{goalPct}%</span>
-                          </div>
-                          <Progress value={goalPct} className="h-1.5" />
-                        </div>
+                        )}
+                        {c.target_priority === "high" && (
+                          <span className="rounded-full bg-destructive/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-destructive">
+                            High Priority
+                          </span>
+                        )}
                       </div>
 
-                      {/* RIGHT — score column with vertical separator */}
-                      <div className="w-[180px] shrink-0 border-l border-border p-6 sm:p-7 flex flex-col items-center justify-start text-center">
-                        {c.started_at ? (
-                          <>
-                            <div className="font-serif text-4xl font-normal leading-none tabular-nums text-foreground">
-                              {score.total.toFixed(1)}
-                              <span className="text-sm text-muted-foreground">/10</span>
-                            </div>
-                            {primaryPersonaName && (
-                              <p className="mt-2 text-[12px] text-muted-foreground leading-snug">
-                                {primaryPersonaName}
-                              </p>
-                            )}
-                          </>
-                        ) : (
-                          <p className="text-[12px] text-muted-foreground leading-snug">
-                            Not started
-                          </p>
-                        )}
+                      {/* Title */}
+                      <h2 className="text-xl sm:text-2xl font-bold text-foreground tracking-tight leading-tight">
+                        {c.name}
+                      </h2>
+
+                      {/* Strategy text */}
+                      <p className="text-[15px] text-foreground/80 leading-relaxed">
+                        {c.core_message ? `“${c.core_message}”` : summary}
+                      </p>
+
+                      {/* Goal row */}
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Goal — <span className="text-foreground">{goalLabel}</span>
+                          </span>
+                          <span className="font-semibold text-foreground tabular-nums">{goalPct}%</span>
+                        </div>
+                        <Progress value={goalPct} className="h-1.5" />
                       </div>
                     </div>
 
-                    {/* Footer — top border + subtle bg */}
-                    <div className="flex items-center justify-between gap-3 border-t border-border px-6 sm:px-7 py-4">
-                      <div className="flex flex-wrap items-center gap-1.5 min-w-0 flex-1">
-                        {visibleTags.map((t) => (
-                          <span key={t} className="rounded-md border border-border bg-background px-2.5 py-1 text-[12px] text-muted-foreground">
-                            {t}
-                          </span>
-                        ))}
+                    {/* Footer — score on left, actions on right */}
+                    <div className="flex items-center justify-between gap-4 border-t border-border px-6 sm:px-7 py-5">
+                      <div className="flex items-baseline">
+                        {c.started_at ? (
+                          <div className="font-serif text-4xl font-normal leading-none tabular-nums text-foreground">
+                            {score.total.toFixed(1)}
+                            <span className="text-sm text-muted-foreground ml-0.5">/10</span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">Not started</span>
+                        )}
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button size="sm" onClick={() => navigate(`/campaign/${c.id}`)} className="h-9 px-5 text-xs font-medium">
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button size="sm" onClick={() => navigate(`/campaign/${c.id}`)} className="h-10 px-5 text-sm font-medium">
                           View plan
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => startEdit(c)} className="h-9 w-9 p-0">
-                          <Edit2 className="h-3.5 w-3.5" />
+                        <Button size="sm" variant="outline" onClick={() => startEdit(c)} className="h-10 w-10 p-0">
+                          <Edit2 className="h-4 w-4" />
                         </Button>
-                        <Button size="sm" variant="ghost" className="h-9 w-9 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
+                        <Button size="sm" variant="ghost" className="h-10 w-10 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </div>
