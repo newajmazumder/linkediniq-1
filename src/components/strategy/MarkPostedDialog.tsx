@@ -134,6 +134,49 @@ const MarkPostedDialog = (props: Props) => {
         }).eq("id", props.postPlanId);
       }
 
+      // 2b. Phase 1 — write-through to canonical post_lifecycle row.
+      // Idempotent upsert keyed by draft_id / linkedin_post_ref_id / post_plan_id.
+      try {
+        const lifecyclePayload = {
+          user_id: currentUser.id,
+          draft_id: props.draftId || null,
+          linkedin_post_ref_id: linkedPostId,
+          post_plan_id: props.postPlanId || null,
+          campaign_id: props.campaignId || null,
+          lifecycle_state: "posted" as const,
+          content: props.content || null,
+          hook_type: props.hookType || null,
+          cta_type: props.ctaType || null,
+          tone: null,
+          post_style: props.postStyle || null,
+          format: props.format || null,
+          posted_at: now,
+          linkedin_post_url: url || null,
+          source: "manual",
+        };
+        // Resolve existing lifecycle row (prefer draft_id key)
+        let existing: { id: string } | null = null;
+        if (props.draftId) {
+          const { data } = await supabase.from("post_lifecycle").select("id").eq("draft_id", props.draftId).maybeSingle();
+          existing = data;
+        }
+        if (!existing && linkedPostId) {
+          const { data } = await supabase.from("post_lifecycle").select("id").eq("linkedin_post_ref_id", linkedPostId).maybeSingle();
+          existing = data;
+        }
+        if (!existing && props.postPlanId) {
+          const { data } = await supabase.from("post_lifecycle").select("id").eq("post_plan_id", props.postPlanId).maybeSingle();
+          existing = data;
+        }
+        if (existing?.id) {
+          await supabase.from("post_lifecycle").update(lifecyclePayload).eq("id", existing.id);
+        } else {
+          await supabase.from("post_lifecycle").insert(lifecyclePayload);
+        }
+      } catch (e) {
+        console.warn("post_lifecycle write-through skipped", e);
+      }
+
       // 3. Fire AI signal evaluation (non-blocking-ish but awaited for toast accuracy)
       try {
         await supabase.functions.invoke("evaluate-post-signal", {

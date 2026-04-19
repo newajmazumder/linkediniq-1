@@ -174,7 +174,19 @@ Deno.serve(async (req) => {
       ? Number((goalAware * 100).toFixed(1))
       : Number((executionRate * 100).toFixed(1));
 
-    // 5. Persist rolled-up values to campaign row
+    // 5. Persist rolled-up values to campaign row.
+    // Phase 1 — also write the canonical primary_score + score_breakdown so
+    // every UI surface can read ONE field. Legacy `execution_score` is kept
+    // populated for rollback safety; UI must not read it directly anymore.
+    const breakdown = {
+      goal_progress: Number(((goalProgressForScore / 100) * 50).toFixed(1)),
+      execution_rate: Number((executionRate * 30).toFixed(1)),
+      content_efficiency: Number((contentEfficiency * 20).toFixed(1)),
+    };
+    const primaryKind = goalStatus === "achieved" || goalStatus === "overachieved"
+      ? "goal"
+      : "execution";
+
     await supabase
       .from("campaigns")
       .update({
@@ -183,6 +195,9 @@ Deno.serve(async (req) => {
         goal_status: goalStatus,
         goal_value_updated_at: new Date().toISOString(),
         execution_score: newScore,
+        primary_score: newScore,
+        primary_score_kind: primaryKind,
+        score_breakdown: breakdown,
         last_evaluated_at: new Date().toISOString(),
       })
       .eq("id", campaign_id)
