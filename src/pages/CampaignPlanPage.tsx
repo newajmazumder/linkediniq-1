@@ -221,6 +221,26 @@ const CampaignPlanPage = () => {
     ? computeVelocity(draftedPosts, totalPosts, weekPlans.length)
     : null;
 
+  // Pre-compute projection so we can show urgency micro-line in the hero.
+  const startedRef = campaign.started_at || campaign.target_start_date;
+  const endsRef = startedRef && weekPlans.length > 0
+    ? new Date(new Date(startedRef).getTime() + weekPlans.length * 7 * 24 * 60 * 60 * 1000).toISOString()
+    : null;
+  const proj = (campaign.target_quantity && campaign.target_metric)
+    ? computeProjection(
+        startedRef,
+        endsRef,
+        goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0,
+        campaign.target_quantity,
+        goalAgg?.contribution_rows || [],
+      )
+    : null;
+  const showUrgency = proj && proj.stable && (proj.trajectory === "behind" || proj.trajectory === "critical");
+  const velocityShort = velocity && !velocity.onPace ? (velocity.required - velocity.actual).toFixed(1) : null;
+  const shortfallPct = proj && proj.stable && proj.gap > 0 && campaign.target_quantity
+    ? Math.round((proj.gap / campaign.target_quantity) * 100)
+    : null;
+
   return (
     <div className="content-fade-in space-y-6 px-4 sm:px-6 py-4">
       {/* HERO — calm, editorial, single accent */}
