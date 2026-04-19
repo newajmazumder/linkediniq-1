@@ -26,6 +26,8 @@ import {
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
   scoreInterpretation, scoreSeverity, computeVelocity,
 } from "@/lib/strategy";
+import CampaignGoalProgressBar from "@/components/campaign/CampaignGoalProgressBar";
+import { goalUpdatedEvent } from "@/lib/goal-metrics";
 
 type Persona = { id: string; name: string };
 type Campaign = {
