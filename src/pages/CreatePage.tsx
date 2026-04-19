@@ -545,19 +545,21 @@ const CreatePage = () => {
           {/* Posts */}
           {posts.length > 0 && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-medium text-foreground">4 Variations</h2>
-                <div className="flex items-center gap-1">
-                  <button onClick={() => setViewMode("list")} className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                    <List className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => setViewMode("compare")} className={`rounded-md p-1.5 transition-colors ${viewMode === "compare" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
-                    <LayoutGrid className="h-4 w-4" />
-                  </button>
+              {!isDraftMode && (
+                <div className="flex items-center justify-between">
+                  <h2 className="text-sm font-medium text-foreground">{posts.length === 1 ? "Variation" : `${posts.length} Variations`}</h2>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setViewMode("list")} className={`rounded-md p-1.5 transition-colors ${viewMode === "list" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                      <List className="h-4 w-4" />
+                    </button>
+                    <button onClick={() => setViewMode("compare")} className={`rounded-md p-1.5 transition-colors ${viewMode === "compare" ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"}`}>
+                      <LayoutGrid className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {viewMode === "compare" && idea ? (
+              {viewMode === "compare" && idea && !isDraftMode ? (
                 <ComparisonView
                   posts={posts}
                   ideaId={idea.id}
@@ -574,11 +576,13 @@ const CreatePage = () => {
                     <PostCard
                       key={post.id}
                       post={post}
-                      ideaId={idea!.id}
+                      ideaId={idea?.id || draftRow?.idea_id || ""}
                       userId={user!.id}
                       onPostUpdate={handlePostUpdate}
                       postPlanId={postPlan?.id || null}
                       campaignId={selectedCampaignId || null}
+                      draftId={isDraftMode ? draftIdParam : null}
+                      readOnly={isViewMode}
                     />
                   ))}
                 </div>
