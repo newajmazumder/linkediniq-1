@@ -87,21 +87,43 @@ serve(async (req) => {
     const goalPct = goalTarget > 0 ? Math.round((goalCurrent / goalTarget) * 100) : 0;
     const totalClicks = allSignals.reduce((a: number, s: any) => a + (s.clicks || 0), 0);
 
-    // ---- TIME / SCHEDULE AWARENESS ----
+    // ---- TIME / SCHEDULE AWARENESS (v5: real target_end_date) ----
     const startedRef = campaign.started_at || campaign.target_start_date;
     const startMs = startedRef ? new Date(startedRef).getTime() : null;
     const nowMs = Date.now();
-    const campaignDays = totalWeeks * 7;
-    const endMs = startMs ? startMs + campaignDays * DAY_MS : null;
+    // Prefer explicit target_end_date; fall back to legacy week-derived end.
+    const explicitEndMs = campaign.target_end_date ? new Date(campaign.target_end_date).getTime() : null;
+    const fallbackEndMs = startMs ? startMs + (totalWeeks * 7 * DAY_MS) : null;
+    const endMs = explicitEndMs || fallbackEndMs;
+    const campaignDays = startMs && endMs ? Math.max(1, Math.round((endMs - startMs) / DAY_MS)) : (totalWeeks * 7);
     const elapsedDays = startMs ? Math.max(0, (nowMs - startMs) / DAY_MS) : 0;
     const daysRemaining = endMs ? Math.max(0, (endMs - nowMs) / DAY_MS) : null;
     const timeProgressPct = endMs && startMs ? Math.min(100, Math.round((elapsedDays / campaignDays) * 100)) : 0;
-    // Pace ratio: how much of the plan posted vs. how much time elapsed.
-    // <0.85 = behind, 0.85–1.15 = on pace, >1.15 = ahead
+
+    // ---- v5 PACING STATE — the simple verdict the user wants to hear ----
+    const elapsedRatio = campaignDays > 0 ? Math.max(0, Math.min(1, elapsedDays / campaignDays)) : 0;
+    const expectedByNow = totalPosts > 0 ? Math.round(elapsedRatio * totalPosts) : 0;
+    const paceDelta = posted - expectedByNow;
+    const ON_TRACK_TOLERANCE = 0.5;
+
+    let pacingState: "NOT_STARTED" | "BEHIND" | "ON_TRACK" | "AHEAD";
+    if (totalPosts === 0 || (posted === 0 && elapsedRatio < 0.05)) {
+      pacingState = "NOT_STARTED";
+    } else if (posted === 0 && expectedByNow > 0) {
+      pacingState = "BEHIND";
+    } else if (paceDelta < -ON_TRACK_TOLERANCE) {
+      pacingState = "BEHIND";
+    } else if (paceDelta > ON_TRACK_TOLERANCE) {
+      pacingState = "AHEAD";
+    } else {
+      pacingState = "ON_TRACK";
+    }
+
+    // Legacy ratio kept for the old branches that read it.
     const paceRatio = timeProgressPct > 0 ? (postingPct / Math.max(1, timeProgressPct)) : 1;
-    const isBehind = paceRatio < 0.85 && timeProgressPct > 10;
-    const isAhead = paceRatio > 1.15;
-    const isOnPace = !isBehind && !isAhead;
+    const isBehind = pacingState === "BEHIND";
+    const isAhead = pacingState === "AHEAD";
+    const isOnPace = pacingState === "ON_TRACK";
     const hasTimeBuffer = daysRemaining !== null && daysRemaining >= 1.5 && !isBehind;
 
     // ---- PATTERN DETECTION ----
