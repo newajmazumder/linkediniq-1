@@ -7,9 +7,11 @@ type Props = {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onPostUpdate: (updated: Post) => void;
+  postPlanId?: string | null;
+  campaignId?: string | null;
 };
 
-const ComparisonView = ({ posts, ideaId, userId, selectedId, onSelect, onPostUpdate }: Props) => {
+const ComparisonView = ({ posts, ideaId, userId, selectedId, onSelect, onPostUpdate, postPlanId, campaignId }: Props) => {
   const sorted = [...posts].sort((a, b) => a.variation_number - b.variation_number);
 
   return (
@@ -24,6 +26,8 @@ const ComparisonView = ({ posts, ideaId, userId, selectedId, onSelect, onPostUpd
           onSelect={() => onSelect(post.id)}
           onPostUpdate={onPostUpdate}
           compact
+          postPlanId={postPlanId}
+          campaignId={campaignId}
         />
       ))}
     </div>

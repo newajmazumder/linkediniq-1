@@ -124,9 +124,14 @@ type Props = {
   onSelect?: () => void;
   onPostUpdate: (updated: Post) => void;
   compact?: boolean;
+  /** When set, the resulting draft is linked back to this campaign post plan
+   *  and the plan's status is flipped to `drafted`. This closes the loop
+   *  Plan → Create → Draft so the campaign view reflects real execution. */
+  postPlanId?: string | null;
+  campaignId?: string | null;
 };
 
-const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, compact }: Props) => {
+const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, compact, postPlanId, campaignId }: Props) => {
   const [rewriting, setRewriting] = useState<string | null>(null);
   const [savingDraft, setSavingDraft] = useState(false);
   const [predicting, setPredicting] = useState(false);
@@ -144,15 +149,41 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
     setSavingDraft(true);
     try {
       const fullContent = `${post.hook}\n\n${post.body}\n\n${post.cta}`;
-      const { error } = await supabase.from("drafts").insert({
-        user_id: userId,
-        idea_id: ideaId,
-        selected_post_id: post.id,
-        custom_content: fullContent,
-        status: "draft",
-      });
+      const { data: inserted, error } = await supabase
+        .from("drafts")
+        .insert({
+          user_id: userId,
+          idea_id: ideaId,
+          selected_post_id: post.id,
+          custom_content: fullContent,
+          status: "draft",
+        })
+        .select("id")
+        .single();
       if (error) throw error;
-      toast.success("Saved to drafts");
+
+      // Close the loop: link this draft back to the campaign post plan
+      // and flip plan status from "planned" → "drafted" so the campaign
+      // view reflects real execution instead of always saying "Create now".
+      if (postPlanId && inserted?.id) {
+        await supabase
+          .from("campaign_post_plans")
+          .update({
+            linked_draft_id: inserted.id,
+            status: "drafted",
+          })
+          .eq("id", postPlanId);
+
+        // Tick execution metrics so the campaign hero updates immediately.
+        if (campaignId) {
+          supabase.functions
+            .invoke("execution-tick", { body: { campaign_id: campaignId } })
+            .catch(() => { /* non-blocking */ });
+        }
+        toast.success("Saved & linked to campaign plan");
+      } else {
+        toast.success("Saved to drafts");
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to save draft");
     } finally {
