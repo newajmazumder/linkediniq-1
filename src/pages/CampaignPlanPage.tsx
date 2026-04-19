@@ -317,60 +317,78 @@ const CampaignPlanPage = () => {
             </div>
 
             <div className="flex items-start gap-4 shrink-0">
-              <div className="text-right">
-                <div className={cn("flex items-end justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
-                  <span>
-                    {score.total.toFixed(1)}
-                    <span className="text-base text-muted-foreground font-normal">/10</span>
-                  </span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label="Why this score"
-                        className="inline-flex items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        <Info className="h-4 w-4" />
-                      </button>
-                    </PopoverTrigger>
-                    <PopoverContent align="end" className="w-[360px] p-0">
-                      <ScoreBreakdownCard
-                        score={score}
-                        pillars={(() => {
-                          const hints = buildPillarHints(score, scoreInputs);
-                          return [
-                            { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
-                            { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
-                            { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
-                          ];
-                        })()}
-                        className="border-0"
-                      />
-                    </PopoverContent>
-                  </Popover>
+              {lifecycleMeta.showScore ? (
+                <div className="text-right">
+                  <div className={cn("flex items-end justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
+                    <span>
+                      {score.total.toFixed(1)}
+                      <span className="text-base text-muted-foreground font-normal">/10</span>
+                    </span>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          type="button"
+                          aria-label="Why this score"
+                          className="inline-flex items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-[360px] p-0">
+                        <ScoreBreakdownCard
+                          score={score}
+                          pillars={(() => {
+                            const hints = buildPillarHints(score, scoreInputs);
+                            return [
+                              { label: "Positioning", value: score.positioning, weight: SCORE_WEIGHTS.positioning, hint: hints.positioning },
+                              { label: "Execution", value: score.execution, weight: SCORE_WEIGHTS.execution, hint: hints.execution },
+                              { label: "Conversion", value: score.conversion, weight: SCORE_WEIGHTS.conversion, hint: hints.conversion },
+                            ];
+                          })()}
+                          className="border-0"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Strategy · <span className="text-foreground">{interp}</span>
+                  </p>
+                  {(() => {
+                    // Identify the weakest pillar — that's where the score is bleeding from.
+                    const pillars = [
+                      { key: "Positioning", v: score.positioning },
+                      { key: "Execution", v: score.execution },
+                      { key: "Conversion", v: score.conversion },
+                    ].sort((a, b) => a.v - b.v);
+                    const weakest = pillars[0];
+                    const lostPts = (10 - weakest.v).toFixed(0);
+                    if (Number(lostPts) <= 1 || !diag.fixes[0]) return null;
+                    return (
+                      <p className="mt-1.5 text-[11px] text-foreground max-w-[200px] ml-auto leading-snug">
+                        <span className="text-muted-foreground">Main issue:</span> {weakest.key} <span className="text-muted-foreground tabular-nums">(−{lostPts} pts)</span>
+                        <br />
+                        <span className="text-muted-foreground">Fix:</span> {diag.fixes[0]}
+                      </p>
+                    );
+                  })()}
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Strategy · <span className="text-foreground">{interp}</span>
-                </p>
-                {(() => {
-                  // Identify the weakest pillar — that's where the score is bleeding from.
-                  const pillars = [
-                    { key: "Positioning", v: score.positioning },
-                    { key: "Execution", v: score.execution },
-                    { key: "Conversion", v: score.conversion },
-                  ].sort((a, b) => a.v - b.v);
-                  const weakest = pillars[0];
-                  const lostPts = (10 - weakest.v).toFixed(0);
-                  if (Number(lostPts) <= 1 || !diag.fixes[0]) return null;
-                  return (
-                    <p className="mt-1.5 text-[11px] text-foreground max-w-[200px] ml-auto leading-snug">
-                      <span className="text-muted-foreground">Main issue:</span> {weakest.key} <span className="text-muted-foreground tabular-nums">(−{lostPts} pts)</span>
-                      <br />
-                      <span className="text-muted-foreground">Fix:</span> {diag.fixes[0]}
-                    </p>
-                  );
-                })()}
-              </div>
+              ) : (
+                // Honest placeholder — no fake score before evidence exists.
+                <div className="text-right max-w-[220px]">
+                  <div className="flex items-end justify-end gap-1.5 text-4xl sm:text-5xl font-semibold leading-none tabular-nums text-muted-foreground/40">
+                    <span>
+                      {lifecycleMeta.scorePlaceholder}
+                      <span className="text-base font-normal">/10</span>
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Status · <span className="text-foreground">{lifecycleMeta.label}</span>
+                  </p>
+                  <p className="mt-1.5 text-[11px] text-muted-foreground leading-snug">
+                    {lifecycleMeta.scorePlaceholderReason}
+                  </p>
+                </div>
+              )}
               {weekPlans.length === 0 && (
                 <Button size="sm" onClick={generatePlan} disabled={generating}>
                   {generating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Sparkles className="mr-1 h-3.5 w-3.5" />}
