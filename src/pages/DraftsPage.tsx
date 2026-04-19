@@ -410,13 +410,24 @@ const DraftsPage = () => {
         </div>
       )}
 
-      <MarkPostedDialog
-        open={!!markPostedDraft}
-        onOpenChange={(o) => !o && setMarkPostedDraft(null)}
-        draftId={markPostedDraft?.id}
-        content={markPostedDraft?.custom_content || ""}
-        onMarked={fetchDrafts}
-      />
+      {(() => {
+        const ctx = markPostedDraft ? contextByDraftId[markPostedDraft.id] : null;
+        return (
+          <MarkPostedDialog
+            open={!!markPostedDraft}
+            onOpenChange={(o) => !o && setMarkPostedDraft(null)}
+            draftId={markPostedDraft?.id}
+            postPlanId={ctx?.plan_id}
+            campaignId={ctx?.campaign_id}
+            content={markPostedDraft?.custom_content || ""}
+            hookType={ctx?.hook_type}
+            ctaType={ctx?.cta_type}
+            format={ctx?.format}
+            phase={ctx?.phase}
+            onMarked={fetchDrafts}
+          />
+        );
+      })()}
     </div>
   );
 };
