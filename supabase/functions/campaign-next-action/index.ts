@@ -195,27 +195,82 @@ serve(async (req) => {
         : `Only ${allSignals.length} measured post${allSignals.length === 1 ? "" : "s"} — too thin to detect what's actually working.`;
     }
 
-    // ---- DECISION TREE — leverage-first ----
+    // ---- LIFECYCLE GATING — don't simulate intelligence without evidence ----
+    // Mirror src/lib/campaign-lifecycle.ts so client + server agree.
+    const weekPlansCount = (weekPlans || []).length;
+    const lifecycle: "setup" | "planned" | "executing" | "learning" =
+      (weekPlansCount === 0 && totalPosts === 0) ? "setup"
+      : posted === 0 ? "planned"
+      : posted < 3 ? "executing"
+      : "learning";
+
+    // ---- DECISION TREE — leverage-first, gated by lifecycle ----
     let action: any = null;
 
-    // 1. BLOCKER — no plan
-    if (totalPosts === 0) {
+    // 1. SETUP — no plan exists. The ONLY honest action is "generate plan".
+    //    No pattern claims, no pacing math, no fake confidence.
+    if (lifecycle === "setup") {
       action = {
         action_type: "blocker",
         priority: "critical",
         title: "Generate your campaign plan",
-        observation: "No plan exists yet. Strategy is empty.",
-        why_now: "Without a plan, you can't measure progress or replicate what works.",
-        interpretation: "Every post is generated in isolation. No compounding learning.",
-        impact: `You will miss your ${goalTarget} ${campaign.target_metric || "goal"} target by default.`,
-        recommendation: "Generate a goal-aware weekly roadmap.",
+        observation: "No plan or posts yet. The campaign hasn't started.",
+        why_now: "We can't evaluate strategy, recommend changes, or score performance until a plan exists.",
+        interpretation: "This is the setup phase — no patterns to detect, no signals to read.",
+        impact: `You'll miss your ${goalTarget || "goal"} ${campaign.target_metric || "target"} by default if execution never begins.`,
+        recommendation: "Generate a goal-aware weekly roadmap to define what success looks like.",
         confidence: "high",
         cta_label: "Generate plan",
         cta_action: "generate_plan",
       };
     }
-    // 1.5 NOT_STARTED — plan exists, but campaign hasn't begun executing
-    else if (pacingState === "NOT_STARTED" && totalPosts > 0) {
+    // 1.5 PLANNED — plan exists, 0 posts published. Only valid action is "publish first post".
+    //    No pattern recommendations, no strategy fixes — there's no data to base them on.
+    else if (lifecycle === "planned") {
+      const firstPost = nextPlannedPost || allPlans[0];
+      action = {
+        action_type: "blocker",
+        priority: "critical",
+        title: "Publish your first post to start measuring",
+        observation: `Plan ready (${totalPosts} ${totalPosts === 1 ? "post" : "posts"}) but nothing published yet.`,
+        why_now: "Until at least one post is live, the system has nothing to measure or learn from.",
+        interpretation: "We can't optimize, detect patterns, or evaluate strategy with zero data points.",
+        impact: campaignDays > 0
+          ? `You have ${campaignDays} days to ship ${totalPosts} posts. Time only runs forward.`
+          : "Every day not posting is a day of expected output you can't recover.",
+        recommendation: firstPost
+          ? `Open Post #${firstPost.post_number} and publish today.`
+          : "Open the first planned post and publish today.",
+        confidence: "high",
+        cta_label: firstPost ? `Open post #${firstPost.post_number}` : "Open plan",
+        target_post_id: firstPost?.id || null,
+      };
+    }
+    // 1.6 EXECUTING — 1 or 2 posts live. Force confidence to LOW and only do execution coaching.
+    //    No "winning hook" claims yet — pattern detection requires ≥3 samples.
+    else if (lifecycle === "executing") {
+      const need = Math.max(1, expectedByNow - posted);
+      const isBehindHere = pacingState === "BEHIND";
+      action = {
+        action_type: isBehindHere ? "execution" : "experiment",
+        priority: isBehindHere ? "high" : "medium",
+        title: isBehindHere
+          ? `Catch up — publish ${need} more ${need === 1 ? "post" : "posts"} this week`
+          : `Keep publishing — ${3 - posted} more ${3 - posted === 1 ? "post" : "posts"} until pattern detection unlocks`,
+        observation: `${posted} ${posted === 1 ? "post" : "posts"} live, ${allSignals.length} measured. Too thin to detect what's working yet.`,
+        why_now: "Pattern detection needs at least 3 measured posts. Continuing the cadence unlocks the intelligence layer.",
+        interpretation: "You're in the activation phase — the goal right now is to generate signal, not to optimize.",
+        impact: "Every post you publish accelerates how soon the system can recommend what actually works for your audience.",
+        recommendation: nextPlannedPost
+          ? `Open Post #${nextPlannedPost.post_number} and ship it. Score and pattern recommendations unlock at 3+ posts live.`
+          : "Continue with the plan. Score and pattern recommendations unlock at 3+ posts live.",
+        confidence: "low",
+        cta_label: nextPlannedPost ? `Open post #${nextPlannedPost.post_number}` : "Open plan",
+        target_post_id: nextPlannedPost?.id || null,
+      };
+    }
+    // From here on: lifecycle === "learning" (3+ posts live). Full intelligence unlocked.
+    else if (false) {
       const firstPost = allPlans[0];
       action = {
         action_type: "blocker",
