@@ -1,99 +1,101 @@
 
-## Investigation summary
+## Investigation
 
-Looking at the current model:
-- `post_metrics` already stores raw LinkedIn signals (impressions/reactions/comments/reposts/clicks/profile_visits/follower_gain) — this is our **Layer 1 (Raw)**.
-- `campaigns` defines `target_metric` + `target_quantity` — the goal definition exists.
-- `campaign_progress` tracks `metric_name` / `current_value` / `target_value` — already supports campaign-level goal totals (great, no new table needed).
-- **Missing**: per-post `goal_contribution` field (the bridge between raw signals and goal outcome).
-- **Missing**: a UI to enter per-post goal contribution and per-campaign current goal value.
-- **Missing**: aggregation/interpretation that compares contribution vs. unattributed and produces goal-aware insights/score.
+Current state from code review:
 
-Earlier the user approved a broader "performance feedback loop" plan. This message refines/locks the **goal-aware model**: raw stays fixed, goal is dynamic, and a `goal_contribution` field per post is the new bridge. We'll fold this into the existing `post_metrics` + `campaign_progress` tables instead of creating new ones.
+- `campaigns.current_goal_value` is **manually entered** by the user via `CampaignGoalProgressCard` (the input field), then `aggregate-campaign-goals` computes `unattributed = current_goal_value - total_post_contribution`.
+- This inverts the user's stated rule: **post contributions should drive campaign progress automatically**, manual entry is optional/unattributed-only.
+- `aggregate-campaign-goals` already sums `goal_contribution` across post_metrics rows → `total_post_contribution`. This is the value we need to roll into `current_goal_value`.
+- `goal_progress_pct` is already computed but currently capped at 100 (`Math.min(100, ...)`) in `goal-metrics.ts` — blocks overachievement display.
+- No `goal_status` field exists on `campaigns`. No overachievement UI anywhere.
+- Hero header (screenshot) shows score/strategy/execution but **no campaign goal progress bar** — the missing "proof the campaign is working".
+- `CampaignGoalProgressCard` shows "From posts" + "Unattributed" but the manual entry is the source of truth — needs flip.
+- Strategy page campaign cards show execution/velocity but no goal progress.
 
-## Plan: Goal-Aware Performance System
+## Plan: Auto-rolled Goal Progress + Overachievement
 
-### 1. Database (one small migration)
+### 1. Flip the source-of-truth model
 
-Add the bridge field + lightweight insight cache:
+**Rule (MVP):** `campaign.current_goal_value = SUM(post_metrics.goal_contribution)` for all posts linked to the campaign. Auto-rolled, not manually typed.
+
+Keep `current_goal_value` column as the persisted total (so the strategy list doesn't need to re-aggregate). `aggregate-campaign-goals` becomes the writer.
+
+**Manual unattributed input** stays available but moves to a **secondary "external attribution" field** (`unattributed_goal_value`, new column) so the user can still log "12 bookings came from cold DMs". Total displayed = posts + unattributed.
+
+### 2. DB migration
 
 ```sql
-ALTER TABLE post_metrics
-  ADD COLUMN goal_contribution integer DEFAULT 0,
-  ADD COLUMN goal_metric text,        -- snapshot of campaign metric at entry time
-  ADD COLUMN attribution_note text;   -- optional user note ("from DM reply")
-
 ALTER TABLE campaigns
-  ADD COLUMN current_goal_value integer DEFAULT 0,
-  ADD COLUMN goal_value_updated_at timestamptz;
+  ADD COLUMN unattributed_goal_value integer DEFAULT 0,
+  ADD COLUMN goal_status text DEFAULT 'not_started',
+  ADD COLUMN goal_progress_percent numeric DEFAULT 0;
 ```
 
-Reuse existing tables — no new tables required. `campaign_progress` continues to track historical snapshots if needed.
+(`goal_status`: `not_started | in_progress | achieved | overachieved`)
 
-### 2. Edge function: `aggregate-campaign-goals`
+### 3. `aggregate-campaign-goals` updates
 
-Lightweight, no AI required for the math:
-- Sum `goal_contribution` across posts linked to campaign (via `linked_draft_id` → `campaign_post_plans` → campaign).
-- Compute: `total_post_contribution`, `unattributed = current_goal_value − total_post_contribution`, `goal_progress %`.
-- Compute derived: per-post `efficiency = contribution / impressions`, `conversion_rate = contribution / clicks`, ROI ranking.
-- Update `campaigns.execution_score` with new formula:
-  `0.5 × goal_progress + 0.3 × execution_rate + 0.2 × content_efficiency`.
+- Compute `posts_contribution = sum(goal_contribution)`.
+- `current_goal_value = posts_contribution + (campaign.unattributed_goal_value || 0)`.
+- `goal_progress_percent = target ? (current / target) * 100 : 0` — **uncapped**.
+- `goal_status` derived per the spec's logic.
+- Persist all four onto `campaigns` (so list/header reads are cheap).
+- Return `posts_contribution`, `unattributed`, `current_goal_value`, `goal_progress_percent`, `goal_status`, `remaining = max(0, target - current)`, `over_target = max(0, current - target)`.
 
-### 3. Edge function: `interpret-campaign-performance` (AI layer)
+### 4. Auto-trigger on contribution save
 
-Only runs when user clicks "Generate insights":
-- Inputs: posts with raw metrics + contributions, campaign goal/target, top/bottom performers.
-- Output: goal-aware recommendations (e.g. "Posts with direct CTA drive 80% of bookings — replicate Post 3 format").
-- Saves into existing `campaign_reports` table (`report_type: "goal_interpretation"`).
+`PostDetailPage.saveMetrics` already invokes `aggregate-campaign-goals` ✔. Confirm the call passes `campaign_id` resolved from the post→draft→plan chain. Add the same invocation when contribution changes inline anywhere else.
 
-### 4. UI changes
+### 5. `goal-metrics.ts` helpers
 
-**A. Performance form on `PostDetailPage`** (the screenshot shown):
-- Keep all 7 raw metric fields exactly as-is (locked, platform-native).
-- Add a new highlighted section **"Goal Contribution"** below raw metrics:
-  - Dynamic label driven by campaign goal — e.g. "Demo bookings from this post" / "Leads generated" / "Followers gained from this post".
-  - Single integer input + optional attribution note.
-  - Only shown if post is linked to a campaign with a `target_metric`.
-  - Helper text: "How many [metric] can you attribute to this post?"
+- Remove `Math.min(100, ...)` cap from `computeGoalProgress` — return raw % so overachievement is visible.
+- Add `deriveGoalStatus(current, target)` → status string.
+- Add `formatGoalProgress({current, target})` → `{pct, remaining, overTarget, status, label}`.
 
-**B. Campaign Analytics tab** (`CampaignPlanPage` analytics tab):
-Restructure into 4 sections per spec:
-1. **Raw Performance** — totals across posts (impressions, likes, comments, clicks).
-2. **Post Goal Contribution** — table ranking posts by contribution (Post → contribution → efficiency).
-3. **Campaign Progress** — input field for `current_goal_value`, derived `From posts: X · Unattributed: Y`, progress bar `X / target`.
-4. **AI Insight** — button "Generate goal-aware insights" → renders interpretation output.
+### 6. UI changes
 
-**C. Inline on `CampaignPostCard`** (posted state):
-- Add a tiny line under the existing "Posted" pill: `Impressions: 1.2k · [goal metric]: 3` when contribution exists.
+**A. New component `CampaignGoalProgressBar.tsx`** (reusable):
+- Visual bar capped at 100% width, but shows raw % number above.
+- States: `not_started` (muted), `in_progress` (primary), `achieved` (green check + "Goal achieved"), `overachieved` (green + "+X over target", green-tinted bar).
+- Compact + full variants (compact = inline strip; full = with breakdown).
 
-### 5. Score recomputation
+**B. `CampaignPlanPage` hero header** (the screenshot):
+- Add a new row above/below "Goal · Execution · Velocity" cards: full-width `CampaignGoalProgressBar` showing `38 / 100 demo bookings · 38% · 62 remaining`.
+- Keeps the existing GOAL card (target text only) but the bar becomes the primary signal.
 
-Replace planning-only execution score with the goal-aware formula in `aggregate-campaign-goals`. Trigger it whenever metrics or `current_goal_value` change. Fallback to old formula when no contributions yet (so score isn't 0 on day 1).
+**C. `CampaignGoalProgressCard` (analytics tab) — restructure**:
+- Top: progress bar (full variant) — same component.
+- Middle grid: "From posts" (read-only sum) · "External / unattributed" (manual input, replaces current main input) · "Total".
+- Bottom: contribution breakdown — top 3 posts by contribution (links to post detail).
+- Remove the misleading "manual total" input.
 
-### 6. Auto-trigger flow
+**D. `StrategyPage` campaign cards**:
+- Add a one-line goal progress strip under the existing execution/velocity row: `Goal: 38 / 100 demo bookings (38%)` or `Overachieved +35` in green.
+- Use the compact `CampaignGoalProgressBar` variant.
 
-- `MarkPostedDialog` → already creates the metrics row, now also writes `goal_metric` snapshot.
-- Saving `post_metrics` (raw + contribution) → invokes `aggregate-campaign-goals`.
-- Saving `current_goal_value` on campaign → invokes `aggregate-campaign-goals`.
+**E. `PostContributionTable`**: no logic change — already ranks by contribution. Add a small footer line "Total contributed: X / target".
 
-## Files to edit/create
+### 7. Live refresh wiring
+
+- `PostDetailPage` after metrics save → invokes aggregate (already done) → emits a window event `campaign-goals-updated:<id>`.
+- `CampaignPlanPage` and `StrategyPage` listen and re-fetch the campaign row + aggregate. No realtime channel needed for MVP.
+
+### 8. Files
 
 **New**:
-- `supabase/migrations/<ts>_goal_aware_metrics.sql`
-- `supabase/functions/aggregate-campaign-goals/index.ts`
-- `supabase/functions/interpret-campaign-performance/index.ts`
-- `src/lib/goal-metrics.ts` — pure helpers: `goalMetricLabel(metric)`, `computeEfficiency`, `rankByContribution`.
-- `src/components/campaign/CampaignGoalProgressCard.tsx` — section 3 UI.
-- `src/components/campaign/PostContributionTable.tsx` — section 2 UI.
+- `supabase/migrations/<ts>_goal_status_overachievement.sql`
+- `src/components/campaign/CampaignGoalProgressBar.tsx`
 
 **Edit**:
-- `src/pages/PostDetailPage.tsx` — add "Goal Contribution" section to metrics form; pass campaign metric label.
-- `src/pages/CampaignPlanPage.tsx` — restructure analytics tab into 4 sections.
-- `src/components/campaign/CampaignPostCard.tsx` — show inline contribution under posted state.
-- `src/components/strategy/MarkPostedDialog.tsx` — snapshot `goal_metric` on first metrics row.
+- `supabase/functions/aggregate-campaign-goals/index.ts` — flip source of truth, persist status/percent, support overachievement.
+- `src/lib/goal-metrics.ts` — uncap progress, add status helpers.
+- `src/components/campaign/CampaignGoalProgressCard.tsx` — restructure (unattributed-only input + breakdown).
+- `src/pages/CampaignPlanPage.tsx` — add progress bar to hero, wire live refresh.
+- `src/pages/StrategyPage.tsx` — add compact progress strip on campaign cards.
+- `src/components/campaign/PostContributionTable.tsx` — total/target footer.
 
-## Out of scope (deferred)
+### 9. Out of scope
 
-- Auto-pulling LinkedIn metrics via API (manual entry only for now).
-- Time-series snapshots (Day 1/3/7) — current `last_updated_at` is enough; can add later.
-- Multi-goal campaigns (single primary goal only).
+- Realtime channel for cross-tab updates (window event is enough for now).
+- Historical snapshots of progress over time.
+- Auto-pulling LinkedIn metrics.
