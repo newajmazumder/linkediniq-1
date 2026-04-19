@@ -52,7 +52,13 @@ const CampaignProjectionCard = ({
   // Unstable / unknown — calm, honest empty state
   if (!proj.stable) {
     return (
-      <div className={cn("rounded-lg border border-border bg-card border-l-2 p-4 space-y-2", borderTone.unknown, className)}>
+      <div className={cn(
+        embedded
+          ? "px-4 py-4 space-y-2"
+          : "rounded-lg border border-border bg-card border-l-2 p-4 space-y-2",
+        !embedded && borderTone.unknown,
+        className,
+      )}>
         <div className="flex items-center gap-2">
           <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
           <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">
