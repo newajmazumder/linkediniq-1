@@ -155,6 +155,20 @@ const PostCard = ({ post, ideaId, userId, selected, onSelect, onPostUpdate, comp
     setSavingDraft(true);
     try {
       const fullContent = `${post.hook}\n\n${post.body}\n\n${post.cta}`;
+
+      // Edit mode: update the existing draft row instead of creating a new one.
+      // This is what makes /create?draft_id=…&mode=edit a true editor rather
+      // than a duplicator.
+      if (draftId) {
+        const { error } = await supabase
+          .from("drafts")
+          .update({ custom_content: fullContent })
+          .eq("id", draftId);
+        if (error) throw error;
+        toast.success("Draft updated");
+        return;
+      }
+
       const { data: inserted, error } = await supabase
         .from("drafts")
         .insert({
