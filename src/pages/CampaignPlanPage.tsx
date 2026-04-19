@@ -341,7 +341,10 @@ const CampaignPlanPage = () => {
             key={t}
             onClick={() => {
               setTab(t);
-              if (t === "analytics" && !analytics) fetchAnalytics();
+              if (t === "analytics") {
+                if (!analytics) fetchAnalytics();
+                if (!goalAgg) fetchGoalAggregate();
+              }
             }}
             className={cn(
               "relative -mb-px px-3 py-2 text-xs font-medium transition-colors capitalize border-b-2",
