@@ -281,6 +281,24 @@ const CampaignPlanPage = () => {
                 <p className="mt-1 text-[11px] text-muted-foreground">
                   Strategy · <span className="text-foreground">{interp}</span>
                 </p>
+                {(() => {
+                  // Identify the weakest pillar — that's where the score is bleeding from.
+                  const pillars = [
+                    { key: "Positioning", v: score.positioning },
+                    { key: "Execution", v: score.execution },
+                    { key: "Conversion", v: score.conversion },
+                  ].sort((a, b) => a.v - b.v);
+                  const weakest = pillars[0];
+                  const lostPts = (10 - weakest.v).toFixed(0);
+                  if (Number(lostPts) <= 1 || !diag.fixes[0]) return null;
+                  return (
+                    <p className="mt-1.5 text-[11px] text-foreground max-w-[200px] ml-auto leading-snug">
+                      <span className="text-muted-foreground">Main issue:</span> {weakest.key} <span className="text-muted-foreground tabular-nums">(−{lostPts} pts)</span>
+                      <br />
+                      <span className="text-muted-foreground">Fix:</span> {diag.fixes[0]}
+                    </p>
+                  );
+                })()}
               </div>
               {weekPlans.length === 0 && (
                 <Button size="sm" onClick={generatePlan} disabled={generating}>
