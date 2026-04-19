@@ -180,7 +180,7 @@ export default function CampaignAdvisorBanner({
     setSubmitting(true);
     if (campaignPatch) {
       const { error: cErr } = await supabase
-        .from("campaigns").update(campaignPatch).eq("id", q.campaign_id);
+        .from("campaigns").update(campaignPatch as any).eq("id", q.campaign_id);
       if (cErr) {
         setSubmitting(false);
         toast.error("Could not update campaign");
