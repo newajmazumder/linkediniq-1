@@ -1,74 +1,79 @@
 
 
-The user wants to flip from "always-on AI panel" → "event-triggered advisor". Currently `NextBestActionCard` always renders (gated by lifecycle), and pacing strip always shows. They want **silence by default**, with a single alert surfacing only when a hard trigger fires.
+# Plan — Start Campaign flow with required dates + plan gating
 
-Let me design the trigger engine and the surface.
+The "Generate Plan" button currently runs without ensuring `target_start_date` / `target_end_date` exist, so per-post scheduling has nothing to anchor to. The user wants a **Start Campaign modal** that captures dates first, then makes plan generation date-aware (each post gets a real `planned_date` distributed across the campaign window).
 
-## Plan — Event-Triggered Advisor (silence-first)
+## 1. New "Start Campaign" CTA in setup empty state
 
-### 1. New trigger engine (`src/lib/campaign-triggers.ts`)
+In `CampaignPlanPage.tsx` setup block (currently shows "Generate Plan" directly):
+- Replace the standalone "Generate Plan" button with **"Start Campaign"** when `started_at` is null AND no plan exists.
+- Clicking opens a new **`StartCampaignDialog`** modal.
+- Keep "Generate Plan" only as a secondary state once dates are set but plan is missing.
 
-Pure function `evaluateTriggers(campaign, postPlans, signals, pacing, contributionRows) → CampaignAlert | null`.
+Also remove the small "Generate Plan" button in the hero (top-right) — it bypasses the date requirement.
 
-Five hard-rule triggers, evaluated in priority order. **First match wins**, rest are suppressed.
+## 2. New component — `StartCampaignDialog.tsx`
 
-| # | Trigger              | Fires when                                                                 | Severity  |
-|---|----------------------|----------------------------------------------------------------------------|-----------|
-| 1 | Stagnation           | `posted_count > 0` AND no posts in last 5 days AND campaign still active   | critical  |
-| 2 | Execution Failure    | `pacing.delta <= -2` (behind by 2+ posts vs expected by today)             | critical  |
-| 3 | Forecast Risk        | `posted >= 3` AND linear projection of goal_value < 70% of target          | high      |
-| 4 | Performance Failure  | `posted >= 3` AND avg CTR < baseline AND zero goal contributions          | high      |
-| 5 | Pattern Detected     | `posted >= 4` AND one hook/format converts ≥ 3× the rest                  | medium    |
+A modal that captures:
+- **Start date** (required, date picker, default = today)
+- **End date** (required, date picker)
+- **Duration** (auto-calculated read-only field: `endDate - startDate` in days/weeks)
 
-If none fire → return `null` → **render nothing**.
+Logic:
+- If `campaign.target_timeframe` exists (e.g. "monthly" → 30d, "weekly" → 7d), pre-fill end date as `start + duration`. Otherwise leave blank.
+- Validate: `end > start`, both required.
+- On save: update `campaigns` row with `target_start_date`, `target_end_date`, `started_at = start_date`, `execution_status = 'planned'`. Then auto-trigger `generatePlan()`.
 
-Each alert returns:
-```ts
-{ kind, severity, headline, delta, body, cta?: { label, action } }
-```
+## 3. Make plan generation date-aware
 
-### 2. New surface (`src/components/campaign/CampaignAlertCard.tsx`)
+Update `supabase/functions/generate-campaign-plan/index.ts`:
+- **Hard guard**: return `400` with `"Campaign start and end dates are required"` if `target_start_date` or `target_end_date` is missing.
+- After AI returns weeks/posts, **distribute `planned_date` across the campaign window**:
+  ```
+  totalDays = (end - start) in days
+  intervalDays = totalDays / totalPosts
+  postPlans[i].planned_date = start + (i * intervalDays)
+  ```
+  This evenly spaces posts across the campaign — week 1 gets first N posts, week 2 gets next N, etc.
+- Also pass `duration_weeks` derived from actual dates (not blueprint default), so the AI generates the right number of weeks.
 
-Single dismissible alert card, appears only when trigger fires. Inserted at top of campaign page. Uses red/amber/blue tone per severity. Always shows the **delta from expectation** ("You're 2 posts behind expected pace") — never raw counts alone.
+Client-side (`CampaignPlanPage.tsx`): wrap `generatePlan()` with a guard — if dates missing, open `StartCampaignDialog` instead.
 
-### 3. Removals from `CampaignPlanPage.tsx`
+## 4. Pause / resume controls (when started)
 
-- **Remove** `<NextBestActionCard>` from always-render position.
-- **Remove** `<CampaignPacingStrip>` from always-render position. Pacing data is now consumed by the trigger engine, not displayed standalone.
-- **Keep** the `setup` empty state ("Generate Plan") — that's onboarding, not advisor noise.
-- **Keep** the campaign header, plan, posts, score (when `learning`).
+When `lifecycle !== "setup"` AND `started_at` exists, add a small status pill in the hero next to the strategy meta:
+- If `execution_status === 'active'` → show **Pause** button → sets `execution_status = 'paused'`
+- If `execution_status === 'paused'` → show **Resume** button → sets back to `'active'`
 
-### 4. Replacement render block
+This is intentionally minimal — single button toggle, no modal. No need to re-capture dates.
+
+## 5. Files touched
+
+- **New** `src/components/campaign/StartCampaignDialog.tsx` — date capture modal (~120 lines).
+- **Edit** `src/pages/CampaignPlanPage.tsx` — replace setup CTA, add date guard on `generatePlan()`, add Pause/Resume pill.
+- **Edit** `supabase/functions/generate-campaign-plan/index.ts` — date guard + per-post `planned_date` distribution + duration derived from dates.
+
+No DB migration (`target_start_date`, `target_end_date`, `started_at`, `execution_status` already exist).
+
+## 6. State flow after change
 
 ```text
-if lifecycle === "setup"   → Generate Plan empty state
-if lifecycle !== "setup"   → evaluate triggers
-                              ├─ alert? → <CampaignAlertCard>
-                              └─ none?  → nothing (silence)
+SETUP (no dates, no plan)
+  → [Start Campaign] button
+  → modal captures start + end dates
+  → saves dates + started_at
+  → auto-generates plan with date-distributed posts
+  → transitions to PLANNED
+
+PLANNED / EXECUTING / LEARNING
+  → [Pause] / [Resume] toggle in hero
+  → no date re-capture
 ```
 
-### 5. Baselines (System Awareness Layer)
+## 7. Out of scope
 
-Hardcoded MVP constants in `campaign-triggers.ts`:
-- `BASELINE_CTR = 1.5%`
-- `BASELINE_CONVERSION = 25%`
-- `STAGNATION_DAYS = 5`
-- `BEHIND_THRESHOLD = -2 posts`
-- `FORECAST_MISS_THRESHOLD = 0.7` (70% of target)
-- `PATTERN_MULTIPLIER = 3`
-
-### 6. Files touched
-
-- **New** `src/lib/campaign-triggers.ts` — pure trigger evaluation (~120 lines).
-- **New** `src/components/campaign/CampaignAlertCard.tsx` — single alert UI.
-- **Edit** `src/pages/CampaignPlanPage.tsx` — remove always-on NBA + pacing strip; render alert card only when triggered.
-- **Keep** `NextBestActionCard.tsx` and `CampaignPacingStrip.tsx` files (don't delete) — useful for future debug/admin views, but **not imported** by the campaign page anymore.
-- **Keep** `campaign-next-action` edge function — can still power an on-demand "ask the advisor" button later, but not auto-called on page load.
-
-No DB migration. No new edge functions. No backend changes — triggers evaluated client-side from data already fetched.
-
-### 7. What's deliberately NOT in this phase
-- "Ask the advisor" on-demand button (can come later).
-- Notification/email when trigger fires (later).
-- Trigger history log (later).
+- Editing dates after campaign start (later — would require re-distributing posts).
+- Per-post time-of-day picker in modal (planned_time stays optional; AI can assign defaults later).
+- Recalculating dates when adding/removing posts from the plan manually.
 
