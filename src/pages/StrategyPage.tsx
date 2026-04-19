@@ -629,13 +629,10 @@ const StrategyPage = () => {
                   .filter((n) => n && n !== "—")
                   .join(" — ");
 
-                // Tag chips for footer — persona + tone/cta surfaced as pills.
-                const footerTags: string[] = [];
-                if (c.primary_persona_id) footerTags.push(personaName(c.primary_persona_id));
-                if (c.secondary_persona_id) footerTags.push(personaName(c.secondary_persona_id));
-                if (c.tone) footerTags.push(c.tone.charAt(0).toUpperCase() + c.tone.slice(1));
-                const visibleTags = footerTags.slice(0, 3);
-                const overflowCount = footerTags.length - visibleTags.length;
+                // Footer chip — only the primary persona, nothing else.
+                const primaryPersonaName = c.primary_persona_id ? personaName(c.primary_persona_id) : null;
+                const visibleTags: string[] = primaryPersonaName && primaryPersonaName !== "—" ? [primaryPersonaName] : [];
+                const overflowCount = 0;
 
                 const goalLabel = c.target_quantity && c.target_metric
                   ? `${c.target_quantity} ${(metricLabels[c.target_metric] || c.target_metric).toLowerCase()}`
