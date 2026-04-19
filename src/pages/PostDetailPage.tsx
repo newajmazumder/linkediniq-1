@@ -122,7 +122,13 @@ const PostDetailPage = () => {
     }
 
     setPost(postRes.data);
-    if (ctxRes.data) setContext({ ...emptyContext, ...ctxRes.data });
+    if (ctxRes.data) {
+      setContext({ ...emptyContext, ...ctxRes.data });
+    } else if (postRes.data.linked_draft_id) {
+      // Auto-fill context from the campaign this post originated from
+      const auto = await deriveContextFromDraft(postRes.data.linked_draft_id);
+      if (auto) setContext(c => ({ ...c, ...auto }));
+    }
     if (metricsRes.data) setMetrics({ ...emptyMetrics, ...metricsRes.data });
     setEvaluation(evalRes.data || null);
     setDiagnosis(diagRes.data || null);
@@ -130,6 +136,45 @@ const PostDetailPage = () => {
     setPersonas(personaRes.data || []);
     setCampaigns(campRes.data || []);
     setLoading(false);
+  };
+
+  // Walk the chain: linkedin_post → draft → campaign_post_plan → campaign + persona
+  // Campaign-originated posts should not require manual tagging.
+  const deriveContextFromDraft = async (draftId: string): Promise<Partial<ContextData> | null> => {
+    const { data: plan } = await supabase
+      .from("campaign_post_plans")
+      .select("campaign_id, suggested_tone, suggested_hook_type, suggested_cta_type")
+      .eq("linked_draft_id", draftId)
+      .maybeSingle();
+    if (!plan?.campaign_id) return null;
+
+    const { data: campaign } = await supabase
+      .from("campaigns")
+      .select("primary_objective, primary_persona_id, tone, cta_type")
+      .eq("id", plan.campaign_id)
+      .maybeSingle();
+
+    // Map campaign primary_objective onto the post's goal vocabulary
+    const goalMap: Record<string, string> = {
+      awareness: "brand_awareness",
+      brand_awareness: "brand_awareness",
+      education: "education",
+      storytelling: "storytelling",
+      lead_generation: "lead_generation",
+      leads: "lead_generation",
+      demo_bookings: "lead_generation",
+    };
+    const mappedGoal = campaign?.primary_objective ? goalMap[campaign.primary_objective] || "" : "";
+
+    return {
+      campaign_id: plan.campaign_id,
+      persona_id: campaign?.primary_persona_id || "",
+      goal: mappedGoal,
+      tone: plan.suggested_tone || campaign?.tone || "",
+      hook_type: plan.suggested_hook_type || "",
+      cta_type: plan.suggested_cta_type || campaign?.cta_type || "",
+      strategy_type: "",
+    };
   };
 
   const saveContext = async () => {
