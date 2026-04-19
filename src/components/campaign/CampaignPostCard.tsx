@@ -73,17 +73,24 @@ const CampaignPostCard = ({
   const [draftScheduledAt, setDraftScheduledAt] = useState<string | null>(null);
   const [draftContent, setDraftContent] = useState<string | null>(null);
   const [draftUpdatedAt, setDraftUpdatedAt] = useState<string | null>(null);
+  // Resolved linkedin_posts id — falls back to lookup by draft_id when the plan
+  // row hasn't been backfilled with linked_post_id yet.
+  const [resolvedLinkedPostId, setResolvedLinkedPostId] = useState<string | null>(null);
   const [markOpen, setMarkOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
   // Load downstream signals when a draft has been linked.
   useEffect(() => {
     const load = async () => {
-      if (!post.linked_draft_id) return;
-      const [{ data: draftRow }, { data: predictionData }, { data: actualData }] = await Promise.all([
+      if (!post.linked_draft_id) {
+        setResolvedLinkedPostId(post.linked_post_id || null);
+        return;
+      }
+      const [{ data: draftRow }, { data: predictionData }, { data: actualData }, { data: linkedinRow }] = await Promise.all([
         supabase.from("drafts").select("status, scheduled_at, custom_content, updated_at").eq("id", post.linked_draft_id).maybeSingle(),
         supabase.from("prediction_scores").select("*").eq("draft_id", post.linked_draft_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
         supabase.from("post_performance").select("*").eq("draft_id", post.linked_draft_id).maybeSingle(),
+        supabase.from("linkedin_posts").select("id").eq("linked_draft_id", post.linked_draft_id).maybeSingle(),
       ]);
       if (draftRow) {
         setDraftStatus(draftRow.status);
@@ -93,9 +100,10 @@ const CampaignPostCard = ({
       }
       if (predictionData) setPrediction(predictionData);
       if (actualData) setActualPerformance(actualData);
+      setResolvedLinkedPostId(post.linked_post_id || linkedinRow?.id || null);
     };
     load();
-  }, [post.linked_draft_id, post.status]);
+  }, [post.linked_draft_id, post.status, post.linked_post_id]);
 
   // Reconcile plan status with linked draft status:
   //   draft.scheduled → plan.scheduled
@@ -132,7 +140,7 @@ const CampaignPostCard = ({
   const status = deriveCampaignPostLifecycle({
     planStatus: post.status,
     linkedDraftId: post.linked_draft_id,
-    linkedPostId: post.linked_post_id,
+    linkedPostId: resolvedLinkedPostId,
     draftStatus,
     scheduledAt: draftScheduledAt,
   }) as keyof typeof statusMeta;
@@ -252,7 +260,7 @@ const CampaignPostCard = ({
                 <PenLine className="h-3 w-3" /> Duplicate
               </Link>
               <Link
-                to={post.linked_post_id ? `/performance/${post.linked_post_id}` : "/performance"}
+                to={resolvedLinkedPostId ? `/performance/${resolvedLinkedPostId}` : "/performance"}
                 className="flex items-center gap-1 text-xs text-primary hover:underline"
               >
                 <BarChart3 className="h-3 w-3" /> Performance
