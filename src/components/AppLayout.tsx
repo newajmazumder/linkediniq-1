@@ -10,8 +10,8 @@ const AppLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useIsMobile();
-  const isFullWidth = ["/create", "/performance", "/campaign/new"].some(
-    p => location.pathname === p || location.pathname.startsWith("/performance/") || location.pathname.startsWith("/campaign/")
+  const isFullWidth = ["/create", "/performance", "/campaign/new", "/strategy"].some(
+    p => location.pathname === p || location.pathname.startsWith("/performance/") || location.pathname.startsWith("/campaign/") || location.pathname.startsWith("/strategy")
   );
 
   if (isMobile) {
