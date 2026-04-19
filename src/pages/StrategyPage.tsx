@@ -620,96 +620,124 @@ const StrategyPage = () => {
                   : null;
 
                 const interp = scoreInterpretation(diag.severity);
-                const isUrgent = diag.severity === "critical" || diag.severity === "warning";
+
+                // Lifecycle pill — derived from started_at + state.
+                const lifecycle: { label: string; cls: string } = !c.started_at
+                  ? { label: "Not Started", cls: "bg-primary/10 text-primary" }
+                  : state === "off_track" || state === "at_risk"
+                  ? { label: "Launch Paused", cls: "bg-muted text-muted-foreground" }
+                  : { label: "Open Seeding", cls: "bg-primary/10 text-primary" };
+
+                // Score subtitle — persona/context if started, "Not started" hint otherwise.
+                const scoreSubtitle = c.started_at
+                  ? personaName(c.primary_persona_id)
+                  : null;
+
+                // Tag chips for footer — persona + tone/cta surfaced as pills.
+                const footerTags: string[] = [];
+                if (c.primary_persona_id) footerTags.push(personaName(c.primary_persona_id));
+                if (c.secondary_persona_id) footerTags.push(personaName(c.secondary_persona_id));
+                if (c.tone) footerTags.push(c.tone.charAt(0).toUpperCase() + c.tone.slice(1));
+                const visibleTags = footerTags.slice(0, 3);
+                const overflowCount = footerTags.length - visibleTags.length;
+
+                const goalLabel = c.target_quantity && c.target_metric
+                  ? `${c.target_quantity} ${(metricLabels[c.target_metric] || c.target_metric).toLowerCase()}`
+                  : (c.goal || "—");
+                const goalPct = outcomePct ?? 0;
 
                 return (
                   <div
                     key={c.id}
-                    className={cn(
-                      "rounded-xl border border-border bg-card border-l-[3px] overflow-hidden transition-shadow hover:shadow-sm",
-                      meta.borderClass,
-                    )}
+                    className="rounded-xl border border-border bg-card overflow-hidden transition-shadow hover:shadow-sm"
                   >
-                    <div className="p-5 sm:p-6 space-y-5">
-                      {/* LEVEL 1 — Title + status whisper + DOMINANT score */}
+                    <div className="p-5 sm:p-6 space-y-4">
+                      {/* Top row — pills (left) + score (right) */}
                       <div className="flex items-start justify-between gap-6">
-                        <div className="min-w-0 flex-1 space-y-1.5">
-                          <div className="flex items-center gap-2 text-[11px] text-muted-foreground flex-wrap">
-                            <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
-                            <span className={cn("font-medium", meta.textClass)}>{meta.label}</span>
-                            <span className="text-border">·</span>
-                            <span className="capitalize">
-                              {(c.primary_objective || c.goal || "").replace(/_/g, " ")}
-                              {c.target_timeframe && ` · ${c.target_timeframe.replace(/_/g, " ")}`}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide", lifecycle.cls)}>
+                            {lifecycle.label}
+                          </span>
+                          {c.target_timeframe && (
+                            <span className="rounded-full bg-muted px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {c.target_timeframe.replace(/_/g, " ")}
                             </span>
-                            {c.target_priority === "high" && (
-                              <>
-                                <span className="text-border">·</span>
-                                <span className="text-foreground font-medium">High priority</span>
-                              </>
+                          )}
+                          {c.target_priority === "high" && (
+                            <span className="rounded-full bg-destructive/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                              High Priority
+                            </span>
+                          )}
+                        </div>
+
+                        {c.started_at ? (
+                          <div className="shrink-0 text-right">
+                            <div className={cn("font-serif text-3xl sm:text-4xl font-normal leading-none tabular-nums text-foreground")}>
+                              {score.total.toFixed(1)}
+                              <span className="text-sm text-muted-foreground">/10</span>
+                            </div>
+                            {scoreSubtitle && (
+                              <p className="mt-1 text-[11px] text-muted-foreground">{scoreSubtitle}</p>
                             )}
                           </div>
-                          <h2 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight leading-tight">
-                            {c.name}
-                          </h2>
-                        </div>
-
-                        {/* DOMINANT Strategy Score — only meaningful once the campaign has started.
-                            Before start there's no execution signal to score against. */}
-                        {c.started_at && (
-                          <div className="shrink-0 text-right">
-                            <div className={cn("text-4xl sm:text-5xl font-semibold leading-none tabular-nums", scoreColor(score.total))}>
-                              {score.total.toFixed(1)}
-                              <span className="text-base text-muted-foreground font-normal">/10</span>
-                            </div>
-                            <p className="mt-1 text-[11px] text-muted-foreground">
-                              Strategy · <span className="text-foreground">{interp}</span>
-                            </p>
-                          </div>
-                        )}
+                        ) : null}
                       </div>
 
-                      {/* LEVEL 2 — Strategy Hook (editorial typography, no tint) */}
-                      <div className="border-l-2 border-border pl-4">
-                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
+                      {/* Title */}
+                      <h2 className="text-lg sm:text-xl font-semibold text-foreground tracking-tight leading-snug">
+                        {c.name}
+                      </h2>
+
+                      {/* Strategy label + italic core message */}
+                      <div className="space-y-1.5">
+                        <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-semibold">
                           Strategy
                         </p>
-                        <p className="mt-1 text-base sm:text-[17px] font-medium text-foreground leading-snug">
-                          {c.core_message || summary}
+                        <p className="text-sm sm:text-[15px] italic text-muted-foreground leading-relaxed">
+                          {c.core_message ? `“${c.core_message}”` : summary}
                         </p>
                       </div>
 
-                      {/* Goal progress bar is the only stat surface — WHY row + stats grid removed for a calmer card. */}
-
-                      {/* Goal Progress strip — auto-rolled from post contributions */}
-                      {c.target_quantity && c.target_metric && (
-                        <CampaignGoalProgressBar
-                          currentValue={c.current_goal_value ?? 0}
-                          target={c.target_quantity}
-                          goalMetric={c.target_metric}
-                          variant="compact"
-                        />
-                      )}
-
-                      {/* LEVEL 4 — Quiet meta + actions */}
-                      <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                          <span>{personaName(c.primary_persona_id)}</span>
-                          {c.tone && <><span className="text-border">·</span><span className="capitalize">{c.tone}</span></>}
-                          {c.cta_type && <><span className="text-border">·</span><span className="capitalize">{c.cta_type} CTA</span></>}
-                          {c.offer && <><span className="text-border">·</span><span>{c.offer}</span></>}
+                      {/* Goal row */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">
+                            Goal — <span className="text-foreground">{goalLabel}</span>
+                          </span>
+                          <span className="font-semibold text-primary tabular-nums">{goalPct}%</span>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button size="sm" variant="ghost" onClick={() => navigate(`/campaign/${c.id}`)} className="h-8 text-xs">
-                            View plan <ArrowRight className="ml-1 h-3 w-3" />
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => startEdit(c)} className="h-8 w-8 p-0">
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
+                        {c.target_quantity && c.target_metric ? (
+                          <Progress value={goalPct} className="h-1" />
+                        ) : (
+                          <Progress value={0} className="h-1" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Footer — tags + actions */}
+                    <div className="flex items-center justify-between gap-3 border-t border-border bg-muted/30 px-5 sm:px-6 py-3">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {visibleTags.map((t) => (
+                          <span key={t} className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground">
+                            {t}
+                          </span>
+                        ))}
+                        {overflowCount > 0 && (
+                          <span className="rounded-md border border-border bg-background px-2 py-1 text-[11px] text-muted-foreground">
+                            +{overflowCount}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Button size="sm" onClick={() => navigate(`/campaign/${c.id}`)} className="h-8 px-4 text-xs">
+                          View plan
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => startEdit(c)} className="h-8 w-8 p-0">
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </div>
                     </div>
                   </div>
