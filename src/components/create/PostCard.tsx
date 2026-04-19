@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import LinkedInPostPreview from "./LinkedInPostPreview";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import {
-  Copy, BookmarkPlus, RefreshCw, ChevronDown,
-  Minus, User, Zap, Package, Loader2,
+  Copy, BookmarkPlus, RefreshCw, ChevronDown, Save,
+  Minus, User, Zap, Package, Loader2, Pencil,
   BookOpen, MessageSquare, Shuffle, Eye, AlertTriangle, BarChart3, Bold,
   Image, Layers, FileText, ArrowUp, ArrowDown, ShieldCheck, ShieldAlert, CheckCircle, Lightbulb,
 } from "lucide-react";
