@@ -60,11 +60,17 @@ const CampaignPostCard = ({
   post,
   campaignId,
   onChange,
+  performanceRank,
+  goalLabel,
 }: {
   post: PostPlan;
   campaignId: string;
   /** Called after status-changing actions so the parent Plan view can refetch. */
   onChange?: () => void;
+  /** Leaderboard rank for this post within the campaign (drives the Top/Mid/Low badge). */
+  performanceRank?: { rank: number; total: number; contribution: number; share: number };
+  /** Pluralized goal label (e.g. "demo bookings") shown alongside the contribution number. */
+  goalLabel?: string;
 }) => {
   const [predicting, setPredicting] = useState(false);
   const [prediction, setPrediction] = useState<any>(null);

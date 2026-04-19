@@ -649,9 +649,29 @@ const CampaignPlanPage = () => {
                             {week.cta_strategy && (
                               <p className="text-xs text-muted-foreground"><span className="font-medium text-foreground">CTA:</span> {week.cta_strategy}</p>
                             )}
-                            {weekPosts.map((post: any) => (
-                              <CampaignPostCard key={post.id} post={post} campaignId={id!} onChange={fetchAll} />
-                            ))}
+                            {(() => {
+                              // Build leaderboard rank lookup so each card can show "Top / Mid / Low performer"
+                              const allRows = (goalAgg?.contribution_rows || []) as any[];
+                              const totalC = allRows.reduce((s, r) => s + (r.contribution || 0), 0);
+                              const sorted = [...allRows].filter((r) => (r.contribution || 0) > 0).sort((a, b) => b.contribution - a.contribution);
+                              const rankByPostNumber = new Map<number, { rank: number; total: number; contribution: number; share: number }>();
+                              sorted.forEach((r, i) => rankByPostNumber.set(r.post_number, {
+                                rank: i + 1,
+                                total: sorted.length,
+                                contribution: r.contribution,
+                                share: totalC > 0 ? Math.round((r.contribution / totalC) * 100) : 0,
+                              }));
+                              return weekPosts.map((post: any) => (
+                                <CampaignPostCard
+                                  key={post.id}
+                                  post={post}
+                                  campaignId={id!}
+                                  onChange={fetchAll}
+                                  performanceRank={rankByPostNumber.get(post.post_number)}
+                                  goalLabel={(goalAgg?.goal_metric || campaign.target_metric || "").replace(/_/g, " ")}
+                                />
+                              ));
+                            })()}
                             {weekPosts.length - drafted > 0 && (
                               <button
                                 onClick={() => navigate(`/create?campaign_id=${id}`)}
