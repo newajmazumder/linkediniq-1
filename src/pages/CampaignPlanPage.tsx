@@ -317,7 +317,7 @@ const CampaignPlanPage = () => {
   return (
     <div className="content-fade-in space-y-6 px-4 sm:px-6 py-4">
       {/* HERO — calm, editorial, single accent */}
-      <div className={cn("rounded-xl border border-border bg-card border-l-[3px] overflow-hidden", meta.borderClass)}>
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
         <div className="p-5 sm:p-6 space-y-5">
           {/* L1 — title + status whisper + DOMINANT score */}
           <div className="flex items-start justify-between gap-6">
