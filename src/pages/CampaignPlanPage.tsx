@@ -15,7 +15,9 @@ import { cn } from "@/lib/utils";
 import CampaignPostCard from "@/components/campaign/CampaignPostCard";
 import ExecutionDashboard from "@/components/strategy/ExecutionDashboard";
 import CampaignGoalProgressCard from "@/components/campaign/CampaignGoalProgressCard";
+import CampaignGoalProgressBar from "@/components/campaign/CampaignGoalProgressBar";
 import PostContributionTable from "@/components/campaign/PostContributionTable";
+import { goalUpdatedEvent } from "@/lib/goal-metrics";
 import {
   computeCampaignState, STATE_META, computeStrategyScore, scoreColor, weekPhaseLabel,
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
@@ -49,8 +51,24 @@ const CampaignPlanPage = () => {
   const [loadingReport, setLoadingReport] = useState(false);
 
   useEffect(() => {
-    if (user && id) fetchAll();
+    if (user && id) {
+      fetchAll();
+      // Always pull live goal aggregate so the hero progress bar reflects
+      // post contributions immediately (not just when the analytics tab opens).
+      fetchGoalAggregate();
+    }
   }, [user, id]);
+
+  // Live refresh when post contribution changes elsewhere
+  useEffect(() => {
+    if (!id) return;
+    const handler = () => {
+      fetchAll();
+      fetchGoalAggregate();
+    };
+    window.addEventListener(goalUpdatedEvent(id), handler);
+    return () => window.removeEventListener(goalUpdatedEvent(id), handler);
+  }, [id]);
 
   const fetchAll = async () => {
     setLoading(true);
@@ -325,6 +343,16 @@ const CampaignPlanPage = () => {
         </div>
       </div>
 
+      {/* Goal Progress Bar — primary proof the campaign is working */}
+      {campaign.target_quantity && campaign.target_metric && (
+        <CampaignGoalProgressBar
+          currentValue={goalAgg?.current_goal_value ?? campaign.current_goal_value ?? 0}
+          target={campaign.target_quantity}
+          goalMetric={campaign.target_metric}
+          variant="full"
+        />
+      )}
+
       {/* Closed-loop execution dashboard */}
       <ExecutionDashboard
         campaignId={id!}
@@ -481,19 +509,19 @@ const CampaignPlanPage = () => {
                 <PostContributionTable
                   rows={goalAgg.contribution_rows || []}
                   goalMetric={goalAgg.goal_metric}
+                  target={goalAgg.target}
                 />
               )}
 
-              {/* SECTION 3 — Campaign Progress (manual goal entry + attributed/unattributed split) */}
+              {/* SECTION 3 — Campaign Progress (auto-rolled from posts + external) */}
               {goalAgg && (
                 <CampaignGoalProgressCard
                   campaignId={id!}
                   goalMetric={goalAgg.goal_metric}
                   target={goalAgg.target}
-                  currentGoalValue={goalAgg.current_goal_value || 0}
-                  totalPostContribution={goalAgg.total_post_contribution || 0}
-                  goalProgressPct={goalAgg.goal_progress_pct || 0}
+                  postsContribution={goalAgg.posts_contribution || 0}
                   unattributed={goalAgg.unattributed || 0}
+                  currentGoalValue={goalAgg.current_goal_value || 0}
                   onSaved={() => { fetchGoalAggregate(); fetchAll(); }}
                 />
               )}

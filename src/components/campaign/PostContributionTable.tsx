@@ -24,11 +24,13 @@ type Row = {
 type Props = {
   rows: Row[];
   goalMetric?: string | null;
+  target?: number | null;
 };
 
-const PostContributionTable = ({ rows, goalMetric }: Props) => {
+const PostContributionTable = ({ rows, goalMetric, target }: Props) => {
   const label = goalMetricLabel(goalMetric);
   const posted = rows.filter((r) => r.status === "posted");
+  const totalContributed = posted.reduce((s, r) => s + (r.contribution || 0), 0);
 
   if (posted.length === 0) {
     return (
@@ -108,6 +110,12 @@ const PostContributionTable = ({ rows, goalMetric }: Props) => {
             })}
           </tbody>
         </table>
+      </div>
+      <div className="border-t border-border bg-muted/20 px-4 py-2 flex items-center justify-between text-[11px]">
+        <span className="text-muted-foreground">Total contributed from posts</span>
+        <span className="text-foreground font-semibold tabular-nums">
+          {totalContributed}{target ? <span className="text-muted-foreground font-normal"> / {target} {label}</span> : null}
+        </span>
       </div>
     </div>
   );

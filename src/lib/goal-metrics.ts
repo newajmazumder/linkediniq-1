@@ -16,6 +16,8 @@ export type GoalMetric =
   | "signups"
   | string;
 
+export type GoalStatus = "not_started" | "in_progress" | "achieved" | "overachieved";
+
 /**
  * Human-readable label for the campaign goal metric — used everywhere
  * the user has to enter or read a goal contribution value.
@@ -73,12 +75,34 @@ export const rankByContribution = <T extends { contribution: number }>(rows: T[]
 };
 
 /**
- * Goal progress as a 0–100 percentage of target. Returns null when target
- * is unknown so the caller can decide how to render "unknown progress".
+ * Goal progress as a raw percentage of target. UNCAPPED so we can show
+ * overachievement (e.g. 135%). Returns null when target is unknown.
  */
 export const computeGoalProgress = (currentValue: number, target?: number | null): number | null => {
   if (!target || target <= 0) return null;
-  return Math.min(100, Math.round((currentValue / target) * 100));
+  return Math.round((currentValue / target) * 100);
+};
+
+/** Status derived from current progress vs target. */
+export const deriveGoalStatus = (currentValue: number, target?: number | null): GoalStatus => {
+  if (!currentValue || currentValue <= 0) return "not_started";
+  if (!target || target <= 0) return "in_progress";
+  if (currentValue < target) return "in_progress";
+  if (currentValue === target) return "achieved";
+  return "overachieved";
+};
+
+/**
+ * One-shot formatter for a goal progress block.
+ * pct is uncapped (135% possible), barPct is clamped to [0,100] for UI fill.
+ */
+export const formatGoalProgress = (currentValue: number, target?: number | null) => {
+  const pct = computeGoalProgress(currentValue, target) ?? 0;
+  const barPct = Math.max(0, Math.min(100, pct));
+  const status = deriveGoalStatus(currentValue, target);
+  const remaining = target ? Math.max(0, target - currentValue) : 0;
+  const overTarget = target ? Math.max(0, currentValue - target) : 0;
+  return { pct, barPct, status, remaining, overTarget };
 };
 
 /**
@@ -89,7 +113,10 @@ export const totalContribution = (rows: { goal_contribution?: number | null }[])
   return rows.reduce((sum, r) => sum + (r.goal_contribution || 0), 0);
 };
 
-/** Unattributed = manually-entered campaign total minus sum of post contributions. */
+/** Unattributed = external / off-platform contributions logged manually. */
 export const computeUnattributed = (currentValue: number, totalPostContribution: number): number => {
   return Math.max(0, currentValue - totalPostContribution);
 };
+
+/** Window event used to broadcast that goal aggregation changed for a campaign. */
+export const goalUpdatedEvent = (campaignId: string) => `campaign-goals-updated:${campaignId}`;

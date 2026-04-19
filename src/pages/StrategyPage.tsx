@@ -26,6 +26,8 @@ import {
   diagnoseScore, primaryAction as buildPrimaryAction, buildNarrativeSummary,
   scoreInterpretation, scoreSeverity, computeVelocity,
 } from "@/lib/strategy";
+import CampaignGoalProgressBar from "@/components/campaign/CampaignGoalProgressBar";
+import { goalUpdatedEvent } from "@/lib/goal-metrics";
 
 type Persona = { id: string; name: string };
 type Campaign = {
@@ -48,6 +50,9 @@ type Campaign = {
   target_quantity: number | null;
   target_timeframe: string | null;
   target_priority: string | null;
+  current_goal_value?: number | null;
+  goal_progress_percent?: number | null;
+  goal_status?: string | null;
 };
 
 type CampaignProgress = {
@@ -165,6 +170,19 @@ const StrategyPage = () => {
       supabase.from("market_contexts").select("id, region_code, region_name, audience_type").eq("is_preset", true).then(({ data }) => setMarketContexts((data || []) as MarketContextOption[]));
     }
   }, [user]);
+
+  // Live refresh when any campaign's goal aggregate updates from elsewhere
+  useEffect(() => {
+    const handler = () => { fetchCampaigns(); };
+    const off: (() => void)[] = [];
+    campaigns.forEach((c) => {
+      const evt = goalUpdatedEvent(c.id);
+      window.addEventListener(evt, handler);
+      off.push(() => window.removeEventListener(evt, handler));
+    });
+    return () => off.forEach((f) => f());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [campaigns.map((c) => c.id).join(",")]);
 
   const fetchProgress = async () => {
     const { data } = await supabase
@@ -700,6 +718,16 @@ const StrategyPage = () => {
                           )}
                         </div>
                       </div>
+
+                      {/* Goal Progress strip — auto-rolled from post contributions */}
+                      {c.target_quantity && c.target_metric && (
+                        <CampaignGoalProgressBar
+                          currentValue={c.current_goal_value ?? 0}
+                          target={c.target_quantity}
+                          goalMetric={c.target_metric}
+                          variant="compact"
+                        />
+                      )}
 
                       {/* LEVEL 4 — Quiet meta + actions */}
                       <div className="flex items-center justify-between gap-3 flex-wrap">

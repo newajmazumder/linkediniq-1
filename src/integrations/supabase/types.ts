@@ -617,6 +617,8 @@ export type Database = {
           execution_score: number | null
           execution_status: string
           goal: string | null
+          goal_progress_percent: number | null
+          goal_status: string | null
           goal_value_updated_at: string | null
           id: string
           is_active: boolean | null
@@ -640,6 +642,7 @@ export type Database = {
           target_start_date: string | null
           target_timeframe: string | null
           tone: string | null
+          unattributed_goal_value: number | null
           updated_at: string
           user_id: string
           velocity_score: number | null
@@ -654,6 +657,8 @@ export type Database = {
           execution_score?: number | null
           execution_status?: string
           goal?: string | null
+          goal_progress_percent?: number | null
+          goal_status?: string | null
           goal_value_updated_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -677,6 +682,7 @@ export type Database = {
           target_start_date?: string | null
           target_timeframe?: string | null
           tone?: string | null
+          unattributed_goal_value?: number | null
           updated_at?: string
           user_id: string
           velocity_score?: number | null
@@ -691,6 +697,8 @@ export type Database = {
           execution_score?: number | null
           execution_status?: string
           goal?: string | null
+          goal_progress_percent?: number | null
+          goal_status?: string | null
           goal_value_updated_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -714,6 +722,7 @@ export type Database = {
           target_start_date?: string | null
           target_timeframe?: string | null
           tone?: string | null
+          unattributed_goal_value?: number | null
           updated_at?: string
           user_id?: string
           velocity_score?: number | null
