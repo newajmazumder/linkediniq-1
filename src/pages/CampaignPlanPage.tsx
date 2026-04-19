@@ -33,6 +33,8 @@ import TopContributorsStrip from "@/components/campaign/TopContributorsStrip";
 import CampaignAdvisorBanner from "@/components/campaign/CampaignAdvisorBanner";
 import StrategyVersionsCard from "@/components/campaign/StrategyVersionsCard";
 import CampaignAlertCard from "@/components/campaign/CampaignAlertCard";
+import StartCampaignDialog from "@/components/campaign/StartCampaignDialog";
+import { Pause, Play } from "lucide-react";
 import { refreshCampaignBrain, type AdvisorQuestion, type CampaignIntelligence } from "@/lib/campaign-brain";
 import { computeProjection } from "@/lib/campaign-projection";
 import { computePacing } from "@/lib/execution";
@@ -66,6 +68,8 @@ const CampaignPlanPage = () => {
   const [loadingReport, setLoadingReport] = useState(false);
   const [advisorQuestions, setAdvisorQuestions] = useState<AdvisorQuestion[]>([]);
   const [intelligence, setIntelligence] = useState<CampaignIntelligence | null>(null);
+  const [startDialogOpen, setStartDialogOpen] = useState(false);
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   useEffect(() => {
     if (user && id) {
@@ -120,6 +124,11 @@ const CampaignPlanPage = () => {
   };
 
   const generatePlan = async () => {
+    // Guard — plan generation requires a campaign window. Open the start dialog instead.
+    if (!campaign?.target_start_date || !campaign?.target_end_date) {
+      setStartDialogOpen(true);
+      return;
+    }
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-campaign-plan", {
@@ -130,10 +139,31 @@ const CampaignPlanPage = () => {
       setWeekPlans(data.week_plans || []);
       setPostPlans(data.post_plans || []);
       toast.success("Campaign plan generated!");
+      // Refresh campaign row in case execution_status changed.
+      fetchAll();
     } catch (err: any) {
       toast.error(err.message || "Failed to generate plan");
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const togglePause = async () => {
+    if (!campaign) return;
+    setTogglingStatus(true);
+    try {
+      const next = campaign.execution_status === "paused" ? "active" : "paused";
+      const { error } = await supabase
+        .from("campaigns")
+        .update({ execution_status: next })
+        .eq("id", id);
+      if (error) throw error;
+      setCampaign({ ...campaign, execution_status: next });
+      toast.success(next === "paused" ? "Campaign paused" : "Campaign resumed");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to update status");
+    } finally {
+      setTogglingStatus(false);
     }
   };
 
