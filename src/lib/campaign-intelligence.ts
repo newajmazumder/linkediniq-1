@@ -34,6 +34,10 @@ export interface NextBestAction {
   cta_action?: "generate_plan" | "revise_strategy";
   suggested_hook?: string;
   target_post_id?: string | null;
+  // Phase 3.5 — passive optimization & learning velocity
+  signal_strength?: Confidence;
+  signal_reason?: string;
+  alternative_path?: string;
 }
 
 export async function listStrategyVersions(campaignId: string): Promise<StrategyVersion[]> {
