@@ -736,4 +736,16 @@ const CampaignPlanPage = () => {
   );
 };
 
+const RawTotal = ({ icon: Icon, label, value }: { icon: any; label: string; value: number }) => (
+  <div className="px-3 py-2.5">
+    <div className="flex items-center gap-1.5 text-muted-foreground">
+      <Icon className="h-3 w-3" />
+      <p className="text-[10px] uppercase tracking-[0.1em]">{label}</p>
+    </div>
+    <p className="mt-0.5 text-base font-semibold text-foreground tabular-nums">
+      {value.toLocaleString()}
+    </p>
+  </div>
+);
+
 export default CampaignPlanPage;
