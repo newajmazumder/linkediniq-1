@@ -94,46 +94,71 @@ export default function NextBestActionCard({
               {action.title}
             </h3>
 
-            {/* Why now — timing relevance, makes the system feel aware */}
-            {action.why_now && (
-              <div className="flex items-start gap-2 rounded-md bg-muted/40 border border-border/60 px-3 py-2">
-                <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Why now</p>
-                  <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-0.5">{action.why_now}</p>
+            {!collapsed && (
+              <>
+                {action.why_now && (
+                  <div className="flex items-start gap-2 rounded-md bg-muted/40 border border-border/60 px-3 py-2">
+                    <Clock className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Why now</p>
+                      <p className="text-xs sm:text-sm text-foreground leading-relaxed mt-0.5">{action.why_now}</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-2 text-xs sm:text-sm">
+                  <Row label="Observation" value={action.observation} />
+                  <Row label="Why" value={action.interpretation} />
+                  <Row label="Impact" value={action.impact} muted />
+                  <Row label="Do this" value={action.recommendation} highlight />
                 </div>
-              </div>
-            )}
 
-            {/* Structured reasoning — Observation → Why → Impact → Do this */}
-            <div className="space-y-2 text-xs sm:text-sm">
-              <Row label="Observation" value={action.observation} />
-              <Row label="Why" value={action.interpretation} />
-              <Row label="Impact" value={action.impact} muted />
-              <Row label="Do this" value={action.recommendation} highlight />
-            </div>
-
-            {action.cta_label && (
-              <div className="flex items-center gap-2 pt-1">
-                <Button
-                  size="sm"
-                  onClick={() => onAction?.(action)}
-                  className="h-8"
-                >
-                  {action.cta_action === "generate_plan" ? <Sparkles className="h-3.5 w-3.5 mr-1" /> : <ArrowRight className="h-3.5 w-3.5 mr-1" />}
-                  {action.cta_label}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={async () => { setRefreshing(true); await load(); setRefreshing(false); }}
-                  disabled={refreshing}
-                  className="h-8 px-2 text-xs text-muted-foreground"
-                >
-                  {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                </Button>
-              </div>
+                {action.cta_label && (
+                  <div className="flex items-center gap-2 pt-1">
+                    <Button
+                      size="sm"
+                      onClick={() => onAction?.(action)}
+                      className="h-8"
+                    >
+                      {action.cta_action === "generate_plan" ? <Sparkles className="h-3.5 w-3.5 mr-1" /> : <ArrowRight className="h-3.5 w-3.5 mr-1" />}
+                      {action.cta_label}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={async () => { setRefreshing(true); await load(); setRefreshing(false); }}
+                      disabled={refreshing}
+                      className="h-8 px-2 text-xs text-muted-foreground"
+                    >
+                      {refreshing ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
+          </div>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setCollapsed(c => !c)}
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              aria-label={collapsed ? "Expand" : "Collapse"}
+              title={collapsed ? "Expand" : "Collapse"}
+            >
+              <ChevronDown className={cn("h-4 w-4 transition-transform", collapsed && "-rotate-90")} />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleDismiss}
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+              aria-label="Dismiss"
+              title="Dismiss for 24h (auto-returns when the action changes)"
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
         </div>
       </div>
