@@ -691,9 +691,7 @@ const StrategyPage = () => {
                       {/* Goal row */}
                       <div className="space-y-2 pt-2">
                         <div className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">
-                            Goal — <span className="text-foreground">{goalLabel}</span>
-                          </span>
+                          <span className="text-foreground">{goalLabel}</span>
                           <span className="font-medium text-foreground tabular-nums">{goalPct}%</span>
                         </div>
                         <Progress value={goalPct} className="h-1" />
