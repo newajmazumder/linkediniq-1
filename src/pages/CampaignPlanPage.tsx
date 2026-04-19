@@ -419,15 +419,27 @@ const CampaignPlanPage = () => {
         onAction={(a: NextBestAction) => {
           if (a.cta_action === "generate_plan") {
             generatePlan();
-          } else if (a.cta_action === "revise_strategy") {
+            return;
+          }
+          if (a.cta_action === "revise_strategy") {
             setTab("plan");
             setTimeout(() => {
               document.getElementById("strategy-versions")?.scrollIntoView({ behavior: "smooth", block: "center" });
             }, 100);
-          } else if (a.target_post_id) {
-            const el = document.getElementById(`post-plan-${a.target_post_id}`);
-            el?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
           }
+          // Default: open the plan tab and scroll to the target post (if any), else top of plan.
+          setTab("plan");
+          setTimeout(() => {
+            const el = a.target_post_id
+              ? document.getElementById(`post-plan-${a.target_post_id}`)
+              : document.getElementById("plan-tab-anchor");
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "center" });
+              el.classList.add("ring-2", "ring-primary", "ring-offset-2", "rounded-xl");
+              setTimeout(() => el.classList.remove("ring-2", "ring-primary", "ring-offset-2", "rounded-xl"), 2000);
+            }
+          }, 150);
         }}
       />
 
@@ -768,14 +780,15 @@ const CampaignPlanPage = () => {
                                 share: totalC > 0 ? Math.round((r.contribution / totalC) * 100) : 0,
                               }));
                               return weekPosts.map((post: any) => (
-                                <CampaignPostCard
-                                  key={post.id}
-                                  post={post}
-                                  campaignId={id!}
-                                  onChange={fetchAll}
-                                  performanceRank={rankByPostNumber.get(post.post_number)}
-                                  goalLabel={(goalAgg?.goal_metric || campaign.target_metric || "").replace(/_/g, " ")}
-                                />
+                                <div key={post.id} id={`post-plan-${post.id}`} className="scroll-mt-24">
+                                  <CampaignPostCard
+                                    post={post}
+                                    campaignId={id!}
+                                    onChange={fetchAll}
+                                    performanceRank={rankByPostNumber.get(post.post_number)}
+                                    goalLabel={(goalAgg?.goal_metric || campaign.target_metric || "").replace(/_/g, " ")}
+                                  />
+                                </div>
                               ));
                             })()}
                             {weekPosts.length - drafted > 0 && (
