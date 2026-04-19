@@ -606,8 +606,24 @@ const CampaignPlanPage = () => {
             );
           })()}
 
-          {/* Per-post platform metrics live inside ExecutionDashboard.
-              Top performer / pattern analysis lives in the Analytics tab. */}
+          {/* Raw Performance — platform-native totals (operator view).
+              Interpretation, conversion insight & winning patterns live in the Analytics tab. */}
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-4 w-4 text-muted-foreground" />
+                <p className="text-xs font-semibold text-foreground">Raw Performance</p>
+              </div>
+              <span className="text-[10px] text-muted-foreground">Platform-native · LinkedIn signals</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border border border-border rounded-md overflow-hidden">
+              <RawTotal icon={Eye} label="Impressions" value={goalAgg?.raw_totals?.impressions ?? 0} />
+              <RawTotal icon={ThumbsUp} label="Reactions" value={goalAgg?.raw_totals?.reactions ?? 0} />
+              <RawTotal icon={MessageSquare} label="Comments" value={goalAgg?.raw_totals?.comments ?? 0} />
+              <RawTotal icon={MousePointer} label="Clicks" value={goalAgg?.raw_totals?.clicks ?? 0} />
+            </div>
+          </div>
+
           <ExecutionDashboard
             campaignId={id!}
             campaign={campaign}
