@@ -37,7 +37,6 @@ serve(async (req) => {
       });
     }
 
-    // Fetch campaign + blueprint
     const [campaignRes, blueprintRes] = await Promise.all([
       supabase.from("campaigns").select("*").eq("id", campaign_id).single(),
       supabase.from("campaign_blueprints").select("*").eq("campaign_id", campaign_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -50,11 +49,30 @@ serve(async (req) => {
       });
     }
 
+    // HARD GUARD — plan generation is date-driven. No dates → no schedulable plan.
+    if (!campaign.target_start_date || !campaign.target_end_date) {
+      return new Response(JSON.stringify({
+        error: "Campaign start and end dates are required before generating a plan. Click 'Start Campaign' to set them.",
+      }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const startDate = new Date(campaign.target_start_date);
+    const endDate = new Date(campaign.target_end_date);
+    const totalDays = Math.max(1, Math.round((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)));
+    if (totalDays <= 0) {
+      return new Response(JSON.stringify({ error: "End date must be after start date" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const blueprint = blueprintRes.data;
     const summary = blueprint?.campaign_summary || {};
-    const durationWeeks = summary.duration_weeks || 4;
+    // Derive duration from actual dates, not blueprint defaults.
+    const durationWeeks = Math.max(1, Math.round(totalDays / 7));
     const postsPerWeek = summary.posts_per_week || 2;
-    const totalPosts = summary.total_posts || durationWeeks * postsPerWeek;
+    const totalPosts = Math.max(1, summary.total_posts || durationWeeks * postsPerWeek);
 
     const systemPrompt = `You are a LinkedIn campaign planner. Generate a detailed week-by-week campaign plan with specific post slots.
 
@@ -63,7 +81,9 @@ CAMPAIGN DETAILS:
 - Objective: ${campaign.primary_objective || campaign.goal || "awareness"}
 - Target Metric: ${campaign.target_metric || "engagement"}
 - Target Quantity: ${campaign.target_quantity || "N/A"}
-- Duration: ${durationWeeks} weeks
+- Start Date: ${startDate.toISOString().slice(0, 10)}
+- End Date: ${endDate.toISOString().slice(0, 10)}
+- Duration: ${durationWeeks} weeks (${totalDays} days)
 - Posts per week: ${postsPerWeek}
 - Total posts: ${totalPosts}
 - Core Message: ${campaign.core_message || "Not set"}
@@ -125,7 +145,7 @@ Respond with VALID JSON (no markdown):
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Generate the ${durationWeeks}-week campaign plan with ${totalPosts} total posts.` },
+          { role: "user", content: `Generate the ${durationWeeks}-week campaign plan with ${totalPosts} total posts running from ${startDate.toISOString().slice(0, 10)} to ${endDate.toISOString().slice(0, 10)}.` },
         ],
       }),
     });
@@ -152,11 +172,17 @@ Respond with VALID JSON (no markdown):
     if (clean.startsWith("```")) clean = clean.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     const parsed = JSON.parse(clean);
 
-    // Delete existing plans for this campaign
+    // Wipe existing plans so regeneration is deterministic.
     await supabase.from("campaign_post_plans").delete().eq("campaign_id", campaign_id);
     await supabase.from("campaign_week_plans").delete().eq("campaign_id", campaign_id);
 
-    // Insert week plans and post plans
+    // Count actual generated posts so we space them across the window correctly.
+    const actualTotalPosts = (parsed.weeks || []).reduce(
+      (sum: number, w: any) => sum + (w.posts?.length || 0),
+      0,
+    );
+    const intervalDays = actualTotalPosts > 0 ? totalDays / actualTotalPosts : totalDays;
+
     let globalPostNumber = 0;
     for (const week of parsed.weeks) {
       const { data: weekPlan, error: weekErr } = await supabase
@@ -183,6 +209,12 @@ Respond with VALID JSON (no markdown):
 
       if (week.posts && week.posts.length > 0) {
         const postPlans = week.posts.map((p: any) => {
+          // Distribute planned_date evenly across the campaign window.
+          // Position posts at the midpoint of each interval slot for natural spacing.
+          const offsetDays = (globalPostNumber + 0.5) * intervalDays;
+          const planned = new Date(startDate.getTime() + offsetDays * 24 * 60 * 60 * 1000);
+          // Clamp to end date just in case of rounding.
+          if (planned > endDate) planned.setTime(endDate.getTime());
           globalPostNumber++;
           return {
             user_id: user.id,
@@ -197,6 +229,7 @@ Respond with VALID JSON (no markdown):
             suggested_tone: p.suggested_tone,
             suggested_cta_type: p.suggested_cta_type,
             strategic_rationale: p.strategic_rationale,
+            planned_date: planned.toISOString(),
             status: "planned",
           };
         });
@@ -206,7 +239,6 @@ Respond with VALID JSON (no markdown):
       }
     }
 
-    // Fetch the created plans
     const { data: weekPlans } = await supabase
       .from("campaign_week_plans")
       .select("*")
