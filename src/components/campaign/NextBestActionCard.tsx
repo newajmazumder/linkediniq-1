@@ -1,7 +1,7 @@
 // The single most important action for this campaign right now.
 // Follows Observation → Interpretation → Impact → Recommendation → Confidence schema.
 import { useEffect, useState } from "react";
-import { ArrowRight, Loader2, RefreshCw, Sparkles, Clock } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw, Sparkles, Clock, ChevronDown, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getNextBestAction, PRIORITY_TONE, ACTION_TYPE_META, type NextBestAction } from "@/lib/campaign-intelligence";
