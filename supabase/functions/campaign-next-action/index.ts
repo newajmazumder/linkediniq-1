@@ -270,24 +270,6 @@ serve(async (req) => {
       };
     }
     // From here on: lifecycle === "learning" (3+ posts live). Full intelligence unlocked.
-    else if (false) {
-      const firstPost = allPlans[0];
-      action = {
-        action_type: "blocker",
-        priority: "critical",
-        title: "Start campaign — publish your first post today",
-        observation: `Plan ready (${totalPosts} posts) but nothing published yet.`,
-        why_now: "Every day not posting is a day of expected output you can't recover linearly.",
-        interpretation: "The system can't measure, optimize, or learn anything until at least one post is live.",
-        impact: `You have ${campaignDays} days to ship ${totalPosts} posts. Time only runs forward.`,
-        recommendation: firstPost
-          ? `Open Post #${firstPost.post_number} and publish today.`
-          : "Open the first planned post and publish today.",
-        confidence: "high",
-        cta_label: firstPost ? `Open post #${firstPost.post_number}` : "Open plan",
-        target_post_id: firstPost?.id || null,
-      };
-    }
     // 2. EXECUTION — genuinely behind schedule (time-aware, not just count-aware)
     else if (pacingState === "BEHIND") {
       const need = Math.max(1, expectedByNow - posted);
