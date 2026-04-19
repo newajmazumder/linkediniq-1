@@ -155,6 +155,24 @@ serve(async (req) => {
       ? Math.max(0, (new Date(nextPlannedPost.planned_date).getTime() - nowMs) / DAY_MS)
       : null;
 
+    // ---- SIGNAL STRENGTH — how fast are we learning? ----
+    // Different from confidence: confidence = "how sure am I about THIS recommendation"
+    // Signal strength = "how much do we actually know about what works for this campaign"
+    let signalStrength: Confidence = "low";
+    let signalReason = "";
+    if (allSignals.length >= 6 && winningHook) {
+      signalStrength = "high";
+      signalReason = `${allSignals.length} measured posts, "${winningHook.k}" hook is a clear winner (${winningHook.n} samples, ${Math.round(((winningHook.avg_conv / Math.max(0.01, overallAvgConv)) - 1) * 100)}% above average).`;
+    } else if (allSignals.length >= 3 && (winningHook || hookRanked.find(h => h.n >= 2))) {
+      signalStrength = "medium";
+      signalReason = `${allSignals.length} measured posts, an emerging pattern is forming but needs 1–2 more confirming posts.`;
+    } else {
+      signalStrength = "low";
+      signalReason = allSignals.length === 0
+        ? "No measured posts yet — we know nothing about what converts for this audience."
+        : `Only ${allSignals.length} measured post${allSignals.length === 1 ? "" : "s"} — too thin to detect what's actually working.`;
+    }
+
     // ---- DECISION TREE — leverage-first ----
     let action: any = null;
 
