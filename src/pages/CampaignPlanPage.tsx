@@ -548,6 +548,13 @@ const CampaignPlanPage = () => {
                   <RawTotal icon={MessageSquare} label="Comments" value={goalAgg?.raw_totals?.comments ?? 0} />
                   <RawTotal icon={MousePointer} label="Clicks" value={goalAgg?.raw_totals?.clicks ?? 0} />
                 </div>
+                {/* Causal bridge — clicks → goal contribution interpretation */}
+                <RawToGoalInsight
+                  clicks={goalAgg?.raw_totals?.clicks ?? 0}
+                  impressions={goalAgg?.raw_totals?.impressions ?? 0}
+                  postsContribution={goalAgg?.posts_contribution ?? 0}
+                  goalMetric={goalAgg?.goal_metric}
+                />
               </div>
 
               {/* SECTION 2 — Post Goal Contribution (ROI ranking) */}
