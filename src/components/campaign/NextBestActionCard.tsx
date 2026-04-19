@@ -5,6 +5,7 @@ import { ArrowRight, Loader2, RefreshCw, Sparkles, Clock, ChevronDown, X } from 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getNextBestAction, PRIORITY_TONE, ACTION_TYPE_META, type NextBestAction } from "@/lib/campaign-intelligence";
+import type { Confidence } from "@/lib/campaign-brain";
 import ConfidenceBadge from "./ConfidenceBadge";
 
 export default function NextBestActionCard({
