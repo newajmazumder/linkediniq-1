@@ -36,6 +36,18 @@ const ExecutionDashboard = ({ campaignId, campaign, postPlans, weekCount, contri
   const [adapting, setAdapting] = useState(false);
   const [starting, setStarting] = useState(false);
   const [adaptations, setAdaptations] = useState<any[]>([]);
+  const [insufficientEvidence, setInsufficientEvidence] = useState<string | null>(null);
+  const [applyingIdx, setApplyingIdx] = useState<number | null>(null);
+
+  const reloadAdaptations = async () => {
+    const { data: adapts } = await supabase
+      .from("campaign_adaptations")
+      .select("*")
+      .eq("campaign_id", campaignId)
+      .order("created_at", { ascending: false })
+      .limit(3);
+    setAdaptations(adapts || []);
+  };
 
   useEffect(() => {
     let alive = true;
