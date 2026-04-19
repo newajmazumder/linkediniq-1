@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Loader2, Plus, Trash2, Target, Sparkles, ArrowRight,
   AlertTriangle, ChevronRight, Zap, Flame, Edit2, AlertCircle, Wrench,
