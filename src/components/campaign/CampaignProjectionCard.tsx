@@ -114,34 +114,41 @@ const CampaignProjectionCard = ({
           </div>
         )}
 
-        {/* Expected outcome — bigger numbers */}
+        {/* Brutal-clarity outcome callout — the single most important number on the card */}
         {target && target > 0 && proj.expectedAtEnd !== null && (
-          <div className="rounded-md border border-border px-3 py-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Expected outcome at end
+          <div className={cn(
+            "rounded-md border-2 px-4 py-4",
+            proj.trajectory === "behind" || proj.trajectory === "critical"
+              ? "border-destructive/40 bg-destructive/5"
+              : isOverachieving
+                ? "border-emerald-500/40 bg-emerald-500/5"
+                : "border-border",
+          )}>
+            <p className="text-[10px] uppercase tracking-[0.12em] font-semibold text-muted-foreground">
+              At current pace
             </p>
-            <div className="mt-1 flex items-baseline justify-between gap-3 flex-wrap">
-              <p className={cn("text-3xl sm:text-4xl font-semibold tabular-nums leading-none", meta.tone)}>
-                {proj.expectedAtEnd}
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  / {target} {label}
-                </span>
-              </p>
-              <p className="text-xs text-muted-foreground tabular-nums">
+            <p className={cn("mt-1 text-4xl sm:text-5xl font-bold tabular-nums leading-none", meta.tone)}>
+              {proj.expectedAtEnd}
+              <span className="ml-2 text-base font-normal text-muted-foreground">
+                / {target} {label}
+              </span>
+            </p>
+            <div className="mt-2.5 flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm tabular-nums">
                 {proj.gap > 0 ? (
-                  <>Gap: <span className="text-destructive font-semibold">−{proj.gap}</span> {label}</>
+                  <>Gap: <span className="text-destructive font-bold text-base">−{proj.gap}</span> <span className="text-muted-foreground">{label}</span></>
                 ) : proj.gap < 0 ? (
-                  <>Overshoot: <span className="text-emerald-600 font-semibold">+{Math.abs(proj.gap)}</span> {label}</>
+                  <>Overshoot: <span className="text-emerald-600 font-bold text-base">+{Math.abs(proj.gap)}</span> <span className="text-muted-foreground">{label}</span></>
                 ) : (
-                  <>On target</>
+                  <span className="text-foreground font-medium">On target</span>
                 )}
               </p>
+              {proj.expectedLow !== null && proj.expectedHigh !== null && (
+                <p className="text-[11px] text-muted-foreground tabular-nums">
+                  Range: {proj.expectedLow}–{proj.expectedHigh} (±30%)
+                </p>
+              )}
             </div>
-            {proj.expectedLow !== null && proj.expectedHigh !== null && (
-              <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">
-                Range: {proj.expectedLow}–{proj.expectedHigh} (medium confidence, ±30%)
-              </p>
-            )}
           </div>
         )}
 
