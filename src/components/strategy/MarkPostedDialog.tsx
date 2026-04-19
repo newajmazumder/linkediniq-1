@@ -33,6 +33,77 @@ const MarkPostedDialog = (props: Props) => {
     setSaving(true);
     try {
       const now = new Date().toISOString();
+      const { data: authData } = await supabase.auth.getUser();
+      const currentUser = authData.user;
+      if (!currentUser) throw new Error("You need to be signed in");
+
+      let linkedPostId: string | null = null;
+
+      if (props.draftId) {
+        const { data: existingLinkedPost } = await supabase
+          .from("linkedin_posts")
+          .select("id")
+          .eq("linked_draft_id", props.draftId)
+          .maybeSingle();
+
+        const linkedinPayload = {
+          user_id: currentUser.id,
+          linked_draft_id: props.draftId,
+          content: props.content || "",
+          post_url: url || null,
+          publish_date: now,
+          source_type: "manual",
+        };
+
+        if (existingLinkedPost?.id) {
+          linkedPostId = existingLinkedPost.id;
+          const { error: linkedPostError } = await supabase
+            .from("linkedin_posts")
+            .update(linkedinPayload)
+            .eq("id", existingLinkedPost.id);
+          if (linkedPostError) throw linkedPostError;
+        } else {
+          const { data: createdLinkedPost, error: linkedPostError } = await supabase
+            .from("linkedin_posts")
+            .insert(linkedinPayload)
+            .select("id")
+            .single();
+          if (linkedPostError) throw linkedPostError;
+          linkedPostId = createdLinkedPost.id;
+        }
+
+        const { data: existingMetrics } = await supabase
+          .from("post_metrics")
+          .select("id")
+          .eq("linkedin_post_id", linkedPostId)
+          .maybeSingle();
+
+        const metricsPayload = {
+          user_id: currentUser.id,
+          linkedin_post_id: linkedPostId,
+          impressions: 0,
+          reactions: 0,
+          comments: 0,
+          reposts: 0,
+          clicks: 0,
+          profile_visits: 0,
+          follower_gain: 0,
+          source: "manual",
+          manual_notes: null,
+          last_updated_at: now,
+        };
+
+        if (existingMetrics?.id) {
+          const { error: metricsError } = await supabase
+            .from("post_metrics")
+            .update(metricsPayload)
+            .eq("id", existingMetrics.id);
+          if (metricsError) throw metricsError;
+        } else {
+          const { error: metricsError } = await supabase.from("post_metrics").insert(metricsPayload);
+          if (metricsError) throw metricsError;
+        }
+      }
 
       // 1. Update draft -> posted
       if (props.draftId) {
@@ -45,6 +116,7 @@ const MarkPostedDialog = (props: Props) => {
           status: "posted",
           posted_at: now,
           posted_url: url || null,
+          linked_post_id: linkedPostId,
         }).eq("id", props.postPlanId);
       }
 
