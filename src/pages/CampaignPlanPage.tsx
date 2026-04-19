@@ -59,13 +59,14 @@ const CampaignPlanPage = () => {
   const [generatingInsights, setGeneratingInsights] = useState(false);
   const [report, setReport] = useState<any>(null);
   const [loadingReport, setLoadingReport] = useState(false);
+  const [advisorQuestions, setAdvisorQuestions] = useState<AdvisorQuestion[]>([]);
+  const [intelligence, setIntelligence] = useState<CampaignIntelligence | null>(null);
 
   useEffect(() => {
     if (user && id) {
       fetchAll();
-      // Always pull live goal aggregate so the hero progress bar reflects
-      // post contributions immediately (not just when the analytics tab opens).
       fetchGoalAggregate();
+      refreshBrain();
     }
   }, [user, id]);
 
@@ -75,10 +76,28 @@ const CampaignPlanPage = () => {
     const handler = () => {
       fetchAll();
       fetchGoalAggregate();
+      refreshBrain();
     };
     window.addEventListener(goalUpdatedEvent(id), handler);
     return () => window.removeEventListener(goalUpdatedEvent(id), handler);
   }, [id]);
+
+  const refreshBrain = async () => {
+    if (!id) return;
+    const { intelligence: intel, advisor_questions } = await refreshCampaignBrain(id);
+    if (intel) setIntelligence(intel);
+    setAdvisorQuestions(advisor_questions);
+  };
+
+  const reloadAdvisorQuestions = async () => {
+    if (!id) return;
+    const { data } = await supabase
+      .from("campaign_advisor_questions")
+      .select("*")
+      .eq("campaign_id", id)
+      .order("created_at", { ascending: false });
+    setAdvisorQuestions((data || []) as any);
+  };
 
   const fetchAll = async () => {
     setLoading(true);
