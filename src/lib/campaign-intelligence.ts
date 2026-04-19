@@ -17,11 +17,14 @@ export interface StrategyVersion {
 }
 
 export type ActionPriority = "low" | "medium" | "high" | "critical";
+export type ActionType = "blocker" | "execution" | "optimization" | "strategy" | "experiment" | "steady";
 
 export interface NextBestAction {
+  action_type: ActionType;
   priority: ActionPriority;
   title: string;
   observation: string;
+  why_now: string;
   interpretation: string;
   impact: string;
   recommendation: string;
@@ -72,4 +75,13 @@ export const PRIORITY_TONE: Record<ActionPriority, { dot: string; text: string; 
   high:     { dot: "bg-amber-500",   text: "text-amber-700 dark:text-amber-400", ring: "border-amber-500/40", label: "High" },
   medium:   { dot: "bg-foreground/60", text: "text-foreground", ring: "border-foreground/30", label: "Medium" },
   low:      { dot: "bg-muted-foreground", text: "text-muted-foreground", ring: "border-border", label: "On track" },
+};
+
+export const ACTION_TYPE_META: Record<ActionType, { label: string; icon: string; tone: string }> = {
+  blocker:      { label: "Blocker",       icon: "🚫", tone: "text-destructive" },
+  execution:    { label: "Execution",     icon: "⚡", tone: "text-amber-600 dark:text-amber-400" },
+  optimization: { label: "Optimization",  icon: "🎯", tone: "text-emerald-600 dark:text-emerald-400" },
+  strategy:     { label: "Strategy fix",  icon: "🧭", tone: "text-blue-600 dark:text-blue-400" },
+  experiment:   { label: "Experiment",    icon: "🧪", tone: "text-purple-600 dark:text-purple-400" },
+  steady:       { label: "Steady",        icon: "✓",  tone: "text-muted-foreground" },
 };
