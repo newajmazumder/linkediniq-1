@@ -37,6 +37,8 @@ import { PostActionButtons } from "@/components/competitor/PostActionButtons";
 import { BestMoveCard } from "@/components/competitor/BestMoveCard";
 import { GuidedJourney } from "@/components/competitor/GuidedJourney";
 import { CompetitorPostAnalysis } from "@/components/competitor/CompetitorPostAnalysis";
+import { ExploitationCommandCard } from "@/components/competitor/ExploitationCommandCard";
+import { StrategicMoveBadge } from "@/components/competitor/StrategicMoveBadge";
 
 type Competitor = {
   id: string; name: string; linkedin_url: string | null; tags: string[] | null; created_at: string;
