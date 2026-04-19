@@ -170,7 +170,8 @@ const CompetitorsPage = () => {
 
   const fetchActiveMarketContext = async () => {
     const { data: campaign } = await supabase
-      .from("campaigns").select("market_context_id").eq("user_id", user!.id).eq("is_active", true).limit(1).maybeSingle();
+      .from("campaigns").select("id, market_context_id").eq("user_id", user!.id).eq("is_active", true).limit(1).maybeSingle();
+    if (campaign?.id) setActiveCampaignId(campaign.id);
     if (campaign?.market_context_id) {
       setActiveMarketContextId(campaign.market_context_id);
       const { data: mc } = await supabase.from("market_contexts").select("region_name, region_code").eq("id", campaign.market_context_id).maybeSingle();
