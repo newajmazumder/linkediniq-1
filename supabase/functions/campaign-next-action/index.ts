@@ -395,14 +395,24 @@ serve(async (req) => {
     action.alternative_path = alternativeByType[action.action_type] || alternativeByType.steady;
     action.signal_strength = signalStrength;
     action.signal_reason = signalReason;
+    action.pacing_state = pacingState;
 
     return new Response(JSON.stringify({
       ok: true,
       action,
+      pace: {
+        state: pacingState,
+        expected_by_now: expectedByNow,
+        actual: posted,
+        delta: paceDelta,
+        days_remaining: daysRemaining !== null ? Number(daysRemaining.toFixed(1)) : null,
+        days_total: campaignDays,
+      },
       context: {
         posted, total_posts: totalPosts, posting_pct: postingPct,
         goal_pct: goalPct, signals: allSignals.length,
         pace_ratio: Number(paceRatio.toFixed(2)),
+        pacing_state: pacingState,
         is_behind: isBehind, is_on_pace: isOnPace, is_ahead: isAhead,
         days_remaining: daysRemaining !== null ? Number(daysRemaining.toFixed(1)) : null,
         time_progress_pct: timeProgressPct,
