@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Swords } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Swords, ArrowLeft, Eye, Pencil } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,19 @@ const CreatePage = () => {
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>(searchParams.get("campaign_id") || "");
   const [postPlan, setPostPlan] = useState<any>(null);
   const [competitorStrategy, setCompetitorStrategy] = useState<any>(null);
+
+  // Draft view/edit support — when /create?draft_id=…&mode=view|edit is opened,
+  // we hydrate the page from an existing draft instead of generating fresh
+  // content. The lifecycle Plan → Create → Draft must round-trip cleanly:
+  // clicking View/Edit on a campaign post must always land here.
+  const draftIdParam = searchParams.get("draft_id");
+  const modeParam = (searchParams.get("mode") as "view" | "edit" | null) || null;
+  const isDraftMode = !!draftIdParam;
+  const isViewMode = isDraftMode && modeParam !== "edit"; // default view when draft is loaded
+  const isEditMode = isDraftMode && modeParam === "edit";
+  const [draftRow, setDraftRow] = useState<any>(null);
+  const [draftMissing, setDraftMissing] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
 
   useEffect(() => {
     if (!user) return;

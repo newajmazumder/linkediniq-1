@@ -189,13 +189,13 @@ const CampaignPostCard = ({
           {(status === "drafted" || status === "scheduled") && post.linked_draft_id && (
             <>
               <Link
-                to="/drafts"
+                to={`/create?draft_id=${post.linked_draft_id}&mode=view&campaign_id=${campaignId}&post_plan_id=${post.id}`}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
                 <Eye className="h-3 w-3" /> View
               </Link>
               <Link
-                to="/drafts"
+                to={`/create?draft_id=${post.linked_draft_id}&mode=edit&campaign_id=${campaignId}&post_plan_id=${post.id}`}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
               >
                 <PenLine className="h-3 w-3" /> Edit
